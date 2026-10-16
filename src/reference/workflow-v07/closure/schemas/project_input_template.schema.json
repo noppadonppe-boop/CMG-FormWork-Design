@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Pending engineering input form; not trusted evidence",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "closure-v1"
+    },
+    "form_type": {
+      "enum": [
+        "ringlock_configuration",
+        "support_soil",
+        "support_slab",
+        "serviceability",
+        "stage_release"
+      ]
+    },
+    "context": {
+      "type": "object",
+      "required": [
+        "projectId",
+        "revisionId",
+        "designSnapshotHash",
+        "activeStageId",
+        "capturedStageId",
+        "loadCaseId"
+      ],
+      "properties": {
+        "projectId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "revisionId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "designSnapshotHash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "activeStageId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "capturedStageId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "loadCaseId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "inputs": {
+      "type": "object"
+    },
+    "review": {
+      "type": "object",
+      "properties": {
+        "engineerId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "evidenceRef": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "acceptedSnapshotHash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "acceptedStageId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "acceptedLoadCaseId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "trustedVerificationStatus": {
+          "const": "NOT_VERIFIED"
+        }
+      },
+      "required": [
+        "engineerId",
+        "evidenceRef",
+        "acceptedSnapshotHash",
+        "acceptedStageId",
+        "acceptedLoadCaseId",
+        "trustedVerificationStatus"
+      ],
+      "additionalProperties": false
+    },
+    "confirmed": {
+      "const": false
+    },
+    "constructionRelease": {
+      "const": "NO_GO"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "form_type",
+    "context",
+    "inputs",
+    "review",
+    "confirmed",
+    "constructionRelease"
+  ]
+}

@@ -1,0 +1,534 @@
+{
+  "schema_version": "closure-v1",
+  "sidecar_id": "DOKA20-P31-REFERENCE",
+  "records": [
+    {
+      "manufacturer": "Doka",
+      "system_ref": "DOKA_RINGLOCK_2020_11",
+      "source_id": "DOKA-RL-2020",
+      "source_pdf_page": 31,
+      "source_edition": "11/2020",
+      "rating_scope": "COMPONENT_REFERENCE_NOT_COMPLETE_SHORING_CONFIGURATION",
+      "source_basis_text": "Heading: Maximum Design Forces; note: All permissable loads with gammaM=1.1 and gammaF=1.5",
+      "source_gamma_M": 1.1,
+      "source_gamma_F": 1.5,
+      "basis_mapping_status": "ENGINEER_CONFIRMATION_REQUIRED",
+      "automatic_design_use": false,
+      "interpolation_allowed": false,
+      "extrapolation_allowed": false,
+      "rating_id": "DOKA20-STD-LIFT-500",
+      "kind": "STANDARD",
+      "selector": {
+        "ledger_vertical_spacing_mm": 500
+      },
+      "limits": {
+        "compression_kN": 62,
+        "tension_kN": 56
+      },
+      "conditions": [
+        "Proper ledger and bay-brace connections required for compression.",
+        "Leg-lock connection required for tension.",
+        "Ledger spacing is NOT total tower height.",
+        "Head/base extension, global tower configuration and actual product identity not established by this row."
+      ]
+    },
+    {
+      "manufacturer": "Doka",
+      "system_ref": "DOKA_RINGLOCK_2020_11",
+      "source_id": "DOKA-RL-2020",
+      "source_pdf_page": 31,
+      "source_edition": "11/2020",
+      "rating_scope": "COMPONENT_REFERENCE_NOT_COMPLETE_SHORING_CONFIGURATION",
+      "source_basis_text": "Heading: Maximum Design Forces; note: All permissable loads with gammaM=1.1 and gammaF=1.5",
+      "source_gamma_M": 1.1,
+      "source_gamma_F": 1.5,
+      "basis_mapping_status": "ENGINEER_CONFIRMATION_REQUIRED",
+      "automatic_design_use": false,
+      "interpolation_allowed": false,
+      "extrapolation_allowed": false,
+      "rating_id": "DOKA20-STD-LIFT-1000",
+      "kind": "STANDARD",
+      "selector": {
+        "ledger_vertical_spacing_mm": 1000
+      },
+      "limits": {
+        "compression_kN": 55,
+        "tension_kN": 56
+      },
+      "conditions": [
+        "Proper ledger and bay-brace connections required for compression.",
+        "Leg-lock connection required for tension.",
+        "Ledger spacing is NOT total tower height.",
+        "Head/base extension, global tower configuration and actual product identity not established by this row."
+      ]
+    },
+    {
+      "manufacturer": "Doka",
+      "system_ref": "DOKA_RINGLOCK_2020_11",
+      "source_id": "DOKA-RL-2020",
+      "source_pdf_page": 31,
+      "source_edition": "11/2020",
+      "rating_scope": "COMPONENT_REFERENCE_NOT_COMPLETE_SHORING_CONFIGURATION",
+      "source_basis_text": "Heading: Maximum Design Forces; note: All permissable loads with gammaM=1.1 and gammaF=1.5",
+      "source_gamma_M": 1.1,
+      "source_gamma_F": 1.5,
+      "basis_mapping_status": "ENGINEER_CONFIRMATION_REQUIRED",
+      "automatic_design_use": false,
+      "interpolation_allowed": false,
+      "extrapolation_allowed": false,
+      "rating_id": "DOKA20-STD-LIFT-1500",
+      "kind": "STANDARD",
+      "selector": {
+        "ledger_vertical_spacing_mm": 1500
+      },
+      "limits": {
+        "compression_kN": 43,
+        "tension_kN": 56
+      },
+      "conditions": [
+        "Proper ledger and bay-brace connections required for compression.",
+        "Leg-lock connection required for tension.",
+        "Ledger spacing is NOT total tower height.",
+        "Head/base extension, global tower configuration and actual product identity not established by this row."
+      ]
+    },
+    {
+      "manufacturer": "Doka",
+      "system_ref": "DOKA_RINGLOCK_2020_11",
+      "source_id": "DOKA-RL-2020",
+      "source_pdf_page": 31,
+      "source_edition": "11/2020",
+      "rating_scope": "COMPONENT_REFERENCE_NOT_COMPLETE_SHORING_CONFIGURATION",
+      "source_basis_text": "Heading: Maximum Design Forces; note: All permissable loads with gammaM=1.1 and gammaF=1.5",
+      "source_gamma_M": 1.1,
+      "source_gamma_F": 1.5,
+      "basis_mapping_status": "ENGINEER_CONFIRMATION_REQUIRED",
+      "automatic_design_use": false,
+      "interpolation_allowed": false,
+      "extrapolation_allowed": false,
+      "rating_id": "DOKA20-STD-LIFT-2000",
+      "kind": "STANDARD",
+      "selector": {
+        "ledger_vertical_spacing_mm": 2000
+      },
+      "limits": {
+        "compression_kN": 29,
+        "tension_kN": 56
+      },
+      "conditions": [
+        "Proper ledger and bay-brace connections required for compression.",
+        "Leg-lock connection required for tension.",
+        "Ledger spacing is NOT total tower height.",
+        "Head/base extension, global tower configuration and actual product identity not established by this row."
+      ]
+    },
+    {
+      "manufacturer": "Doka",
+      "system_ref": "DOKA_RINGLOCK_2020_11",
+      "source_id": "DOKA-RL-2020",
+      "source_pdf_page": 31,
+      "source_edition": "11/2020",
+      "rating_scope": "COMPONENT_REFERENCE_NOT_COMPLETE_SHORING_CONFIGURATION",
+      "source_basis_text": "Heading: Maximum Design Forces; note: All permissable loads with gammaM=1.1 and gammaF=1.5",
+      "source_gamma_M": 1.1,
+      "source_gamma_F": 1.5,
+      "basis_mapping_status": "ENGINEER_CONFIRMATION_REQUIRED",
+      "automatic_design_use": false,
+      "interpolation_allowed": false,
+      "extrapolation_allowed": false,
+      "rating_id": "DOKA20-STD-LIFT-2500",
+      "kind": "STANDARD",
+      "selector": {
+        "ledger_vertical_spacing_mm": 2500
+      },
+      "limits": {
+        "compression_kN": 19.2,
+        "tension_kN": 56
+      },
+      "conditions": [
+        "Proper ledger and bay-brace connections required for compression.",
+        "Leg-lock connection required for tension.",
+        "Ledger spacing is NOT total tower height.",
+        "Head/base extension, global tower configuration and actual product identity not established by this row."
+      ]
+    },
+    {
+      "manufacturer": "Doka",
+      "system_ref": "DOKA_RINGLOCK_2020_11",
+      "source_id": "DOKA-RL-2020",
+      "source_pdf_page": 31,
+      "source_edition": "11/2020",
+      "rating_scope": "COMPONENT_REFERENCE_NOT_COMPLETE_SHORING_CONFIGURATION",
+      "source_basis_text": "Heading: Maximum Design Forces; note: All permissable loads with gammaM=1.1 and gammaF=1.5",
+      "source_gamma_M": 1.1,
+      "source_gamma_F": 1.5,
+      "basis_mapping_status": "ENGINEER_CONFIRMATION_REQUIRED",
+      "automatic_design_use": false,
+      "interpolation_allowed": false,
+      "extrapolation_allowed": false,
+      "rating_id": "DOKA20-STD-LIFT-3000",
+      "kind": "STANDARD",
+      "selector": {
+        "ledger_vertical_spacing_mm": 3000
+      },
+      "limits": {
+        "compression_kN": 13,
+        "tension_kN": 56
+      },
+      "conditions": [
+        "Proper ledger and bay-brace connections required for compression.",
+        "Leg-lock connection required for tension.",
+        "Ledger spacing is NOT total tower height.",
+        "Head/base extension, global tower configuration and actual product identity not established by this row."
+      ]
+    },
+    {
+      "manufacturer": "Doka",
+      "system_ref": "DOKA_RINGLOCK_2020_11",
+      "source_id": "DOKA-RL-2020",
+      "source_pdf_page": 31,
+      "source_edition": "11/2020",
+      "rating_scope": "COMPONENT_REFERENCE_NOT_COMPLETE_SHORING_CONFIGURATION",
+      "source_basis_text": "Heading: Maximum Design Forces; note: All permissable loads with gammaM=1.1 and gammaF=1.5",
+      "source_gamma_M": 1.1,
+      "source_gamma_F": 1.5,
+      "basis_mapping_status": "ENGINEER_CONFIRMATION_REQUIRED",
+      "automatic_design_use": false,
+      "interpolation_allowed": false,
+      "extrapolation_allowed": false,
+      "rating_id": "DOKA20-BRACE-2000-730",
+      "kind": "BRACE",
+      "selector": {
+        "lift_mm": 2000,
+        "bay_mm": 730
+      },
+      "limits": {
+        "tension_kN": 12.2,
+        "compression_kN": 11.9
+      },
+      "conditions": [
+        "Exact 2.0m lift and listed bay only.",
+        "Axial brace action Nyz as source sketch.",
+        "Not ledger force or global lateral tower capacity."
+      ]
+    },
+    {
+      "manufacturer": "Doka",
+      "system_ref": "DOKA_RINGLOCK_2020_11",
+      "source_id": "DOKA-RL-2020",
+      "source_pdf_page": 31,
+      "source_edition": "11/2020",
+      "rating_scope": "COMPONENT_REFERENCE_NOT_COMPLETE_SHORING_CONFIGURATION",
+      "source_basis_text": "Heading: Maximum Design Forces; note: All permissable loads with gammaM=1.1 and gammaF=1.5",
+      "source_gamma_M": 1.1,
+      "source_gamma_F": 1.5,
+      "basis_mapping_status": "ENGINEER_CONFIRMATION_REQUIRED",
+      "automatic_design_use": false,
+      "interpolation_allowed": false,
+      "extrapolation_allowed": false,
+      "rating_id": "DOKA20-BRACE-2000-1090",
+      "kind": "BRACE",
+      "selector": {
+        "lift_mm": 2000,
+        "bay_mm": 1090
+      },
+      "limits": {
+        "tension_kN": 12.2,
+        "compression_kN": 11.9
+      },
+      "conditions": [
+        "Exact 2.0m lift and listed bay only.",
+        "Axial brace action Nyz as source sketch.",
+        "Not ledger force or global lateral tower capacity."
+      ]
+    },
+    {
+      "manufacturer": "Doka",
+      "system_ref": "DOKA_RINGLOCK_2020_11",
+      "source_id": "DOKA-RL-2020",
+      "source_pdf_page": 31,
+      "source_edition": "11/2020",
+      "rating_scope": "COMPONENT_REFERENCE_NOT_COMPLETE_SHORING_CONFIGURATION",
+      "source_basis_text": "Heading: Maximum Design Forces; note: All permissable loads with gammaM=1.1 and gammaF=1.5",
+      "source_gamma_M": 1.1,
+      "source_gamma_F": 1.5,
+      "basis_mapping_status": "ENGINEER_CONFIRMATION_REQUIRED",
+      "automatic_design_use": false,
+      "interpolation_allowed": false,
+      "extrapolation_allowed": false,
+      "rating_id": "DOKA20-BRACE-2000-1400",
+      "kind": "BRACE",
+      "selector": {
+        "lift_mm": 2000,
+        "bay_mm": 1400
+      },
+      "limits": {
+        "tension_kN": 12.2,
+        "compression_kN": 11.8
+      },
+      "conditions": [
+        "Exact 2.0m lift and listed bay only.",
+        "Axial brace action Nyz as source sketch.",
+        "Not ledger force or global lateral tower capacity."
+      ]
+    },
+    {
+      "manufacturer": "Doka",
+      "system_ref": "DOKA_RINGLOCK_2020_11",
+      "source_id": "DOKA-RL-2020",
+      "source_pdf_page": 31,
+      "source_edition": "11/2020",
+      "rating_scope": "COMPONENT_REFERENCE_NOT_COMPLETE_SHORING_CONFIGURATION",
+      "source_basis_text": "Heading: Maximum Design Forces; note: All permissable loads with gammaM=1.1 and gammaF=1.5",
+      "source_gamma_M": 1.1,
+      "source_gamma_F": 1.5,
+      "basis_mapping_status": "ENGINEER_CONFIRMATION_REQUIRED",
+      "automatic_design_use": false,
+      "interpolation_allowed": false,
+      "extrapolation_allowed": false,
+      "rating_id": "DOKA20-BRACE-2000-1570",
+      "kind": "BRACE",
+      "selector": {
+        "lift_mm": 2000,
+        "bay_mm": 1570
+      },
+      "limits": {
+        "tension_kN": 12.2,
+        "compression_kN": 11.6
+      },
+      "conditions": [
+        "Exact 2.0m lift and listed bay only.",
+        "Axial brace action Nyz as source sketch.",
+        "Not ledger force or global lateral tower capacity."
+      ]
+    },
+    {
+      "manufacturer": "Doka",
+      "system_ref": "DOKA_RINGLOCK_2020_11",
+      "source_id": "DOKA-RL-2020",
+      "source_pdf_page": 31,
+      "source_edition": "11/2020",
+      "rating_scope": "COMPONENT_REFERENCE_NOT_COMPLETE_SHORING_CONFIGURATION",
+      "source_basis_text": "Heading: Maximum Design Forces; note: All permissable loads with gammaM=1.1 and gammaF=1.5",
+      "source_gamma_M": 1.1,
+      "source_gamma_F": 1.5,
+      "basis_mapping_status": "ENGINEER_CONFIRMATION_REQUIRED",
+      "automatic_design_use": false,
+      "interpolation_allowed": false,
+      "extrapolation_allowed": false,
+      "rating_id": "DOKA20-BRACE-2000-2070",
+      "kind": "BRACE",
+      "selector": {
+        "lift_mm": 2000,
+        "bay_mm": 2070
+      },
+      "limits": {
+        "tension_kN": 12.2,
+        "compression_kN": 11.1
+      },
+      "conditions": [
+        "Exact 2.0m lift and listed bay only.",
+        "Axial brace action Nyz as source sketch.",
+        "Not ledger force or global lateral tower capacity."
+      ]
+    },
+    {
+      "manufacturer": "Doka",
+      "system_ref": "DOKA_RINGLOCK_2020_11",
+      "source_id": "DOKA-RL-2020",
+      "source_pdf_page": 31,
+      "source_edition": "11/2020",
+      "rating_scope": "COMPONENT_REFERENCE_NOT_COMPLETE_SHORING_CONFIGURATION",
+      "source_basis_text": "Heading: Maximum Design Forces; note: All permissable loads with gammaM=1.1 and gammaF=1.5",
+      "source_gamma_M": 1.1,
+      "source_gamma_F": 1.5,
+      "basis_mapping_status": "ENGINEER_CONFIRMATION_REQUIRED",
+      "automatic_design_use": false,
+      "interpolation_allowed": false,
+      "extrapolation_allowed": false,
+      "rating_id": "DOKA20-BRACE-2000-2570",
+      "kind": "BRACE",
+      "selector": {
+        "lift_mm": 2000,
+        "bay_mm": 2570
+      },
+      "limits": {
+        "tension_kN": 12.2,
+        "compression_kN": 9.2
+      },
+      "conditions": [
+        "Exact 2.0m lift and listed bay only.",
+        "Axial brace action Nyz as source sketch.",
+        "Not ledger force or global lateral tower capacity."
+      ]
+    },
+    {
+      "manufacturer": "Doka",
+      "system_ref": "DOKA_RINGLOCK_2020_11",
+      "source_id": "DOKA-RL-2020",
+      "source_pdf_page": 31,
+      "source_edition": "11/2020",
+      "rating_scope": "COMPONENT_REFERENCE_NOT_COMPLETE_SHORING_CONFIGURATION",
+      "source_basis_text": "Heading: Maximum Design Forces; note: All permissable loads with gammaM=1.1 and gammaF=1.5",
+      "source_gamma_M": 1.1,
+      "source_gamma_F": 1.5,
+      "basis_mapping_status": "ENGINEER_CONFIRMATION_REQUIRED",
+      "automatic_design_use": false,
+      "interpolation_allowed": false,
+      "extrapolation_allowed": false,
+      "rating_id": "DOKA20-BRACE-2000-3070",
+      "kind": "BRACE",
+      "selector": {
+        "lift_mm": 2000,
+        "bay_mm": 3070
+      },
+      "limits": {
+        "tension_kN": 12.2,
+        "compression_kN": 7.7
+      },
+      "conditions": [
+        "Exact 2.0m lift and listed bay only.",
+        "Axial brace action Nyz as source sketch.",
+        "Not ledger force or global lateral tower capacity."
+      ]
+    },
+    {
+      "manufacturer": "Doka",
+      "system_ref": "DOKA_RINGLOCK_2020_11",
+      "source_id": "DOKA-RL-2020",
+      "source_pdf_page": 31,
+      "source_edition": "11/2020",
+      "rating_scope": "COMPONENT_REFERENCE_NOT_COMPLETE_SHORING_CONFIGURATION",
+      "source_basis_text": "Heading: Maximum Design Forces; note: All permissable loads with gammaM=1.1 and gammaF=1.5",
+      "source_gamma_M": 1.1,
+      "source_gamma_F": 1.5,
+      "basis_mapping_status": "ENGINEER_CONFIRMATION_REQUIRED",
+      "automatic_design_use": false,
+      "interpolation_allowed": false,
+      "extrapolation_allowed": false,
+      "rating_id": "DOKA20-JOINT-My",
+      "kind": "JOINT",
+      "selector": {
+        "action": "My"
+      },
+      "limits": {
+        "value": 1.05,
+        "unit": "kN.m"
+      },
+      "source_value": 105,
+      "source_unit": "kN.cm",
+      "conditions": [
+        "Axis/direction must match source sketch, not global model labels.",
+        "Single-action reference only; simultaneous force interaction and rotational stiffness not provided.",
+        "Do not convert resistance into connection stiffness."
+      ]
+    },
+    {
+      "manufacturer": "Doka",
+      "system_ref": "DOKA_RINGLOCK_2020_11",
+      "source_id": "DOKA-RL-2020",
+      "source_pdf_page": 31,
+      "source_edition": "11/2020",
+      "rating_scope": "COMPONENT_REFERENCE_NOT_COMPLETE_SHORING_CONFIGURATION",
+      "source_basis_text": "Heading: Maximum Design Forces; note: All permissable loads with gammaM=1.1 and gammaF=1.5",
+      "source_gamma_M": 1.1,
+      "source_gamma_F": 1.5,
+      "basis_mapping_status": "ENGINEER_CONFIRMATION_REQUIRED",
+      "automatic_design_use": false,
+      "interpolation_allowed": false,
+      "extrapolation_allowed": false,
+      "rating_id": "DOKA20-JOINT-Vz",
+      "kind": "JOINT",
+      "selector": {
+        "action": "Vz"
+      },
+      "limits": {
+        "value": 18.5,
+        "unit": "kN"
+      },
+      "source_value": 18.5,
+      "source_unit": "kN",
+      "conditions": [
+        "Axis/direction must match source sketch, not global model labels.",
+        "Single-action reference only; simultaneous force interaction and rotational stiffness not provided.",
+        "Do not convert resistance into connection stiffness."
+      ]
+    },
+    {
+      "manufacturer": "Doka",
+      "system_ref": "DOKA_RINGLOCK_2020_11",
+      "source_id": "DOKA-RL-2020",
+      "source_pdf_page": 31,
+      "source_edition": "11/2020",
+      "rating_scope": "COMPONENT_REFERENCE_NOT_COMPLETE_SHORING_CONFIGURATION",
+      "source_basis_text": "Heading: Maximum Design Forces; note: All permissable loads with gammaM=1.1 and gammaF=1.5",
+      "source_gamma_M": 1.1,
+      "source_gamma_F": 1.5,
+      "basis_mapping_status": "ENGINEER_CONFIRMATION_REQUIRED",
+      "automatic_design_use": false,
+      "interpolation_allowed": false,
+      "extrapolation_allowed": false,
+      "rating_id": "DOKA20-JOINT-N",
+      "kind": "JOINT",
+      "selector": {
+        "action": "N"
+      },
+      "limits": {
+        "value": 23.9,
+        "unit": "kN"
+      },
+      "source_value": 23.9,
+      "source_unit": "kN",
+      "conditions": [
+        "Axis/direction must match source sketch, not global model labels.",
+        "Single-action reference only; simultaneous force interaction and rotational stiffness not provided.",
+        "Do not convert resistance into connection stiffness."
+      ]
+    },
+    {
+      "manufacturer": "Doka",
+      "system_ref": "DOKA_RINGLOCK_2020_11",
+      "source_id": "DOKA-RL-2020",
+      "source_pdf_page": 31,
+      "source_edition": "11/2020",
+      "rating_scope": "COMPONENT_REFERENCE_NOT_COMPLETE_SHORING_CONFIGURATION",
+      "source_basis_text": "Heading: Maximum Design Forces; note: All permissable loads with gammaM=1.1 and gammaF=1.5",
+      "source_gamma_M": 1.1,
+      "source_gamma_F": 1.5,
+      "basis_mapping_status": "ENGINEER_CONFIRMATION_REQUIRED",
+      "automatic_design_use": false,
+      "interpolation_allowed": false,
+      "extrapolation_allowed": false,
+      "rating_id": "DOKA20-JOINT-Vy",
+      "kind": "JOINT",
+      "selector": {
+        "action": "Vy"
+      },
+      "limits": {
+        "value": 10.8,
+        "unit": "kN"
+      },
+      "source_value": 10.8,
+      "source_unit": "kN",
+      "conditions": [
+        "Axis/direction must match source sketch, not global model labels.",
+        "Single-action reference only; simultaneous force interaction and rotational stiffness not provided.",
+        "Do not convert resistance into connection stiffness."
+      ]
+    }
+  ],
+  "count": 17,
+  "material_identity_reference": {
+    "outside_diameter_mm": 48.3,
+    "nominal_wall_mm": 3.2,
+    "grade_as_printed": "S355 J0H",
+    "source_pdf_page": 30,
+    "not_actual_product_verification": true
+  },
+  "full_configuration_capacity": null,
+  "head_base_capacity": null,
+  "connection_stiffness": null,
+  "preserve_existing_ringlock_json": true,
+  "confirmed": false,
+  "constructionRelease": "NO_GO"
+}

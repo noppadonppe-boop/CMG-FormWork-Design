@@ -1,0 +1,162 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function hasEmail() {
+      return request.auth != null && request.auth.token.email is string && request.auth.token.email.size() > 0;
+    }
+    function email() { return request.auth.token.email.lower(); }
+    function userPath() { return /databases/$(database)/documents/RC-FormWork-App/root/users/$(email()); }
+    function legacyUserPath() { return /databases/$(database)/documents/RC-FormWork-App/root/users/$(request.auth.uid); }
+    function metaPath() { return /databases/$(database)/documents/RC-FormWork-App/root/appMeta/config; }
+    function isSelfProfile(data) { return hasEmail() && data.uid == request.auth.uid && data.email == email(); }
+    function hasProfile() { return hasEmail() && exists(userPath()) && isSelfProfile(get(userPath()).data); }
+    function me() { return get(userPath()).data; }
+    function approved() { return hasProfile() && me().status == 'approved' && validRoles(me().role); }
+    function isAdmin() { return approved() && me().role.hasAny(['MasterAdmin', 'SuperAdmin', 'Admin']); }
+    function isMasterAdmin() { return approved() && me().role.hasAny(['MasterAdmin']); }
+    function projectPermission(projectId, permission) {
+      return me().get('projectPermissions', {}) is map &&
+        projectId in me().get('projectPermissions', {}) &&
+        me().get('projectPermissions', {})[projectId] is list &&
+        (permission in me().get('projectPermissions', {})[projectId] || 'manage' in me().get('projectPermissions', {})[projectId]);
+    }
+    function canViewProject(projectId) {
+      return projectId is string && projectId.size() > 0 && approved() &&
+        (isAdmin() || projectPermission(projectId, 'view') || (me().assignedProjects is list && projectId in me().assignedProjects));
+    }
+    function canEditProject(projectId) {
+      return projectId is string && projectId.size() > 0 && approved() &&
+        (isAdmin() || projectPermission(projectId, 'edit') || (me().assignedProjects is list && projectId in me().assignedProjects));
+    }
+    function validRoles(roles) {
+      return roles is list && roles.size() > 0 && roles.hasOnly(['MasterAdmin', 'SuperAdmin', 'Admin', 'Engineer', 'Staff']);
+    }
+    function validEditableProfile(data) {
+      return data.firstName is string && data.lastName is string && data.position is string &&
+        data.get('department', '') is string && data.get('photoURL', '') is string && data.get('projectPermissions', {}) is map && validRoles(data.role) &&
+        data.status in ['pending', 'approved', 'rejected'] && data.assignedProjects is list;
+    }
+    function validProfile(data) {
+      return data.keys().hasAll(['uid', 'email', 'firstName', 'lastName', 'position', 'role', 'status', 'assignedProjects', 'createdAt', 'isFirstUser']) &&
+        data.keys().hasOnly(['uid', 'email', 'firstName', 'lastName', 'position', 'department', 'role', 'status', 'assignedProjects', 'projectPermissions', 'createdAt', 'photoURL', 'isFirstUser']) &&
+        data.uid is string && data.email is string && validEditableProfile(data) && data.createdAt is timestamp && data.isFirstUser is bool;
+    }
+
+    // The existing application elects its first administrator through this one
+    // atomic profile + metadata transaction. Metadata cannot be reset by clients.
+    // A populated organization with missing metadata needs trusted reconciliation;
+    // Rules cannot establish that a collection of historical users is empty.
+    function firstRegistration() {
+      return !exists(metaPath()) ||
+        (get(metaPath()).data.firstUserRegistered == false && get(metaPath()).data.totalUsers == 0);
+    }
+    function registrationProfile(data) {
+      return validProfile(data) && isSelfProfile(data) && data.assignedProjects.size() == 0 && data.get('projectPermissions', {}).size() == 0 && data.createdAt == request.time &&
+        ((firstRegistration() && data.isFirstUser == true && data.status == 'approved' && data.role == ['MasterAdmin']) ||
+         (!firstRegistration() && get(metaPath()).data.firstUserRegistered == true && get(metaPath()).data.totalUsers >= 1 &&
+          data.isFirstUser == false && data.status == 'pending' && data.role == ['Staff']));
+    }
+    function registrationMeta(data) {
+      return data.keys().hasOnly(['firstUserRegistered', 'totalUsers', 'createdAt']) &&
+        data.firstUserRegistered == true && data.totalUsers is int && data.createdAt is timestamp &&
+        ((!exists(metaPath()) && data.totalUsers == 1 && data.createdAt == request.time) ||
+         (exists(metaPath()) && get(metaPath()).data.totalUsers is int &&
+          data.totalUsers == get(metaPath()).data.totalUsers + 1 && data.createdAt == get(metaPath()).data.createdAt));
+    }
+    function newRegistration() {
+      return hasEmail() && !exists(userPath()) && !exists(legacyUserPath()) &&
+        registrationProfile(getAfter(userPath()).data) && registrationMeta(getAfter(metaPath()).data);
+    }
+    function isLegacyMigration(data) {
+      return hasEmail() && exists(legacyUserPath()) && get(legacyUserPath()).data.uid == request.auth.uid && isSelfProfile(data) &&
+        data.diff(get(legacyUserPath()).data).affectedKeys().hasOnly(['email', 'photoURL']) && data.get('photoURL', '') is string;
+    }
+    function validRoot(data) {
+      return data.keys().hasOnly(['app', 'schemaVersion', 'updatedAt']) &&
+        data.app == 'RC-FormWork-App' && data.schemaVersion == 2 && data.updatedAt == request.time;
+    }
+    function validProject(data, projectId) { return data.id == projectId && data.projectId == projectId; }
+    function menuCategory(category) { return category in ['overview', 'upload', 'geometry', 'criteria', 'layout', 'results', 'drawings', 'report']; }
+    function clientSnapshot(data) {
+      // Callable results share this collection with client menu snapshots.
+      return !data.keys().hasAny(['authority', 'hash', 'constructionEligible']);
+    }
+    function validAiProviderConfig(data) {
+      return data is map && data.keys().hasOnly(['apiKey', 'model', 'effort']) &&
+        data.get('model', '') is string && data.get('model', '').size() > 0 && data.get('model', '').size() <= 100 &&
+        data.get('apiKey', '') is string && data.get('apiKey', '').size() <= 400 &&
+        (!data.keys().hasAny(['effort']) || (data.get('effort', '') is string && data.get('effort', '') in ['auto', 'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']));
+    }
+    function validAiSettings(data) {
+      return data.keys().hasOnly(['prompt', 'activeProvider', 'providers', 'updatedBy', 'updatedAt']) &&
+        data.get('prompt', '') is string && data.get('prompt', '').size() <= 10000 &&
+        data.activeProvider in ['openai', 'google', 'anthropic'] && data.providers is map &&
+        data.providers.keys().hasAll(['openai', 'google', 'anthropic']) &&
+        validAiProviderConfig(data.providers.openai) && validAiProviderConfig(data.providers.google) &&
+        validAiProviderConfig(data.providers.anthropic) && data.updatedBy == request.auth.uid &&
+        data.updatedAt == request.time;
+    }
+
+    match /RC-FormWork-App/root {
+      allow read: if approved();
+      allow create, update: if approved() && validRoot(request.resource.data);
+      allow delete: if false;
+
+      match /appMeta/config {
+        allow get: if hasEmail();
+        allow create, update: if newRegistration();
+        allow delete: if false;
+      }
+
+      match /users/{userId} {
+        // Registration reads the caller's UID path even when it does not exist.
+        allow get: if hasEmail() && (userId == email() || userId == request.auth.uid || isAdmin());
+        allow list: if isAdmin();
+        allow create: if hasEmail() && userId == email() && isSelfProfile(request.resource.data) &&
+          (isLegacyMigration(request.resource.data) || newRegistration());
+        // Migrated legacy fields remain intact; only the listed editable fields may change.
+        allow update: if validEditableProfile(request.resource.data) &&
+          ((isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['firstName', 'lastName', 'position', 'department', 'role', 'status', 'assignedProjects', 'projectPermissions'])) ||
+           (hasEmail() && userId == email() && isSelfProfile(resource.data) && isSelfProfile(request.resource.data) &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['firstName', 'lastName', 'position', 'department', 'photoURL'])));
+        allow delete: if false;
+      }
+
+      match /settings/ai {
+        // API keys are readable and writable only by MasterAdmin. The AI
+        // extraction callable uses Admin SDK and never exposes this document.
+        allow get: if isMasterAdmin();
+        allow create, update: if isMasterAdmin() && validAiSettings(request.resource.data);
+        allow delete: if isMasterAdmin();
+      }
+
+      match /projects/{projectId} {
+        allow get: if canViewProject(projectId);
+        allow list: if isAdmin();
+        allow create: if isAdmin() && validProject(request.resource.data, projectId);
+        allow update: if canEditProject(projectId) && validProject(request.resource.data, projectId);
+        allow delete: if isAdmin();
+      }
+
+      match /activityLogs/{logId} {
+        // Pending accounts still record registration, login and profile events.
+        allow create: if hasProfile() && request.resource.data.uid == request.auth.uid && request.resource.data.email.lower() == email() &&
+          request.resource.data.createdAt == request.time &&
+          (request.resource.data.action in ['REGISTER', 'LOGIN', 'LOGOUT', 'PROFILE_UPDATE'] ||
+           (isAdmin() && request.resource.data.action in ['USER_APPROVE', 'USER_REJECT', 'USER_UPDATE']));
+        allow read: if isAdmin();
+        allow update, delete: if false;
+      }
+
+      match /{category}/{document} {
+        allow read: if menuCategory(category) && canViewProject(resource.data.projectId);
+        allow create: if menuCategory(category) && canEditProject(request.resource.data.projectId) && clientSnapshot(request.resource.data);
+        allow update: if menuCategory(category) && canEditProject(resource.data.projectId) &&
+          request.resource.data.projectId == resource.data.projectId && clientSnapshot(resource.data) && clientSnapshot(request.resource.data);
+        allow delete: if category == 'upload' && canEditProject(resource.data.projectId);
+      }
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}

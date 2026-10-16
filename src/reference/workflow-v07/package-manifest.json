@@ -1,0 +1,201 @@
+{
+  "package_version": "0.7",
+  "files": [
+    {
+      "path": "RC-FormWork_Ringlock_Reference_v0.7.xlsx",
+      "bytes": 32537,
+      "sha256": "d84eb7115e89a95e5cdc45cb1e3a67209ae3b6211c6290e4d3d0410d77866453"
+    },
+    {
+      "path": "README.md",
+      "bytes": 11512,
+      "sha256": "584dddb68165078d46af8d01ea52998fb60e7cc1089a6e8ac299a959efa75908"
+    },
+    {
+      "path": "baseline/RC-FormWork_Column_Example_v0.2.json",
+      "bytes": 5241,
+      "sha256": "a9369ce68a28dfc25c9055a106dac32fb5f6c411f8a953e5ff9b422ec369fa55"
+    },
+    {
+      "path": "baseline/RC-FormWork_Footing_Example_v0.2.json",
+      "bytes": 5971,
+      "sha256": "dbd164851a26176ddaacdbcbc67a976f6ec0461e7f5963857cd8409e5e039684"
+    },
+    {
+      "path": "baseline/RC-FormWork_FormTie_Addendum_v0.6.2/engineering/Form_Tie_Design_Manual.md",
+      "bytes": 39239,
+      "sha256": "69cbf45edbf742991c23ba751ddb0ff508bcb574efcea6e4c17443aa15381b6b"
+    },
+    {
+      "path": "baseline/RC-FormWork_Materials_v0.5/RC-FormWork_Material_Library_v0.5.json",
+      "bytes": 89459,
+      "sha256": "3469f4835d0d7ecbc884fce44258d31d218b80d85760b40459439acd59beb8c6"
+    },
+    {
+      "path": "baseline/RC-FormWork_PreIntegration_v0.6.1/contracts/architecture_and_calculations.md",
+      "bytes": 19774,
+      "sha256": "d960df2c73e940f3e9c3b4a7d2aa3b91a980a01a79f09907033f7c7060f3f5e0"
+    },
+    {
+      "path": "baseline/RC-FormWork_Sections_v0.4/RC-FormWork_Sections_v0.4.json",
+      "bytes": 309153,
+      "sha256": "29821c779cb7e5a83f54a7f53febc8b456da42729221964f68e68c652d74ffce"
+    },
+    {
+      "path": "data/design_parameters_v0.7.csv",
+      "bytes": 9749,
+      "sha256": "2bd99f98496d40469fe2cfdeb1c483096ece5073237e01ea72c153868f6047df"
+    },
+    {
+      "path": "data/design_parameters_v0.7.json",
+      "bytes": 23275,
+      "sha256": "d58dd399e3590b379e9feee92171c6584a9272c347fd82e0716e4ca3480d0897"
+    },
+    {
+      "path": "data/ringlock_components_v0.7.csv",
+      "bytes": 19022,
+      "sha256": "f0f2cf614aaa436c8241674a6b35cb54628140e909053f545e1676dc50d064b9"
+    },
+    {
+      "path": "data/ringlock_components_v0.7.json",
+      "bytes": 50446,
+      "sha256": "726220a5681dbe129c4154523e26b99170b9475e54331814877ab4f4e92f2bb7"
+    },
+    {
+      "path": "data/ringlock_rating_template_v0.7.json",
+      "bytes": 1322,
+      "sha256": "2a1edb3bf9a1326be1e1fee2637bee25762658629e31a925b2178a4078059f70"
+    },
+    {
+      "path": "data/ui_policy_v0.7.json",
+      "bytes": 1643,
+      "sha256": "5f0815605a0bfc5dee2e5ed5f5a0d5f2fe9b6179539b4b6248a26ad5cd7ae5ff"
+    },
+    {
+      "path": "engineering/Calculation_Workflow_v0.7.md",
+      "bytes": 32054,
+      "sha256": "f9c6eee9f56205858d1679a490828e202485d98d2694b079c945c573df459dcd"
+    },
+    {
+      "path": "engineering/Ringlock_Design_Data_Guide.md",
+      "bytes": 7893,
+      "sha256": "ca7d6747f7085a467a50f833798a5f0bbfe9d3d1e6aac3ca91961be57bbb44fb"
+    },
+    {
+      "path": "engineering/Worked_Examples_v0.7.md",
+      "bytes": 7765,
+      "sha256": "e691c42ed8582499b791e8d3e24926ea1ea47ed44a41aca6055640e6ed5fc382"
+    },
+    {
+      "path": "engineering/check_catalogue_v0.7.csv",
+      "bytes": 8947,
+      "sha256": "688e36ba16a58dc1f6a09f222bcdb75312627ead1ad854f06b5fccce1bd5c5d9"
+    },
+    {
+      "path": "engineering/check_catalogue_v0.7.json",
+      "bytes": 17673,
+      "sha256": "5b60c4bac5f031e0d4fb4f39c539f3edeae3746ca683d39e2335b001ef4ade97"
+    },
+    {
+      "path": "examples/beam_isolated_v0.7.json",
+      "bytes": 4764,
+      "sha256": "588798f6eb1da8bf1b61da10307a2791d3fbb7b8083a78f50116b7a7c28fc69f"
+    },
+    {
+      "path": "examples/beam_monolithic_v0.7.json",
+      "bytes": 4785,
+      "sha256": "0bca391dd122f56d87ff9db73335117bed0476cd187ce2e43d3794493a98a5a4"
+    },
+    {
+      "path": "examples/column_v0.7.json",
+      "bytes": 3335,
+      "sha256": "ff57a6a80e2d48ccde277825e8a99464eff352324a03b6178a19eeee1dde83a1"
+    },
+    {
+      "path": "examples/elementary_results.json",
+      "bytes": 1235,
+      "sha256": "dc139a4ee35e355cc26745ce22b84070722b97c53f37f547eaf9122387d35eb5"
+    },
+    {
+      "path": "examples/footing_L_v0.7.json",
+      "bytes": 4639,
+      "sha256": "c23a43643ee62a207e0577fcee32b009a3b3b6c62af5a8e82f5300b66816e1f8"
+    },
+    {
+      "path": "examples/footing_rectangle_v0.7.json",
+      "bytes": 3361,
+      "sha256": "57ea4913fcddecc06d920b4cbf00710d86b4b25f5b1397f4dffae63d9542699b"
+    },
+    {
+      "path": "examples/index.json",
+      "bytes": 1615,
+      "sha256": "a4c2f9d3e58885209b8e3c596ddb4e1f622c663e98aef342886d5e5d13970461"
+    },
+    {
+      "path": "examples/slab_v0.7.json",
+      "bytes": 4336,
+      "sha256": "65210913677cf57cab51a12f7f83ba846e94371d167b876def2ab75d62cc76cb"
+    },
+    {
+      "path": "examples/wall_v0.7.json",
+      "bytes": 3269,
+      "sha256": "c6442c47063956801dff34cb868790d5f5ce392a831f28948e95476be9b44248"
+    },
+    {
+      "path": "integration/Codex_Workflow_Migration_Prompt_v0.7.md",
+      "bytes": 8483,
+      "sha256": "11762f6f4d0d05cd76414b5550aed62e4ded213bca62876f57b0ff2345c22ca3"
+    },
+    {
+      "path": "integration/preflight_core.py",
+      "bytes": 11745,
+      "sha256": "6d705e2f54ff456365e4ac28cd94b94f7ae9c23577c3b87eb50e7e145a7b6594"
+    },
+    {
+      "path": "qa/test_preflight.py",
+      "bytes": 9052,
+      "sha256": "af9c4e200bc861f42b001dee0d0d036df582018943a695c9c683ba06d553b293"
+    },
+    {
+      "path": "qa/test_run.txt",
+      "bytes": 4921,
+      "sha256": "a67e7412aa90de396f3d2d0fcef639ba8c033e561ef08eb84e1567bdcdde0711"
+    },
+    {
+      "path": "qa/verification_report.json",
+      "bytes": 1973,
+      "sha256": "e60f0370f8a681b80d4da41cfeea422be20f7b2e785d5f21949eba7cce3e42e0"
+    },
+    {
+      "path": "qa/workbook_export_inspection.json",
+      "bytes": 355,
+      "sha256": "5b8ce7cd80e74fe3e0322e8ac2ed73b8dfc0bec75b6ae955b4467d7944013683"
+    },
+    {
+      "path": "qa/workbook_formula_checks.json",
+      "bytes": 1123,
+      "sha256": "c4fd7c9e77e4dabddb763807cb28e77b154a634a494aacebff0ae460c4491ac4"
+    },
+    {
+      "path": "reference/baseline_manifest.json",
+      "bytes": 1383,
+      "sha256": "fc05fc70540e104e606c6a00371e9d3ecf3aa6aa3d627ac157cf9a34bcbfe4e4"
+    },
+    {
+      "path": "reference/source_register.json",
+      "bytes": 4299,
+      "sha256": "491d518d6ee96db06d56c10a063c51dea6bf81b8324f4f356b3734826080ba29"
+    },
+    {
+      "path": "requirements-test.txt",
+      "bytes": 19,
+      "sha256": "756cc9e506ae4ee1a6f6c0507088b5cfc0dc8ba350fb2d2d46f1ffa72033adb6"
+    },
+    {
+      "path": "schemas/workflow_fixture_v0.7.schema.json",
+      "bytes": 2577,
+      "sha256": "f325424c305484a335f4a00f971d55c51c6406a991d57f54fab3669310e8a13a"
+    }
+  ],
+  "note": "Manifest excludes itself; hashes show content identity, not engineering approval."
+}

@@ -1,0 +1,542 @@
+{
+  "version": "0.6.2",
+  "count": 67,
+  "parameters": [
+    {
+      "group": "SYSTEM",
+      "key": "system_template_id",
+      "unit": "id",
+      "required_when": "ALL",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "SYSTEM",
+      "key": "manufacturer",
+      "unit": "text",
+      "required_when": "ALL",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "SYSTEM",
+      "key": "assembly_model_id",
+      "unit": "id",
+      "required_when": "ALL",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "SYSTEM",
+      "key": "rating_revision",
+      "unit": "text",
+      "required_when": "ALL",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "SYSTEM",
+      "key": "actual_product_evidence_ref",
+      "unit": "ref",
+      "required_when": "ALL",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "SYSTEM",
+      "key": "construction_stage_id",
+      "unit": "id",
+      "required_when": "ALL",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "SYSTEM",
+      "key": "demand_basis",
+      "unit": "enum",
+      "required_when": "ALLOWABLE vs FACTORED comparison",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "SYSTEM",
+      "key": "pressure_model_id",
+      "unit": "id",
+      "required_when": "ALL",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "SYSTEM",
+      "key": "pressure_profile",
+      "unit": "z_m,p_kPa",
+      "required_when": "ALL",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "SYSTEM",
+      "key": "tie_positions",
+      "unit": "x_mm,z_mm",
+      "required_when": "ALL",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "SYSTEM",
+      "key": "tie_angle_deg",
+      "unit": "deg",
+      "required_when": "0 unless validated articulated model",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "SYSTEM",
+      "key": "governing_reaction_kN",
+      "unit": "kN",
+      "required_when": "validated waler/plate model",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "SYSTEM",
+      "key": "analysis_model_ref",
+      "unit": "ref",
+      "required_when": "ALL",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "SYSTEM",
+      "key": "pretightening_rule_ref",
+      "unit": "ref",
+      "required_when": "ALL",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "SYSTEM",
+      "key": "face_left_finish",
+      "unit": "enum",
+      "required_when": "ALL",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "SYSTEM",
+      "key": "face_right_finish",
+      "unit": "enum",
+      "required_when": "ALL",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "INNER_ROD",
+      "key": "inner_product_id",
+      "unit": "id",
+      "required_when": "SEGMENTED",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "INNER_ROD",
+      "key": "inner_type",
+      "unit": "B|C|BC|D|other",
+      "required_when": "SEGMENTED",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "INNER_ROD",
+      "key": "wall_thickness_mm",
+      "unit": "mm",
+      "required_when": "ALL",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "INNER_ROD",
+      "key": "inner_order_length_mm",
+      "unit": "mm",
+      "required_when": "SEGMENTED manufacturer definition",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "INNER_ROD",
+      "key": "inner_steel_length_mm",
+      "unit": "mm",
+      "required_when": "SEGMENTED manufacturer definition",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "INNER_ROD",
+      "key": "length_datum_ref",
+      "unit": "ref",
+      "required_when": "ALL length calculations",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "INNER_ROD",
+      "key": "tensile_effective_area_mm2",
+      "unit": "mm2",
+      "required_when": "rod stress",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "INNER_ROD",
+      "key": "stiffness_area_mm2",
+      "unit": "mm2",
+      "required_when": "elongation",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "INNER_ROD",
+      "key": "material_id",
+      "unit": "id",
+      "required_when": "calculated resistance",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "INNER_ROD",
+      "key": "grade",
+      "unit": "text",
+      "required_when": "ALL",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "INNER_ROD",
+      "key": "E_MPa",
+      "unit": "MPa",
+      "required_when": "elongation",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "INNER_ROD",
+      "key": "Fy_MPa",
+      "unit": "MPa",
+      "required_when": "yield rule",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "INNER_ROD",
+      "key": "Fu_MPa",
+      "unit": "MPa",
+      "required_when": "rupture rule",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "INNER_ROD",
+      "key": "min_neck_area_mm2",
+      "unit": "mm2",
+      "required_when": "necked/breakback element",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "INNER_ROD",
+      "key": "published_working_kN",
+      "unit": "kN",
+      "required_when": "rating path",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "INNER_ROD",
+      "key": "published_breaking_kN",
+      "unit": "kN",
+      "required_when": "source only unless approved conversion",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "INNER_ROD",
+      "key": "rating_scope",
+      "unit": "text",
+      "required_when": "which parts / application",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "INNER_ROD",
+      "key": "weld_or_swage_evidence",
+      "unit": "ref",
+      "required_when": "if applicable",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "ENDS_THREADS",
+      "key": "thread_standard",
+      "unit": "text",
+      "required_when": "both mating parts",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "ENDS_THREADS",
+      "key": "thread_designation",
+      "unit": "text",
+      "required_when": "both mating parts",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "ENDS_THREADS",
+      "key": "thread_pitch_or_TPI",
+      "unit": "text",
+      "required_when": "both mating parts",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "ENDS_THREADS",
+      "key": "thread_hand",
+      "unit": "RH|LH",
+      "required_when": "both mating parts",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "ENDS_THREADS",
+      "key": "thread_class",
+      "unit": "text",
+      "required_when": "both mating parts",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "ENDS_THREADS",
+      "key": "male_effective_engagement_mm",
+      "unit": "mm",
+      "required_when": "each end",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "ENDS_THREADS",
+      "key": "female_effective_engagement_mm",
+      "unit": "mm",
+      "required_when": "each end",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "ENDS_THREADS",
+      "key": "required_engagement_mm",
+      "unit": "mm",
+      "required_when": "manufacturer/design reference",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "ENDS_THREADS",
+      "key": "engagement_rule_ref",
+      "unit": "ref",
+      "required_when": "each end",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "ENDS_THREADS",
+      "key": "outer_left_product_id",
+      "unit": "id",
+      "required_when": "SEGMENTED",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "ENDS_THREADS",
+      "key": "outer_right_product_id",
+      "unit": "id",
+      "required_when": "SEGMENTED",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "ENDS_THREADS",
+      "key": "outer_extension_mm",
+      "unit": "mm",
+      "required_when": "each side",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "ENDS_THREADS",
+      "key": "nut_product_id",
+      "unit": "id",
+      "required_when": "each side",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "ENDS_THREADS",
+      "key": "thread_damage_status",
+      "unit": "enum",
+      "required_when": "ALL",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "ENDS_THREADS",
+      "key": "compatibility_evidence_ref",
+      "unit": "ref",
+      "required_when": "ALL",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "CONES_PLATES_WALERS",
+      "key": "cone_product_id",
+      "unit": "id",
+      "required_when": "each side",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "CONES_PLATES_WALERS",
+      "key": "cone_function",
+      "unit": "STRUCTURAL_INSERT|FORMER_ONLY|SPACER|SEAL",
+      "required_when": "each cone",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "CONES_PLATES_WALERS",
+      "key": "cone_recess_mm",
+      "unit": "mm",
+      "required_when": "dimension stack",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "CONES_PLATES_WALERS",
+      "key": "sleeve_length_mm",
+      "unit": "mm",
+      "required_when": "continuous rod",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "CONES_PLATES_WALERS",
+      "key": "sleeve_compression_limit_kN",
+      "unit": "kN",
+      "required_when": "pretightening design",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "CONES_PLATES_WALERS",
+      "key": "plate_product_id",
+      "unit": "id",
+      "required_when": "each side",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "CONES_PLATES_WALERS",
+      "key": "plate_thickness_mm",
+      "unit": "mm",
+      "required_when": "plate model",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "CONES_PLATES_WALERS",
+      "key": "plate_actual_contact_mm2",
+      "unit": "mm2",
+      "required_when": "bearing",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "CONES_PLATES_WALERS",
+      "key": "plate_support_gap_mm",
+      "unit": "mm",
+      "required_when": "plate bending model",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "CONES_PLATES_WALERS",
+      "key": "plate_effective_strip_width_mm",
+      "unit": "mm",
+      "required_when": "validated strip model",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "CONES_PLATES_WALERS",
+      "key": "plate_hole_geometry_ref",
+      "unit": "ref",
+      "required_when": "net section/punching",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "CONES_PLATES_WALERS",
+      "key": "waler_section_id",
+      "unit": "id",
+      "required_when": "each side",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "CONES_PLATES_WALERS",
+      "key": "waler_local_axis",
+      "unit": "enum",
+      "required_when": "each side",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "CONES_PLATES_WALERS",
+      "key": "waler_pair_load_split_ref",
+      "unit": "ref",
+      "required_when": "paired walers",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "CONES_PLATES_WALERS",
+      "key": "local_bearing_capacity_ref",
+      "unit": "ref",
+      "required_when": "wood/steel as applicable",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "CONES_PLATES_WALERS",
+      "key": "seal_and_repair_spec_ref",
+      "unit": "ref",
+      "required_when": "watertight/exposed requirements",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "CONES_PLATES_WALERS",
+      "key": "inner_cover_mm",
+      "unit": "mm",
+      "required_when": "retained steel",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    },
+    {
+      "group": "CONES_PLATES_WALERS",
+      "key": "reuse_inspection_ref",
+      "unit": "ref",
+      "required_when": "reused components",
+      "unknown_policy": "BLOCK_AFFECTED_CHECK; do not replace with zero",
+      "custom_policy": "Preserve original + reason + evidence + revision; no approval escalation"
+    }
+  ]
+}

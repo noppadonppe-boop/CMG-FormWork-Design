@@ -1,0 +1,273 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:cmg:rc-formwork:tie-preview:0.6.2",
+  "title": "FormTie PREINTEGRATION preview ONLY",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "extension_type",
+    "base_revision_ref",
+    "system_template_id",
+    "geometry",
+    "demand",
+    "components",
+    "custom",
+    "construction_release"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.6.2"
+    },
+    "extension_type": {
+      "const": "FORM_TIE_PREINTEGRATION_ONLY"
+    },
+    "base_revision_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "system_template_id": {
+      "enum": [
+        "SEGMENTED_INNER_B",
+        "SEGMENTED_INNER_C",
+        "SEGMENTED_INNER_BC",
+        "SEGMENTED_INNER_D"
+      ]
+    },
+    "geometry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "height_mm",
+        "thickness_mm",
+        "spacing_x_mm",
+        "spacing_z_mm",
+        "tie_angle_deg",
+        "length_datum_ref"
+      ],
+      "properties": {
+        "height_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "thickness_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "spacing_x_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "spacing_z_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "tie_angle_deg": {
+          "const": 0
+        },
+        "length_datum_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "demand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "governing_reaction_kN",
+        "demand_basis",
+        "pressure_reference_kPa",
+        "analysis_model_ref"
+      ],
+      "properties": {
+        "source": {
+          "enum": [
+            "SYNTHETIC_BENCHMARK",
+            "ANALYZED_REFERENCE_REQUIRES_REVIEW"
+          ]
+        },
+        "governing_reaction_kN": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "demand_basis": {
+          "enum": [
+            "ALLOWABLE",
+            "DESIGN",
+            "UNKNOWN"
+          ]
+        },
+        "pressure_reference_kPa": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "analysis_model_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "components": {
+      "type": "array",
+      "minItems": 13,
+      "maxItems": 13,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "component_id",
+          "product_id",
+          "rated_capacity_kN",
+          "capacity_basis",
+          "evidence_ref",
+          "compatibility_status",
+          "check_status"
+        ],
+        "properties": {
+          "component_id": {
+            "enum": [
+              "INNER_UNIT",
+              "THREAD_END_LEFT",
+              "THREAD_END_RIGHT",
+              "OUTER_LEFT",
+              "OUTER_RIGHT",
+              "END_CONNECTION_LEFT",
+              "END_CONNECTION_RIGHT",
+              "NUT_LEFT",
+              "NUT_RIGHT",
+              "PLATE_LEFT",
+              "PLATE_RIGHT",
+              "WALER_LOCAL_LEFT",
+              "WALER_LOCAL_RIGHT"
+            ]
+          },
+          "product_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rated_capacity_kN": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "capacity_basis": {
+            "enum": [
+              "ALLOWABLE",
+              "DESIGN",
+              "UNKNOWN"
+            ]
+          },
+          "evidence_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "compatibility_status": {
+            "enum": [
+              "PENDING",
+              "VERIFIED",
+              "REJECTED"
+            ]
+          },
+          "check_status": {
+            "enum": [
+              "NOT_CHECKED",
+              "BLOCKED",
+              "REFERENCE_EXCEEDED",
+              "REFERENCE_WITHIN"
+            ]
+          }
+        }
+      }
+    },
+    "custom": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "overrides",
+        "prior_approval_valid"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "STANDARD_REFERENCE",
+            "CUSTOM"
+          ]
+        },
+        "overrides": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "property",
+              "original",
+              "effective",
+              "unit",
+              "reason",
+              "evidence_ref"
+            ],
+            "properties": {
+              "property": {
+                "type": "string",
+                "minLength": 1
+              },
+              "original": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "effective": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "unit": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "evidence_ref": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "prior_approval_valid": {
+          "const": false
+        }
+      }
+    },
+    "construction_release": {
+      "const": "NO_GO"
+    }
+  }
+}

@@ -1,0 +1,524 @@
+{
+  "schema_version": "closure-v1",
+  "library_id": "FORM_TIE_062_BRIDGE_1",
+  "baseline_version": "0.6.2",
+  "as_of": "2026-10-15",
+  "data_role": "REFERENCE_NOT_PROJECT_APPROVAL",
+  "records": [
+    {
+      "record_id": "BOOK-T46-B",
+      "manufacturer": null,
+      "designation": "Book Inner B",
+      "inner_type": "B",
+      "thread_designation": "W3/8",
+      "grade": null,
+      "tensile_effective_area_mm2": null,
+      "legacy_table_area_mm2": 50.0,
+      "breaking_load_kN": 29.419949999999996,
+      "allowable_tensile_load_kN": 20.593965,
+      "capacity_basis": "LEGACY_ALLOWABLE_REFERENCE",
+      "source_id": "BASE062",
+      "source_locator": "book table 4.6 as transcribed in original v0.6.2",
+      "source_status": "LEGACY_REFERENCE_ONLY",
+      "scope": "SEPARATOR_ONLY",
+      "automatic_design_use": false
+    },
+    {
+      "record_id": "BOOK-T46-C",
+      "manufacturer": null,
+      "designation": "Book Inner C",
+      "inner_type": "C",
+      "thread_designation": "W3/8",
+      "grade": null,
+      "tensile_effective_area_mm2": null,
+      "legacy_table_area_mm2": 50.0,
+      "breaking_load_kN": 29.419949999999996,
+      "allowable_tensile_load_kN": 20.593965,
+      "capacity_basis": "LEGACY_ALLOWABLE_REFERENCE",
+      "source_id": "BASE062",
+      "source_locator": "book table 4.6 as transcribed in original v0.6.2",
+      "source_status": "LEGACY_REFERENCE_ONLY",
+      "scope": "SEPARATOR_ONLY",
+      "automatic_design_use": false
+    },
+    {
+      "record_id": "BOOK-T46-BC",
+      "manufacturer": null,
+      "designation": "Book Inner BC",
+      "inner_type": "BC",
+      "thread_designation": "W3/8",
+      "grade": null,
+      "tensile_effective_area_mm2": null,
+      "legacy_table_area_mm2": 50.0,
+      "breaking_load_kN": 29.419949999999996,
+      "allowable_tensile_load_kN": 20.593965,
+      "capacity_basis": "LEGACY_ALLOWABLE_REFERENCE",
+      "source_id": "BASE062",
+      "source_locator": "book table 4.6 as transcribed in original v0.6.2",
+      "source_status": "LEGACY_REFERENCE_ONLY",
+      "scope": "SEPARATOR_ONLY",
+      "automatic_design_use": false
+    },
+    {
+      "record_id": "BOOK-T46-D",
+      "manufacturer": null,
+      "designation": "Book Inner D",
+      "inner_type": "D",
+      "thread_designation": "W1/2",
+      "grade": null,
+      "tensile_effective_area_mm2": null,
+      "legacy_table_area_mm2": 90.0,
+      "breaking_load_kN": 39.2266,
+      "allowable_tensile_load_kN": 27.45862,
+      "capacity_basis": "LEGACY_ALLOWABLE_REFERENCE",
+      "source_id": "BASE062",
+      "source_locator": "book table 4.6 as transcribed in original v0.6.2",
+      "source_status": "LEGACY_REFERENCE_ONLY",
+      "scope": "SEPARATOR_ONLY",
+      "automatic_design_use": false
+    },
+    {
+      "record_id": "OKABE-B-W5_16",
+      "manufacturer": "Okabe",
+      "designation": "Separator B W5/16",
+      "inner_type": "B",
+      "thread_designation": "W5/16",
+      "grade": null,
+      "tensile_effective_area_mm2": 34,
+      "legacy_table_area_mm2": null,
+      "breaking_load_kN": 20,
+      "allowable_tensile_load_kN": 14,
+      "capacity_basis": "PUBLISHED_SEPARATOR_ALLOWABLE",
+      "source_id": "OKABE-SEP",
+      "source_locator": "HTML p37 mechanical table",
+      "source_status": "PRIMARY_HTML_IMAGE_NOT_VERIFIED",
+      "scope": "SEPARATOR_ONLY",
+      "automatic_design_use": false
+    },
+    {
+      "record_id": "OKABE-C-W5_16",
+      "manufacturer": "Okabe",
+      "designation": "Separator C W5/16",
+      "inner_type": "C",
+      "thread_designation": "W5/16",
+      "grade": null,
+      "tensile_effective_area_mm2": 34,
+      "legacy_table_area_mm2": null,
+      "breaking_load_kN": 20,
+      "allowable_tensile_load_kN": 14,
+      "capacity_basis": "PUBLISHED_SEPARATOR_ALLOWABLE",
+      "source_id": "OKABE-SEP",
+      "source_locator": "HTML p37 mechanical table",
+      "source_status": "PRIMARY_HTML_IMAGE_NOT_VERIFIED",
+      "scope": "SEPARATOR_ONLY",
+      "automatic_design_use": false
+    },
+    {
+      "record_id": "OKABE-BC-W5_16",
+      "manufacturer": "Okabe",
+      "designation": "Separator BC W5/16",
+      "inner_type": "BC",
+      "thread_designation": "W5/16",
+      "grade": null,
+      "tensile_effective_area_mm2": 34,
+      "legacy_table_area_mm2": null,
+      "breaking_load_kN": 20,
+      "allowable_tensile_load_kN": 14,
+      "capacity_basis": "PUBLISHED_SEPARATOR_ALLOWABLE",
+      "source_id": "OKABE-SEP",
+      "source_locator": "HTML p37 mechanical table",
+      "source_status": "PRIMARY_HTML_IMAGE_NOT_VERIFIED",
+      "scope": "SEPARATOR_ONLY",
+      "automatic_design_use": false
+    },
+    {
+      "record_id": "OKABE-S45C-W5_16",
+      "manufacturer": "Okabe",
+      "designation": "Separator SOURCE_S45C_W5_16 W5/16",
+      "inner_type": "SOURCE_S45C_W5_16",
+      "thread_designation": "W5/16",
+      "grade": "S45C",
+      "tensile_effective_area_mm2": 34,
+      "legacy_table_area_mm2": null,
+      "breaking_load_kN": 30,
+      "allowable_tensile_load_kN": 21,
+      "capacity_basis": "PUBLISHED_SEPARATOR_ALLOWABLE",
+      "source_id": "OKABE-SEP",
+      "source_locator": "HTML p37 mechanical table",
+      "source_status": "PRIMARY_HTML_IMAGE_NOT_VERIFIED",
+      "scope": "SEPARATOR_ONLY",
+      "automatic_design_use": false
+    },
+    {
+      "record_id": "OKABE-B-W3_8",
+      "manufacturer": "Okabe",
+      "designation": "Separator B W3/8",
+      "inner_type": "B",
+      "thread_designation": "W3/8",
+      "grade": null,
+      "tensile_effective_area_mm2": 50.3,
+      "legacy_table_area_mm2": null,
+      "breaking_load_kN": 30,
+      "allowable_tensile_load_kN": 21,
+      "capacity_basis": "PUBLISHED_SEPARATOR_ALLOWABLE",
+      "source_id": "OKABE-SEP",
+      "source_locator": "HTML p37 mechanical table",
+      "source_status": "PRIMARY_HTML_IMAGE_NOT_VERIFIED",
+      "scope": "SEPARATOR_ONLY",
+      "automatic_design_use": false
+    },
+    {
+      "record_id": "OKABE-D-W1_2",
+      "manufacturer": "Okabe",
+      "designation": "Separator D W1/2",
+      "inner_type": "D",
+      "thread_designation": "W1/2",
+      "grade": null,
+      "tensile_effective_area_mm2": 89.4,
+      "legacy_table_area_mm2": null,
+      "breaking_load_kN": 40,
+      "allowable_tensile_load_kN": 28,
+      "capacity_basis": "PUBLISHED_SEPARATOR_ALLOWABLE",
+      "source_id": "OKABE-SEP",
+      "source_locator": "HTML p37 mechanical table",
+      "source_status": "PRIMARY_HTML_IMAGE_NOT_VERIFIED",
+      "scope": "SEPARATOR_ONLY",
+      "automatic_design_use": false
+    },
+    {
+      "record_id": "OKABE-S45C-W3_8",
+      "manufacturer": "Okabe",
+      "designation": "Separator SOURCE_S45C_W3_8 W3/8",
+      "inner_type": "SOURCE_S45C_W3_8",
+      "thread_designation": "W3/8",
+      "grade": "S45C",
+      "tensile_effective_area_mm2": 50.3,
+      "legacy_table_area_mm2": null,
+      "breaking_load_kN": 45,
+      "allowable_tensile_load_kN": 31,
+      "capacity_basis": "PUBLISHED_SEPARATOR_ALLOWABLE",
+      "source_id": "OKABE-SEP",
+      "source_locator": "HTML p37 mechanical table",
+      "source_status": "PRIMARY_HTML_IMAGE_NOT_VERIFIED",
+      "scope": "SEPARATOR_ONLY",
+      "automatic_design_use": false
+    }
+  ],
+  "record_count": 11,
+  "templates": [
+    {
+      "template_id": "SEGMENTED_INNER_B",
+      "label_th": "Inner Unit B — ระบบแบ่งส่วน",
+      "topology": "SEGMENTED_INNER_UNIT",
+      "inner_type": "B",
+      "faces_as_book": [
+        "EXPOSED",
+        "EXPOSED"
+      ],
+      "book_thread_reference_only": "W3/8",
+      "selecting_type_does_not_set_thread_or_capacity": true,
+      "roles": [
+        {
+          "role": "INNER_UNIT",
+          "quantity": 1
+        },
+        {
+          "role": "OUTER_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "OUTER_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "END_CONNECTION_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "END_CONNECTION_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "NUT_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "NUT_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "BEARING_PLATE_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "BEARING_PLATE_RIGHT",
+          "quantity": 1
+        }
+      ],
+      "full_tension_in_each_serial_load_bearing_part": true,
+      "cone_structural_role": "MUST_IDENTIFY_ACTUAL_METAL_INSERT_OR_FORMER",
+      "source_id": "BOOK-4.5",
+      "release": "NO_GO",
+      "note_roles": "End connection is a FUNCTIONAL SLOT; actual cone, washer stop, thread insert and quantities must follow manufacturer detail, not assumed two plastic cones in every system."
+    },
+    {
+      "template_id": "SEGMENTED_INNER_C",
+      "label_th": "Inner Unit C — ระบบแบ่งส่วน",
+      "topology": "SEGMENTED_INNER_UNIT",
+      "inner_type": "C",
+      "faces_as_book": [
+        "FINISHED",
+        "FINISHED"
+      ],
+      "book_thread_reference_only": "W3/8",
+      "selecting_type_does_not_set_thread_or_capacity": true,
+      "roles": [
+        {
+          "role": "INNER_UNIT",
+          "quantity": 1
+        },
+        {
+          "role": "OUTER_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "OUTER_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "END_CONNECTION_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "END_CONNECTION_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "NUT_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "NUT_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "BEARING_PLATE_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "BEARING_PLATE_RIGHT",
+          "quantity": 1
+        }
+      ],
+      "full_tension_in_each_serial_load_bearing_part": true,
+      "cone_structural_role": "MUST_IDENTIFY_ACTUAL_METAL_INSERT_OR_FORMER",
+      "source_id": "BOOK-4.5",
+      "release": "NO_GO",
+      "note_roles": "End connection is a FUNCTIONAL SLOT; actual cone, washer stop, thread insert and quantities must follow manufacturer detail, not assumed two plastic cones in every system."
+    },
+    {
+      "template_id": "SEGMENTED_INNER_BC",
+      "label_th": "Inner Unit BC — ระบบแบ่งส่วน",
+      "topology": "SEGMENTED_INNER_UNIT",
+      "inner_type": "BC",
+      "faces_as_book": [
+        "EXPOSED",
+        "FINISHED"
+      ],
+      "book_thread_reference_only": "W3/8",
+      "selecting_type_does_not_set_thread_or_capacity": true,
+      "roles": [
+        {
+          "role": "INNER_UNIT",
+          "quantity": 1
+        },
+        {
+          "role": "OUTER_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "OUTER_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "END_CONNECTION_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "END_CONNECTION_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "NUT_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "NUT_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "BEARING_PLATE_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "BEARING_PLATE_RIGHT",
+          "quantity": 1
+        }
+      ],
+      "full_tension_in_each_serial_load_bearing_part": true,
+      "cone_structural_role": "MUST_IDENTIFY_ACTUAL_METAL_INSERT_OR_FORMER",
+      "source_id": "BOOK-4.5",
+      "release": "NO_GO",
+      "note_roles": "End connection is a FUNCTIONAL SLOT; actual cone, washer stop, thread insert and quantities must follow manufacturer detail, not assumed two plastic cones in every system."
+    },
+    {
+      "template_id": "SEGMENTED_INNER_D",
+      "label_th": "Inner Unit D — ระบบแบ่งส่วน",
+      "topology": "SEGMENTED_INNER_UNIT",
+      "inner_type": "D",
+      "faces_as_book": [
+        "EXPOSED",
+        "EXPOSED"
+      ],
+      "book_thread_reference_only": "W1/2",
+      "selecting_type_does_not_set_thread_or_capacity": true,
+      "roles": [
+        {
+          "role": "INNER_UNIT",
+          "quantity": 1
+        },
+        {
+          "role": "OUTER_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "OUTER_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "END_CONNECTION_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "END_CONNECTION_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "NUT_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "NUT_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "BEARING_PLATE_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "BEARING_PLATE_RIGHT",
+          "quantity": 1
+        }
+      ],
+      "full_tension_in_each_serial_load_bearing_part": true,
+      "cone_structural_role": "MUST_IDENTIFY_ACTUAL_METAL_INSERT_OR_FORMER",
+      "source_id": "BOOK-4.5",
+      "release": "NO_GO",
+      "note_roles": "End connection is a FUNCTIONAL SLOT; actual cone, washer stop, thread insert and quantities must follow manufacturer detail, not assumed two plastic cones in every system."
+    },
+    {
+      "template_id": "CONTINUOUS_THROUGH_ROD",
+      "label_th": "ก้านเกลียวทะลุตลอด + sleeve/cone",
+      "topology": "CONTINUOUS_ROD",
+      "inner_type": null,
+      "roles": [
+        {
+          "role": "CONTINUOUS_ROD",
+          "quantity": 1
+        },
+        {
+          "role": "NUT_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "NUT_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "BEARING_PLATE_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "BEARING_PLATE_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "SLEEVE",
+          "quantity": 1
+        }
+      ],
+      "note": "ไม่ย้าย rating ไป segmented InnerUnit; รายการ cone/seal ตามผลิตภัณฑ์ที่เลือก",
+      "release": "NO_GO",
+      "note_roles": "End connection is a FUNCTIONAL SLOT; actual cone, washer stop, thread insert and quantities must follow manufacturer detail, not assumed two plastic cones in every system."
+    },
+    {
+      "template_id": "CUSTOM_ENGINEERED",
+      "label_th": "Custom — ระบุชิ้นส่วนและเส้นทางแรงเอง",
+      "topology": "REQUIRES_ENGINEERED_DEFINITION",
+      "roles": [],
+      "automatic_design_use": false,
+      "release": "NO_GO",
+      "note_roles": "End connection is a FUNCTIONAL SLOT; actual cone, washer stop, thread insert and quantities must follow manufacturer detail, not assumed two plastic cones in every system."
+    }
+  ],
+  "check_slots": [
+    "INNER_UNIT",
+    "THREAD_END_LEFT",
+    "THREAD_END_RIGHT",
+    "OUTER_LEFT",
+    "OUTER_RIGHT",
+    "END_CONNECTION_LEFT",
+    "END_CONNECTION_RIGHT",
+    "NUT_LEFT",
+    "NUT_RIGHT",
+    "PLATE_LEFT",
+    "PLATE_RIGHT",
+    "WALER_LOCAL_LEFT",
+    "WALER_LOCAL_RIGHT"
+  ],
+  "role_aliases": {
+    "BEARING_PLATE_LEFT": "PLATE_LEFT",
+    "BEARING_PLATE_RIGHT": "PLATE_RIGHT"
+  },
+  "slot_semantics": "13 check slots are NOT 13 physical hardware pieces. THREAD_END and WALER_LOCAL are connection/interface limit states; original BOM templates keep their own quantities.",
+  "assembly_constraints": {
+    "force_normalization": "ONE_FACE_NORMAL_REACTION_FULL_TENSION_EACH_SERIAL_PART",
+    "capacity_combination": "MINIMUM_AFTER_NORMALIZATION_TO_SAME_AXIAL_TIE_DEMAND",
+    "demand_basis_pairs": {
+      "WORKING": "ALLOWABLE",
+      "FACTORED_DESIGN": "DESIGN_RESISTANCE"
+    },
+    "never_use_breaking_load_as_allowable": true,
+    "source_of_reaction_required": true,
+    "s45c_matching_cone_and_outer_required": true,
+    "thread_aliasing_allowed": false,
+    "min_engagement_mm": null,
+    "certified_complete_assembly_capacity_kN": null
+  },
+  "selection": {
+    "mode_options": [
+      "STANDARD_REFERENCE",
+      "CUSTOM"
+    ],
+    "custom_changes_preserve_baseline": true,
+    "reason_and_evidence_required": true,
+    "engineering_approval_inherited": false
+  },
+  "confirmed": false,
+  "constructionRelease": "NO_GO",
+  "legacy_source_id_aliases": {
+    "BOOK-4.5": "BASE062",
+    "BOOK-4.6": "BASE062",
+    "BOOK-5.6": "BASE062"
+  }
+}

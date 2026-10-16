@@ -1,0 +1,276 @@
+{
+  "version": "0.6.2",
+  "templates": [
+    {
+      "template_id": "SEGMENTED_INNER_B",
+      "label_th": "Inner Unit B — ระบบแบ่งส่วน",
+      "topology": "SEGMENTED_INNER_UNIT",
+      "inner_type": "B",
+      "faces_as_book": [
+        "EXPOSED",
+        "EXPOSED"
+      ],
+      "book_thread_reference_only": "W3/8",
+      "selecting_type_does_not_set_thread_or_capacity": true,
+      "roles": [
+        {
+          "role": "INNER_UNIT",
+          "quantity": 1
+        },
+        {
+          "role": "OUTER_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "OUTER_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "END_CONNECTION_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "END_CONNECTION_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "NUT_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "NUT_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "BEARING_PLATE_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "BEARING_PLATE_RIGHT",
+          "quantity": 1
+        }
+      ],
+      "full_tension_in_each_serial_load_bearing_part": true,
+      "cone_structural_role": "MUST_IDENTIFY_ACTUAL_METAL_INSERT_OR_FORMER",
+      "source_id": "BOOK-4.5",
+      "release": "NO_GO",
+      "note_roles": "End connection is a FUNCTIONAL SLOT; actual cone, washer stop, thread insert and quantities must follow manufacturer detail, not assumed two plastic cones in every system."
+    },
+    {
+      "template_id": "SEGMENTED_INNER_C",
+      "label_th": "Inner Unit C — ระบบแบ่งส่วน",
+      "topology": "SEGMENTED_INNER_UNIT",
+      "inner_type": "C",
+      "faces_as_book": [
+        "FINISHED",
+        "FINISHED"
+      ],
+      "book_thread_reference_only": "W3/8",
+      "selecting_type_does_not_set_thread_or_capacity": true,
+      "roles": [
+        {
+          "role": "INNER_UNIT",
+          "quantity": 1
+        },
+        {
+          "role": "OUTER_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "OUTER_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "END_CONNECTION_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "END_CONNECTION_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "NUT_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "NUT_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "BEARING_PLATE_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "BEARING_PLATE_RIGHT",
+          "quantity": 1
+        }
+      ],
+      "full_tension_in_each_serial_load_bearing_part": true,
+      "cone_structural_role": "MUST_IDENTIFY_ACTUAL_METAL_INSERT_OR_FORMER",
+      "source_id": "BOOK-4.5",
+      "release": "NO_GO",
+      "note_roles": "End connection is a FUNCTIONAL SLOT; actual cone, washer stop, thread insert and quantities must follow manufacturer detail, not assumed two plastic cones in every system."
+    },
+    {
+      "template_id": "SEGMENTED_INNER_BC",
+      "label_th": "Inner Unit BC — ระบบแบ่งส่วน",
+      "topology": "SEGMENTED_INNER_UNIT",
+      "inner_type": "BC",
+      "faces_as_book": [
+        "EXPOSED",
+        "FINISHED"
+      ],
+      "book_thread_reference_only": "W3/8",
+      "selecting_type_does_not_set_thread_or_capacity": true,
+      "roles": [
+        {
+          "role": "INNER_UNIT",
+          "quantity": 1
+        },
+        {
+          "role": "OUTER_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "OUTER_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "END_CONNECTION_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "END_CONNECTION_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "NUT_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "NUT_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "BEARING_PLATE_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "BEARING_PLATE_RIGHT",
+          "quantity": 1
+        }
+      ],
+      "full_tension_in_each_serial_load_bearing_part": true,
+      "cone_structural_role": "MUST_IDENTIFY_ACTUAL_METAL_INSERT_OR_FORMER",
+      "source_id": "BOOK-4.5",
+      "release": "NO_GO",
+      "note_roles": "End connection is a FUNCTIONAL SLOT; actual cone, washer stop, thread insert and quantities must follow manufacturer detail, not assumed two plastic cones in every system."
+    },
+    {
+      "template_id": "SEGMENTED_INNER_D",
+      "label_th": "Inner Unit D — ระบบแบ่งส่วน",
+      "topology": "SEGMENTED_INNER_UNIT",
+      "inner_type": "D",
+      "faces_as_book": [
+        "EXPOSED",
+        "EXPOSED"
+      ],
+      "book_thread_reference_only": "W1/2",
+      "selecting_type_does_not_set_thread_or_capacity": true,
+      "roles": [
+        {
+          "role": "INNER_UNIT",
+          "quantity": 1
+        },
+        {
+          "role": "OUTER_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "OUTER_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "END_CONNECTION_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "END_CONNECTION_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "NUT_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "NUT_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "BEARING_PLATE_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "BEARING_PLATE_RIGHT",
+          "quantity": 1
+        }
+      ],
+      "full_tension_in_each_serial_load_bearing_part": true,
+      "cone_structural_role": "MUST_IDENTIFY_ACTUAL_METAL_INSERT_OR_FORMER",
+      "source_id": "BOOK-4.5",
+      "release": "NO_GO",
+      "note_roles": "End connection is a FUNCTIONAL SLOT; actual cone, washer stop, thread insert and quantities must follow manufacturer detail, not assumed two plastic cones in every system."
+    },
+    {
+      "template_id": "CONTINUOUS_THROUGH_ROD",
+      "label_th": "ก้านเกลียวทะลุตลอด + sleeve/cone",
+      "topology": "CONTINUOUS_ROD",
+      "inner_type": null,
+      "roles": [
+        {
+          "role": "CONTINUOUS_ROD",
+          "quantity": 1
+        },
+        {
+          "role": "NUT_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "NUT_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "BEARING_PLATE_LEFT",
+          "quantity": 1
+        },
+        {
+          "role": "BEARING_PLATE_RIGHT",
+          "quantity": 1
+        },
+        {
+          "role": "SLEEVE",
+          "quantity": 1
+        }
+      ],
+      "note": "ไม่ย้าย rating ไป segmented InnerUnit; รายการ cone/seal ตามผลิตภัณฑ์ที่เลือก",
+      "release": "NO_GO",
+      "note_roles": "End connection is a FUNCTIONAL SLOT; actual cone, washer stop, thread insert and quantities must follow manufacturer detail, not assumed two plastic cones in every system."
+    },
+    {
+      "template_id": "CUSTOM_ENGINEERED",
+      "label_th": "Custom — ระบุชิ้นส่วนและเส้นทางแรงเอง",
+      "topology": "REQUIRES_ENGINEERED_DEFINITION",
+      "roles": [],
+      "automatic_design_use": false,
+      "release": "NO_GO",
+      "note_roles": "End connection is a FUNCTIONAL SLOT; actual cone, washer stop, thread insert and quantities must follow manufacturer detail, not assumed two plastic cones in every system."
+    }
+  ],
+  "excluded": [
+    "single-sided anchors",
+    "lifting/climbing cones",
+    "arbitrary rebar ties",
+    "DIY welded ties",
+    "pretensioned connections without stiffness model"
+  ]
+}

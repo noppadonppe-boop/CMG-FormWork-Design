@@ -1,0 +1,146 @@
+{
+  "schema_version": "0.6.2",
+  "extension_type": "FORM_TIE_PREINTEGRATION_ONLY",
+  "base_revision_ref": "DEMO-WALL-DOUBLE-R0 / wall_double_sided_v0.6.1.json",
+  "system_template_id": "SEGMENTED_INNER_B",
+  "geometry": {
+    "height_mm": 3000,
+    "thickness_mm": 250,
+    "spacing_x_mm": 600,
+    "spacing_z_mm": 450,
+    "tie_angle_deg": 0,
+    "length_datum_ref": null
+  },
+  "demand": {
+    "source": "SYNTHETIC_BENCHMARK",
+    "governing_reaction_kN": 24.3,
+    "demand_basis": "ALLOWABLE",
+    "pressure_reference_kPa": 72,
+    "analysis_model_ref": "BENCHMARK_TWO_EQUAL_SPANS_ONLY_NOT_BASE_APP_ANALYSIS"
+  },
+  "components": [
+    {
+      "component_id": "INNER_UNIT",
+      "product_id": null,
+      "rated_capacity_kN": null,
+      "capacity_basis": "UNKNOWN",
+      "evidence_ref": null,
+      "compatibility_status": "PENDING",
+      "check_status": "BLOCKED"
+    },
+    {
+      "component_id": "THREAD_END_LEFT",
+      "product_id": null,
+      "rated_capacity_kN": null,
+      "capacity_basis": "UNKNOWN",
+      "evidence_ref": null,
+      "compatibility_status": "PENDING",
+      "check_status": "BLOCKED"
+    },
+    {
+      "component_id": "THREAD_END_RIGHT",
+      "product_id": null,
+      "rated_capacity_kN": null,
+      "capacity_basis": "UNKNOWN",
+      "evidence_ref": null,
+      "compatibility_status": "PENDING",
+      "check_status": "BLOCKED"
+    },
+    {
+      "component_id": "OUTER_LEFT",
+      "product_id": null,
+      "rated_capacity_kN": null,
+      "capacity_basis": "UNKNOWN",
+      "evidence_ref": null,
+      "compatibility_status": "PENDING",
+      "check_status": "BLOCKED"
+    },
+    {
+      "component_id": "OUTER_RIGHT",
+      "product_id": null,
+      "rated_capacity_kN": null,
+      "capacity_basis": "UNKNOWN",
+      "evidence_ref": null,
+      "compatibility_status": "PENDING",
+      "check_status": "BLOCKED"
+    },
+    {
+      "component_id": "END_CONNECTION_LEFT",
+      "product_id": null,
+      "rated_capacity_kN": null,
+      "capacity_basis": "UNKNOWN",
+      "evidence_ref": null,
+      "compatibility_status": "PENDING",
+      "check_status": "BLOCKED"
+    },
+    {
+      "component_id": "END_CONNECTION_RIGHT",
+      "product_id": null,
+      "rated_capacity_kN": null,
+      "capacity_basis": "UNKNOWN",
+      "evidence_ref": null,
+      "compatibility_status": "PENDING",
+      "check_status": "BLOCKED"
+    },
+    {
+      "component_id": "NUT_LEFT",
+      "product_id": null,
+      "rated_capacity_kN": null,
+      "capacity_basis": "UNKNOWN",
+      "evidence_ref": null,
+      "compatibility_status": "PENDING",
+      "check_status": "BLOCKED"
+    },
+    {
+      "component_id": "NUT_RIGHT",
+      "product_id": null,
+      "rated_capacity_kN": null,
+      "capacity_basis": "UNKNOWN",
+      "evidence_ref": null,
+      "compatibility_status": "PENDING",
+      "check_status": "BLOCKED"
+    },
+    {
+      "component_id": "PLATE_LEFT",
+      "product_id": null,
+      "rated_capacity_kN": null,
+      "capacity_basis": "UNKNOWN",
+      "evidence_ref": null,
+      "compatibility_status": "PENDING",
+      "check_status": "BLOCKED"
+    },
+    {
+      "component_id": "PLATE_RIGHT",
+      "product_id": null,
+      "rated_capacity_kN": null,
+      "capacity_basis": "UNKNOWN",
+      "evidence_ref": null,
+      "compatibility_status": "PENDING",
+      "check_status": "BLOCKED"
+    },
+    {
+      "component_id": "WALER_LOCAL_LEFT",
+      "product_id": null,
+      "rated_capacity_kN": null,
+      "capacity_basis": "UNKNOWN",
+      "evidence_ref": null,
+      "compatibility_status": "PENDING",
+      "check_status": "BLOCKED"
+    },
+    {
+      "component_id": "WALER_LOCAL_RIGHT",
+      "product_id": null,
+      "rated_capacity_kN": null,
+      "capacity_basis": "UNKNOWN",
+      "evidence_ref": null,
+      "compatibility_status": "PENDING",
+      "check_status": "BLOCKED"
+    }
+  ],
+  "custom": {
+    "mode": "STANDARD_REFERENCE",
+    "overrides": [],
+    "prior_approval_valid": false
+  },
+  "construction_release": "NO_GO"
+}

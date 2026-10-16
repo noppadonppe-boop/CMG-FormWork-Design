@@ -1,0 +1,214 @@
+{
+  "version": "0.6.2",
+  "count": 26,
+  "rules": [
+    {
+      "rule_id": "TIE-P01",
+      "name": "Pressure profile",
+      "equation_or_scope": "p=gamma*(H-z)",
+      "source_id": "DERIVED-MECHANICS",
+      "implementation_status": "EVALUATION_ONLY",
+      "applicability": "full-head top-pour hydrostatic only; z from base"
+    },
+    {
+      "rule_id": "TIE-P02",
+      "name": "Integrate tributary band",
+      "equation_or_scope": "F=b*gamma*((H-zlo)^2-(H-zhi)^2)/2",
+      "source_id": "DERIVED-MECHANICS",
+      "implementation_status": "IMPLEMENTED_BENCHMARK",
+      "applicability": "allocation not analyzed support reaction"
+    },
+    {
+      "rule_id": "TIE-L01",
+      "name": "Sheathing to stud",
+      "equation_or_scope": "w_stud(z)=p(z)*s_stud",
+      "source_id": "DERIVED-MECHANICS",
+      "implementation_status": "SPECIFICATION",
+      "applicability": "one-way tributary assumption must match joints and edges"
+    },
+    {
+      "rule_id": "TIE-L02",
+      "name": "Stud to waler",
+      "equation_or_scope": "R_stud at each support -> point loads on waler",
+      "source_id": "BASE-0.6.1",
+      "implementation_status": "SPECIFICATION",
+      "applicability": "actual support continuity and loading"
+    },
+    {
+      "rule_id": "TIE-L03",
+      "name": "Simple-span UDL",
+      "equation_or_scope": "RA=RB=wL/2; Mmax=wL^2/8",
+      "source_id": "DERIVED-MECHANICS",
+      "implementation_status": "IMPLEMENTED_BENCHMARK",
+      "applicability": "single span uniform load, no overhang"
+    },
+    {
+      "rule_id": "TIE-L04",
+      "name": "Two equal continuous spans",
+      "equation_or_scope": "RA=RC=3wL/8; RB=5wL/4; MB=-wL^2/8",
+      "source_id": "DERIVED-MECHANICS",
+      "implementation_status": "IMPLEMENTED_BENCHMARK",
+      "applicability": "two equal spans, same EI, both fully loaded, no settlement"
+    },
+    {
+      "rule_id": "TIE-L05",
+      "name": "General member reaction",
+      "equation_or_scope": "K*u=f and equilibrium with actual springs/supports",
+      "source_id": "BASE-0.6.1",
+      "implementation_status": "SPECIFICATION",
+      "applicability": "not implemented general solver in package"
+    },
+    {
+      "rule_id": "TIE-A01",
+      "name": "Tie axial tension",
+      "equation_or_scope": "N=one-face normal support reaction",
+      "source_id": "BOOK-4.5",
+      "implementation_status": "SPECIFICATION",
+      "applicability": "aligned symmetric case; not 2R; not R/2 per outer rod"
+    },
+    {
+      "rule_id": "TIE-A02",
+      "name": "Serial elastic extension",
+      "equation_or_scope": "delta=sum(N*L/(E*A_stiff))+delta_connections",
+      "source_id": "DERIVED-MECHANICS",
+      "implementation_status": "IMPLEMENTED_ROD_TERMS_ONLY",
+      "applicability": "no unmeasured connection slip or sleeve shortening invented"
+    },
+    {
+      "rule_id": "TIE-S01",
+      "name": "Axial stress indicator",
+      "equation_or_scope": "sigma=1000*N_kN/A_t_mm2",
+      "source_id": "DERIVED-MECHANICS",
+      "implementation_status": "IMPLEMENTED_BENCHMARK",
+      "applicability": "stress area definition must match source; not capacity"
+    },
+    {
+      "rule_id": "TIE-S02",
+      "name": "Legacy allowable stress",
+      "equation_or_scope": "Ft=0.60Fy; T=AtFt",
+      "source_id": "BOOK-5.6",
+      "implementation_status": "LEGACY_ONLY",
+      "applicability": "never apply automatically to proprietary threaded/cone assembly"
+    },
+    {
+      "rule_id": "TIE-S03",
+      "name": "Matched design stress route",
+      "equation_or_scope": "NR_kN=A_matched_mm2*F_design_MPa/1000",
+      "source_id": "DERIVED-MECHANICS",
+      "implementation_status": "SPECIFICATION",
+      "applicability": "requires correct design code, areas, factors, limit state"
+    },
+    {
+      "rule_id": "TIE-S04",
+      "name": "Inner body/neck",
+      "equation_or_scope": "yield,rupture,neck,swage,weld per approved rule",
+      "source_id": "BOOK-5.6",
+      "implementation_status": "SPECIFICATION",
+      "applicability": "unknown grade cannot be back-calculated from breaking rating"
+    },
+    {
+      "rule_id": "TIE-S05",
+      "name": "End-thread pull-out",
+      "equation_or_scope": "NR=min(male thread,female thread,insert,body)",
+      "source_id": "OKABE-CONE",
+      "implementation_status": "SPECIFICATION",
+      "applicability": "actual engagement/geometry/strength; do not assume pi*d*L alone"
+    },
+    {
+      "rule_id": "TIE-S06",
+      "name": "Outer rod / nut",
+      "equation_or_scope": "tension + threads + possible bending",
+      "source_id": "BOOK-4.5",
+      "implementation_status": "SPECIFICATION",
+      "applicability": "both sides independently carry full serial tension"
+    },
+    {
+      "rule_id": "TIE-S07",
+      "name": "Cone/sleeve function",
+      "equation_or_scope": "structural insert vs former; compression during tightening",
+      "source_id": "OKABE-CONE",
+      "implementation_status": "SPECIFICATION",
+      "applicability": "plastic name does not establish structural role"
+    },
+    {
+      "rule_id": "TIE-S08",
+      "name": "Bearing stress indicator",
+      "equation_or_scope": "q=1000*R_kN/A_contact_mm2",
+      "source_id": "DERIVED-MECHANICS",
+      "implementation_status": "IMPLEMENTED_BENCHMARK",
+      "applicability": "actual contact not full bounding rectangle"
+    },
+    {
+      "rule_id": "TIE-S09",
+      "name": "Plate simple-strip benchmark",
+      "equation_or_scope": "M=1000*N*g/4; S=b*t^2/6; stress=M/S",
+      "source_id": "DERIVED-MECHANICS",
+      "implementation_status": "IMPLEMENTED_BENCHMARK",
+      "applicability": "plain strip/no hole reduction; not ribbed/cast plate capacity"
+    },
+    {
+      "rule_id": "TIE-S10",
+      "name": "Plate complete checks",
+      "equation_or_scope": "plate bending,shear,punching,net section,prying,bearing",
+      "source_id": "BASE-0.6.1",
+      "implementation_status": "SPECIFICATION",
+      "applicability": "custom/cast/rib geometry must have rule or rated test"
+    },
+    {
+      "rule_id": "TIE-S11",
+      "name": "Waler local checks",
+      "equation_or_scope": "bending,shear,deflection,bearing,web crippling,torsion",
+      "source_id": "BASE-0.6.1",
+      "implementation_status": "SPECIFICATION",
+      "applicability": "paired members need actual connection/load split"
+    },
+    {
+      "rule_id": "TIE-S12",
+      "name": "Assembly weakest link",
+      "equation_or_scope": "NR=minimum capacities reduced to common axial tie demand",
+      "source_id": "DERIVED-MECHANICS",
+      "implementation_status": "SCREEN_ONLY",
+      "applicability": "series same demand basis & full list & compatible parts; no series force halving"
+    },
+    {
+      "rule_id": "TIE-S13",
+      "name": "Published rating use",
+      "equation_or_scope": "N_working <= R_working OR N_design <= R_design",
+      "source_id": "OKABE-SEP-MECHANICAL",
+      "implementation_status": "SPECIFICATION",
+      "applicability": "do not use breaking strength or mix load bases"
+    },
+    {
+      "rule_id": "TIE-D01",
+      "name": "Length stack",
+      "equation_or_scope": "L_order=f(t_wall,cone,left/right ends,engagement,datum)",
+      "source_id": "BOOK-4.5",
+      "implementation_status": "SPECIFICATION",
+      "applicability": "wall minus cover is not automatic cutting length"
+    },
+    {
+      "rule_id": "TIE-D02",
+      "name": "Installation/reuse/seal",
+      "equation_or_scope": "manufacturer conditions + inspection + repair requirements",
+      "source_id": "OKABE-SEP-SHAPE",
+      "implementation_status": "SPECIFICATION",
+      "applicability": "no generic welding/heating/length+10mm rule"
+    },
+    {
+      "rule_id": "TIE-Q01",
+      "name": "Equilibrium/coverage",
+      "equation_or_scope": "sumR=sumF; sumMoments=0 per face and loadcase",
+      "source_id": "DERIVED-MECHANICS",
+      "implementation_status": "SPECIFICATION",
+      "applicability": "holes,edges,cantilevers and excluded ties must be explicit"
+    },
+    {
+      "rule_id": "TIE-Q02",
+      "name": "Release gating",
+      "equation_or_scope": "design revision + all checks + independent review + authorized approval",
+      "source_id": "BASE-0.6.1",
+      "implementation_status": "SPECIFICATION",
+      "applicability": "offline examples always NO_GO"
+    }
+  ]
+}

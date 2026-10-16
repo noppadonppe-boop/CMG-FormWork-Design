@@ -1,0 +1,24 @@
+node_modules/
+dist/
+functions/lib/
+.env
+.env.*
+!.env.example
+!.env.local.example
+functions/.secret.local
+functions/.env*
+!functions/.env.example
+!functions/.env.local.example
+*-debug.log
+test-results/
+emulator-data/
+
+# Local workspace state, generated output, and reference material
+/.devin/
+/.pnpm-store/
+/.firebase/
+/artifacts/
+/outputs/
+/tmp/
+/Text Book/
+*.tsbuildinfo

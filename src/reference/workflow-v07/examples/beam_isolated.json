@@ -1,0 +1,170 @@
+{
+  "schema_version": "0.7.0",
+  "data_origin": "SYNTHETIC",
+  "human_dimensions_verified": false,
+  "library_versions": {
+    "sections": "0.4",
+    "materials": "0.5.0",
+    "form_tie": "0.6.2",
+    "ringlock": "0.7.0"
+  },
+  "sheathing": {
+    "kind": "PLYWOOD",
+    "product_id": "PLY-UPM007-18",
+    "thickness_mm": 18,
+    "grain_orientation_degrees": 0,
+    "actual_product_evidence_ref": null
+  },
+  "stud": {
+    "preferred_family": "TIMBER_RECTANGLE",
+    "nominal_inches": [
+      1.5,
+      3.0
+    ],
+    "actual_b_mm": null,
+    "actual_h_mm": null,
+    "spacing_mm": 300,
+    "material_id": null
+  },
+  "side_waler": {
+    "family": "RHS",
+    "rail_count": 2,
+    "section_id": null,
+    "clear_gap_mm": null,
+    "behavior": "INDEPENDENT_RAILS_WITH_VERIFIED_LOAD_SHARING",
+    "load_sharing_evidence_ref": null,
+    "plate_product_id": null
+  },
+  "loads": {
+    "concrete_unit_weight_kN_m3": 24,
+    "additional_dead_load_kPa": 0.5,
+    "construction_live_load_kPa": 2.5,
+    "direction": "VERTICAL_DOWN",
+    "additional_dead_live_basis": "SYNTHETIC_ONLY_NOT_CODE_DEFAULTS",
+    "includes_separate_BOM_self_weight": false,
+    "pressure_model": "HYDROSTATIC_PREVIEW_ONLY",
+    "lateral_surcharge_kPa": null,
+    "load_combination_id": null
+  },
+  "actual_members_coverage": [],
+  "status": "DRAFT_PREINTEGRATION",
+  "construction_release": "NO_GO",
+  "fixture_id": "DEMO-BEAM_ISOLATED",
+  "element_type": "BEAM",
+  "concrete": {
+    "footprint_vertices_mm": [
+      [
+        0,
+        0
+      ],
+      [
+        6000,
+        0
+      ],
+      [
+        6000,
+        300
+      ],
+      [
+        0,
+        300
+      ]
+    ],
+    "height_mm": 600,
+    "uniform_height": true,
+    "has_holes": false
+  },
+  "face_scope": "LONGITUDINAL_PAIR_PLUS_END_CLOSURES",
+  "ringlock": {
+    "system_id": "DOKA_RINGLOCK_CAT2021",
+    "bay_x_label_mm": 1090,
+    "bay_y_label_mm": 1570,
+    "lift_label_mm": 1500,
+    "base_jack_id": "DOKA21-306010600",
+    "u_head_id": "DOKA21-328460600",
+    "configuration_rating_id": null,
+    "soffit_height_mm": 3000,
+    "height_datum_contributions_mm": {
+      "sole_board": 50,
+      "base_installed": 157,
+      "effective_standard_stack": 2500,
+      "head_installed": 100,
+      "primary_bearer": 100,
+      "joist": 75,
+      "plywood": 18
+    },
+    "height_datum_origin": "SYNTHETIC_NONOVERLAPPING_CONTRIBUTIONS_NOT_CATALOGUE_STACK_RULE",
+    "brace_layout_id": null,
+    "top_restraint_id": null,
+    "support_capacity_evidence_ref": null,
+    "status": "BLOCKED_MISSING_CONFIGURATION_RATING"
+  },
+  "geometry_preview": {
+    "status": "GEOMETRY_ONLY",
+    "outer_face_count": 4,
+    "pair_region_count": 2,
+    "plan_area_m2": 1.8,
+    "perimeter_m": 12.6,
+    "side_area_m2": 7.56,
+    "boundary_coverage": "EXACTLY_ONCE",
+    "pairs": [
+      {
+        "pair_id": "PAIR-01",
+        "normal_axis": "X",
+        "tangent_axis": "Y",
+        "face_a_id": "E04",
+        "face_b_id": "E02",
+        "face_a_normal_coordinate_mm": 0.0,
+        "face_b_normal_coordinate_mm": 6000.0,
+        "tangent_start_mm": 0.0,
+        "tangent_end_mm": 300.0,
+        "face_length_mm": 300.0,
+        "concrete_chord_mm": 6000.0,
+        "height_mm": 600.0,
+        "physical_member_splice_created": false,
+        "mirror_analysis_reuse": "NOT_EVALUATED",
+        "tie_layout_status": "NOT_PLACED_REBAR_AND_CROSSING_CLEARANCE_REQUIRED"
+      },
+      {
+        "pair_id": "PAIR-02",
+        "normal_axis": "Y",
+        "tangent_axis": "X",
+        "face_a_id": "E01",
+        "face_b_id": "E03",
+        "face_a_normal_coordinate_mm": 0.0,
+        "face_b_normal_coordinate_mm": 300.0,
+        "tangent_start_mm": 0.0,
+        "tangent_end_mm": 6000.0,
+        "face_length_mm": 6000.0,
+        "concrete_chord_mm": 300.0,
+        "height_mm": 600.0,
+        "physical_member_splice_created": false,
+        "mirror_analysis_reuse": "NOT_EVALUATED",
+        "tie_layout_status": "NOT_PLACED_REBAR_AND_CROSSING_CLEARANCE_REQUIRED"
+      }
+    ],
+    "construction_release": "NO_GO"
+  },
+  "beam_load_ownership": {
+    "slab_t_mm": 0,
+    "concrete_strip_including_beam_mm": 300,
+    "dead_strip_mm": 300,
+    "live_strip_mm": 300,
+    "ownership_id": "beam_isolated-strip-SYNTHETIC"
+  },
+  "load_preview": {
+    "concrete_kN_m": 4.32,
+    "additional_dead_kN_m": 0.15,
+    "live_kN_m": 0.75,
+    "service_sum_kN_m": 5.220000000000001,
+    "scope": "Explicit owned vertical loads only; side pressure separately defined. No strength design.",
+    "construction_release": "NO_GO"
+  },
+  "height_preview": {
+    "sum_installed_mm": 3000.0,
+    "residual_mm": 0.0,
+    "within_declared_tolerance": true,
+    "scope": "Arithmetic closure only, not allowable extension or stability",
+    "construction_release": "NO_GO"
+  }
+}

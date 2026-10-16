@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Form Tie v0.6.2 machine-readable bridge",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "closure-v1"
+    },
+    "library_id": {},
+    "baseline_version": {},
+    "as_of": {},
+    "data_role": {},
+    "records": {
+      "type": "array",
+      "minItems": 11,
+      "maxItems": 11,
+      "items": {
+        "type": "object",
+        "required": [
+          "record_id",
+          "scope",
+          "automatic_design_use",
+          "source_id",
+          "breaking_load_kN",
+          "allowable_tensile_load_kN"
+        ],
+        "properties": {
+          "record_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "scope": {
+            "const": "SEPARATOR_ONLY"
+          },
+          "automatic_design_use": {
+            "const": false
+          },
+          "breaking_load_kN": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "allowable_tensile_load_kN": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        }
+      }
+    },
+    "record_count": {
+      "const": 11
+    },
+    "templates": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6
+    },
+    "check_slots": {
+      "const": [
+        "INNER_UNIT",
+        "THREAD_END_LEFT",
+        "THREAD_END_RIGHT",
+        "OUTER_LEFT",
+        "OUTER_RIGHT",
+        "END_CONNECTION_LEFT",
+        "END_CONNECTION_RIGHT",
+        "NUT_LEFT",
+        "NUT_RIGHT",
+        "PLATE_LEFT",
+        "PLATE_RIGHT",
+        "WALER_LOCAL_LEFT",
+        "WALER_LOCAL_RIGHT"
+      ]
+    },
+    "role_aliases": {},
+    "slot_semantics": {},
+    "assembly_constraints": {},
+    "selection": {},
+    "confirmed": {
+      "const": false
+    },
+    "constructionRelease": {
+      "const": "NO_GO"
+    },
+    "legacy_source_id_aliases": {}
+  },
+  "required": [
+    "schema_version",
+    "library_id",
+    "baseline_version",
+    "as_of",
+    "data_role",
+    "records",
+    "record_count",
+    "templates",
+    "check_slots",
+    "role_aliases",
+    "slot_semantics",
+    "assembly_constraints",
+    "selection",
+    "confirmed",
+    "constructionRelease",
+    "legacy_source_id_aliases"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,221 @@
+{
+  "files": [
+    {
+      "path": "CODEX_NEXT_PHASE_PROMPT.md",
+      "bytes": 15717,
+      "sha256": "89dc380f0233e2963741594c9e54937408e541b53486122ccaad7e52d4b32094"
+    },
+    {
+      "path": "OWNER_DECISIONS.json",
+      "bytes": 885,
+      "sha256": "9cfa4ed9d6bda18d141b4c1830ee9f64ccd994772982c922f5c1d74aaaf08bf7"
+    },
+    {
+      "path": "README.md",
+      "bytes": 7899,
+      "sha256": "158ceee6c782815a8c116b69d93065c202cd3d0fe80bb4fe9bc7be8d2d949af9"
+    },
+    {
+      "path": "baseline/formtie_v0.6.2/data/inner_unit_reference_presets.json",
+      "bytes": 6022,
+      "sha256": "45932a90b26fb96732a9b0a782385c3c381dec5bbd6025bd5da723fb2d5418bd"
+    },
+    {
+      "path": "baseline/formtie_v0.6.2/data/tie_system_templates.json",
+      "bytes": 7894,
+      "sha256": "7629497b41287c2e9c82985d545b37d0a5383c3600cdfe361aadd5ae054c35b3"
+    },
+    {
+      "path": "baseline/formtie_v0.6.2/engineering/tie_design_parameters.json",
+      "bytes": 20991,
+      "sha256": "e076687154a45f7277b2a5a9fece31c3727cdebab7aca35e86ac7fa2e45379e2"
+    },
+    {
+      "path": "baseline/formtie_v0.6.2/engineering/tie_rule_register.json",
+      "bytes": 8235,
+      "sha256": "9a4a53b41e85fc3eada1a43397cfb9fd2707afdbda846b534fc509c097e33bfe"
+    },
+    {
+      "path": "baseline/formtie_v0.6.2/examples/wall_tie_extension_v0.6.2.json",
+      "bytes": 3997,
+      "sha256": "ceb951ed9d303a2962cf1c21b41f8078c8083d5a35f5abdd71636eed021c3817"
+    },
+    {
+      "path": "baseline/formtie_v0.6.2/schemas/tie_preintegration.schema.json",
+      "bytes": 6160,
+      "sha256": "f7f77da10831af1828ae645b5326fe00f7f3feab64b5e153206cad4708f0d318"
+    },
+    {
+      "path": "baseline/manifest.json",
+      "bytes": 2464,
+      "sha256": "93da861810f66a218a5158e08d127d3f753a26351653347c755cda9f4be1c81a"
+    },
+    {
+      "path": "context/preview26_user_report.json",
+      "bytes": 1169,
+      "sha256": "6fcf88649ae8e3c44e7dceab9d5591b0219d7613976a22b2b9b767c86c7f3d06"
+    },
+    {
+      "path": "data/closure_issue_catalogue.json",
+      "bytes": 2353,
+      "sha256": "104ea478679b133dbea4458b11516a3598377e34190cbac897dd8844dac025cc"
+    },
+    {
+      "path": "data/form_tie_machine_bridge.json",
+      "bytes": 16445,
+      "sha256": "a6c24a02bc56c3edae948bc952cdd1581c297c5892810a766a3984e4b779f73e"
+    },
+    {
+      "path": "data/ringlock_component_rating_sidecar.json",
+      "bytes": 19448,
+      "sha256": "fa95def937ee428b9e25ebd265e31bffecc41ce04d18ef1a47ac89320dc46ffd"
+    },
+    {
+      "path": "data/rule_pack_manifest.json",
+      "bytes": 5491,
+      "sha256": "3637961d66feec03674bbb38012e7791de253b4dc6d0c1501f6c17a3c993b6af"
+    },
+    {
+      "path": "data/serviceability_reference_options.json",
+      "bytes": 1291,
+      "sha256": "e2c79a8017ba19c172c240c3d3fe50e6b87717c3e935c6fe72940cf5f0fbc4fa"
+    },
+    {
+      "path": "data/source_register.json",
+      "bytes": 7367,
+      "sha256": "35ae53116ed2cb285d4194dfab4391a3cae20803fa3a3d6c8d74a7361e9fdeed"
+    },
+    {
+      "path": "data/thai_shoring_legal_reference.json",
+      "bytes": 1821,
+      "sha256": "51ff91b91e750d5dacbbc25db911e8fa113b0771b4c2329f24c04d1eb27bd676"
+    },
+    {
+      "path": "docs/ENGINEERING_CLOSURE_MAP.md",
+      "bytes": 12052,
+      "sha256": "1d5b465f3ea3690dda50b630cb8bf7e71b47f2e9ed021ee6af83f170ea5aadef"
+    },
+    {
+      "path": "docs/ENGINEERING_INPUT_REQUEST.md",
+      "bytes": 6449,
+      "sha256": "bd7e9095677ffdb1761dfdd6087a59fe52133c1a347fefd6d2cc926a11559293"
+    },
+    {
+      "path": "docs/RULE_REVIEW_CHECKLIST.md",
+      "bytes": 2225,
+      "sha256": "c357357e3f5b4c24d0048c9ef911cb89915f5fde7d184e3d7d8739d8fdc02d7e"
+    },
+    {
+      "path": "docs/TEST_TRIAGE.md",
+      "bytes": 2889,
+      "sha256": "38ced0aff03d592a3a28f08475277ecb8b3ae2a49116ede7f9470bf2e1d73d51"
+    },
+    {
+      "path": "docs/WORKED_EXAMPLES.md",
+      "bytes": 3677,
+      "sha256": "483bfcd71c6263b67af8dea85e7005ef83de06e1345b1a0b66030e478a805b78"
+    },
+    {
+      "path": "examples/tie_pending_product_evidence.json",
+      "bytes": 4836,
+      "sha256": "ffa84662c72de4828326f5ecf30b8cf9ff17d3d2e141e86028e00e3068d8260e"
+    },
+    {
+      "path": "qa/independent_arithmetic_comparison.json",
+      "bytes": 4012,
+      "sha256": "1524b31ac901c304397a8e3bd1e900fd41ea1f4d8adedb9a12e41bee16586e4b"
+    },
+    {
+      "path": "qa/node-tests-initial.tap",
+      "bytes": 13868,
+      "sha256": "cbb391fdc3cb5285599a205b45957696a427ec299ca9321534ffc3254ab8c8a1"
+    },
+    {
+      "path": "qa/node-tests.tap",
+      "bytes": 13007,
+      "sha256": "06113faaee51b0db4353a7abe038f241162eb5acdb71984d2e1af7179c9f08da"
+    },
+    {
+      "path": "qa/typecheck.txt",
+      "bytes": 13,
+      "sha256": "9fa3b6ead7afc298499f30c5b70014c78b6686a8269611537606fa5a7c02b6a2"
+    },
+    {
+      "path": "qa/verification_report.json",
+      "bytes": 3914,
+      "sha256": "3584baa0621772f4e729f97c6cb941dcfdac0c8fbd366ca7cd1b12b0bd0088e2"
+    },
+    {
+      "path": "qa/verify_pack.py",
+      "bytes": 7870,
+      "sha256": "d79235125590ed433a7c2deb2d678d306bc7b5481dca4b15d7c03f7e910fec08"
+    },
+    {
+      "path": "schemas/form_tie_bridge.schema.json",
+      "bytes": 2295,
+      "sha256": "c08cf90adf5af44bf3a3544791de1fa81ec946ba359c89dcbe9a365d5bd8e1bd"
+    },
+    {
+      "path": "schemas/project_input_template.schema.json",
+      "bytes": 2943,
+      "sha256": "96b90aab06e894ad939a07661c7d433e43edd967cd9c9f04f3c3ba5dd6224d8d"
+    },
+    {
+      "path": "schemas/ringlock_reference.schema.json",
+      "bytes": 2283,
+      "sha256": "d4f3413145f50b873479d7d2849e744e5def4d9f691d2c808876b460b0230a8b"
+    },
+    {
+      "path": "schemas/tie_draft.schema.json",
+      "bytes": 9142,
+      "sha256": "7dc0afc4e0dbd00eaf01a5e9eea753576cbf14259d816f9c4b0b6264f8ba82d9"
+    },
+    {
+      "path": "src/closure-core.mjs",
+      "bytes": 13658,
+      "sha256": "94c22a1f7e3a9e54c6b40181d8de11eda400c22e28ac0f2f150ff9d9ee537d26"
+    },
+    {
+      "path": "src/contracts.ts",
+      "bytes": 2595,
+      "sha256": "e6b32fb3c155f7cebcaf929034ca18178336600dc3df42ee42b3d4ca9fedd406"
+    },
+    {
+      "path": "templates/ringlock_configuration.json",
+      "bytes": 1482,
+      "sha256": "f59040522f7bfe3c3a83c0a5f37aec07fef98e91437c79bc5ce37c188bedc155"
+    },
+    {
+      "path": "templates/serviceability.json",
+      "bytes": 1058,
+      "sha256": "01fffc4ecc0beba17e23930ad8fa4aab95a5bc81eaa344bba42b778af2635bf7"
+    },
+    {
+      "path": "templates/stage_release.json",
+      "bytes": 1038,
+      "sha256": "4e944f9c8a28d081eccdb2f2e806605f8af7fd063c7b322b1221109f7d64b08c"
+    },
+    {
+      "path": "templates/support_slab.json",
+      "bytes": 1516,
+      "sha256": "1121254351a2939cb9eaab3edce478aa9a4a249eaedf268db0fa9c793540c68f"
+    },
+    {
+      "path": "templates/support_soil.json",
+      "bytes": 1389,
+      "sha256": "bdea5aa9916044846b43cf42a2ed133981e01fb626ac692f87343e721eb4ada3"
+    },
+    {
+      "path": "tests/closure-core.test.mjs",
+      "bytes": 16673,
+      "sha256": "2d59816521522b1b6f541dfd694660d9db740058e16a82a6c693447b925f5c77"
+    },
+    {
+      "path": "tsconfig.reference.json",
+      "bytes": 137,
+      "sha256": "3ba82608e7ef5e4aefee5c80d18841a7c33aafe4c19a3def5ce584e6e49ddcbe"
+    }
+  ],
+  "count": 43,
+  "scope": "Package integrity only, not engineering approval or app hashes"
+}

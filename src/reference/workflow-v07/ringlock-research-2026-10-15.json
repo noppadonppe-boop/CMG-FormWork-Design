@@ -1,0 +1,595 @@
+{
+  "schema_version": "research-1.0",
+  "checked_on": "2026-10-15",
+  "title_th": "ข้อมูลอ้างอิง Ringlock สำหรับเตรียมวิเคราะห์ค้ำยันคาน/พื้นและ Bracing check",
+  "status": "REFERENCE_ONLY_REQUIRES_PROJECT_PRODUCT_EVIDENCE",
+  "construction_release": "NO_GO",
+  "automatic_import_into_app": false,
+  "scope": {
+    "supplier_preference": "Thai supplier, metric modules",
+    "actual_supplier_name": null,
+    "actual_product_and_batch_verified": false,
+    "default_plan_mm": {
+      "x": 1200,
+      "y": 1500,
+      "bearer_axis": "X",
+      "head_alignment": "STANDARD_AXIS"
+    },
+    "project_lift_heights_mm": null,
+    "frame_solver_implemented_by_this_research": false
+  },
+  "units": {
+    "length": "mm",
+    "area": "mm2",
+    "inertia": "mm4",
+    "section_modulus": "mm3",
+    "stress": "MPa=N/mm2",
+    "force": "N",
+    "mass": "kg",
+    "brace_axial_stiffness": "N/mm",
+    "rotational_stiffness": "Nmm/rad"
+  },
+  "sources": [
+    {
+      "id": "TNV-METRIC",
+      "title": "TNV Forms Ringlock product page",
+      "url": "https://www.tnvforms.com/product/นั่งร้านลิ่มล็อค-ringlock-scaffold/",
+      "kind": "THAI_SUPPLIER_WEB",
+      "location": "Additional information",
+      "verified_scope": "Metric lengths and rosette pitch only; tube section/grade and system resistance not published on inspected page.",
+      "checked_on": "2026-10-15"
+    },
+    {
+      "id": "TCB-SECTIONS",
+      "title": "T.C.B. Ring Lock Scaffolding System",
+      "url": "https://www.tcbhome.co.th/ring-lock-scaffolding-system/",
+      "kind": "THAI_SUPPLIER_WEB",
+      "location": "Standard / Ledger / Brace / Hollow Base Jack / Hollow U Head tables",
+      "verified_scope": "Published nominal dimensions only. Ledger/brace labels 610/1219/1829 are mm despite inconsistent table headings; this is a foot-based product family, not proof for TNV metric products.",
+      "checked_on": "2026-10-15"
+    },
+    {
+      "id": "YOUFA-LEDGER",
+      "title": "Youfa Ringlock ledger",
+      "url": "https://www.chinayoufa.com/ringlock-ledger.html",
+      "kind": "MANUFACTURER_WEB",
+      "location": "Ringlock Ledger Technical Data / South East Asia and Africa sizes",
+      "verified_scope": "Ledger OD48.3x2.75, Q235 family, metric lengths; no project supplier identity or connection rating.",
+      "checked_on": "2026-10-15"
+    },
+    {
+      "id": "YOUFA-BRACE",
+      "title": "Youfa Ringlock diagonal brace",
+      "url": "https://www.chinayoufa.com/ringlock-diagonal-brace.html",
+      "kind": "MANUFACTURER_WEB",
+      "location": "Product Detail",
+      "verified_scope": "OD48.3x2.75. Component grade is only 'Carbon Steel' in detail; generic page header lists Q235/Q355. Do not assign a grade automatically. The second dimension is labelled 'Bay width', so no lift height is inferred.",
+      "checked_on": "2026-10-15"
+    },
+    {
+      "id": "TJJG-STANDARD",
+      "title": "TJJG Ringlock Standard 48 and 60 Series",
+      "url": "https://tjjgringlock.com/product/ringlock-standard/",
+      "kind": "MANUFACTURER_WEB",
+      "location": "48.3mm & 60.3mm Series",
+      "verified_scope": "Separate product variants OD48.3x3.25 and OD60.3x3.25, Q355 family; not confirmed as the Thai supplier's stock.",
+      "checked_on": "2026-10-15"
+    },
+    {
+      "id": "SHOUGANG-2024",
+      "title": "Beijing Shougang Hot Rolled Products Manual",
+      "url": "https://www.shougang.com.cn/u/cms/www/202412/2024122710.pdf",
+      "kind": "STEEL_MILL_MANUAL",
+      "local_file": "sources/shougang-hot-rolled-products-2024.pdf",
+      "sha256": "7e723b50b809611ef055643937b72af499e2ee471f6a75cb34907603cc3d3ee8",
+      "location": "PDF page 25 (printed pp45-46), section2.8.3",
+      "visually_checked": true,
+      "verified_scope": "Reference mechanical properties of hot-rolled feedstock. Finished scaffold tube standard, certificates, tolerance and batch identity still required.",
+      "checked_on": "2026-10-15"
+    },
+    {
+      "id": "JRC-ELASTIC",
+      "title": "JRC-hosted Handbook3, steel parameters",
+      "url": "https://eurocodes.jrc.ec.europa.eu/sites/default/files/2021-12/handbook3.pdf",
+      "kind": "TECHNICAL_HANDBOOK",
+      "location": "PDF page135, Annex9, table2",
+      "verified_scope": "Eurocode-reference elastic constants and density; not a declaration of the project's selected design-code edition.",
+      "checked_on": "2026-10-15"
+    },
+    {
+      "id": "DIBT-2024",
+      "title": "AT-PAC Ringlock approval Z-8.22-992",
+      "url": "https://www.dibt.de/pdf_storage/2024/Z-8.22-992%281.8.22-31%2123%29.pdf",
+      "kind": "PRODUCT_SPECIFIC_APPROVAL",
+      "local_file": "sources/at-pac-dibt-2024.pdf",
+      "sha256": "339dbfcfb661e05fa0154f438e35e610b19e4b6edf7c76fe6e6bc7549122d0df",
+      "location": "Sections3.2.2-3.2.6; read with 2026 amendment",
+      "verified_scope": "Original product-specific joint model; amended provisions must replace original values. Not a Thai metric system approval.",
+      "checked_on": "2026-10-15"
+    },
+    {
+      "id": "DIBT-2026",
+      "title": "AT-PAC Z-8.22-992 change and addition, 25 February2026",
+      "url": "https://www.dibt.de/pdf_storage/2026/Z-8.22-992%281.8.22-16%2124%29.pdf",
+      "kind": "PRODUCT_SPECIFIC_APPROVAL_AMENDMENT",
+      "local_file": "sources/at-pac-dibt-amendment-2026.pdf",
+      "sha256": "208019051df1e8ae6e6a0a4606f5a85d73fd291f0335308bfeaeb88ccb501ed6",
+      "location": "PDF pp4-5, clauses h/i/j, replacement tables5/8/9",
+      "visually_checked": true,
+      "verified_scope": "A single illustrative brace row and product-model conditions. Full approval and original annex models required for actual application.",
+      "checked_on": "2026-10-15"
+    },
+    {
+      "id": "EN12812",
+      "title": "NEN-EN12812:2008 Falsework",
+      "url": "https://www.nen.nl/en/nen-en-12812-2008-en-126571",
+      "kind": "STANDARDS_BODY_SCOPE",
+      "verified_scope": "Published standard scope only; full purchased standard provisions not reviewed.",
+      "checked_on": "2026-10-15"
+    },
+    {
+      "id": "THAI-LAW",
+      "title": "DLPW scaffold/falsework legislation portal",
+      "url": "https://osh.labour.go.th/กฎกระทรวง-นั่งร้าน-2564/",
+      "kind": "THAI_GOVERNMENT",
+      "verified_scope": "Identifies applicable Thai regulations; no project-specific compliance approval or safety-factor mapping.",
+      "checked_on": "2026-10-15"
+    }
+  ],
+  "section_property_formulas": {
+    "d": "D-2*t",
+    "A": "pi*(D^2-d^2)/4",
+    "Iy_Iz": "pi*(D^4-d^4)/64",
+    "Wel": "2*I/D",
+    "Wpl": "(D^3-d^3)/6",
+    "r": "sqrt(I/A)",
+    "J": "2*I",
+    "bare_tube_mass_kg_m": "A_mm2*7850/1000000"
+  },
+  "section_property_limits": [
+    "Nominal straight circular steel tube only; no galvanizing counted as structural steel.",
+    "No deduction for holes, flattened/crimped ends, thread roots, corrosion or manufacturing tolerance.",
+    "Mass excludes rosettes, welds, end heads, spigots, nuts and jacks.",
+    "These properties are not member buckling resistances, connection ratings or tower/leg SWL."
+  ],
+  "sections": [
+    {
+      "id": "CHS-48.3x3.2",
+      "D_mm": 48.3,
+      "t_mm": 3.2,
+      "d_mm": 41.9,
+      "A_mm2": 453.39465176607894,
+      "Iy_mm4": 115856.50210910081,
+      "Iz_mm4": 115856.50210910081,
+      "Wel_mm3": 4797.370687747446,
+      "Wpl_mm3": 6519.754666666665,
+      "r_mm": 15.985344850831336,
+      "J_mm4": 231713.00421820162,
+      "bare_tube_mass_kg_m": 3.5591480163637192,
+      "basis": "CALCULATED_NOMINAL_GROSS_CHS",
+      "source_ids": [
+        "TCB-SECTIONS"
+      ],
+      "actual_product_verified": false,
+      "net_section_properties": null
+    },
+    {
+      "id": "CHS-48.3x2.75",
+      "D_mm": 48.3,
+      "t_mm": 2.75,
+      "d_mm": 42.8,
+      "A_mm2": 393.5237497702916,
+      "Iy_mm4": 102432.51039880158,
+      "Iz_mm4": 102432.51039880158,
+      "Wel_mm3": 4241.511817755759,
+      "Wpl_mm3": 5712.639166666668,
+      "r_mm": 16.133679834433302,
+      "J_mm4": 204865.02079760315,
+      "bare_tube_mass_kg_m": 3.0891614356967887,
+      "basis": "CALCULATED_NOMINAL_GROSS_CHS",
+      "source_ids": [
+        "TCB-SECTIONS"
+      ],
+      "actual_product_verified": false,
+      "net_section_properties": null
+    },
+    {
+      "id": "CHS-48.3x2.5",
+      "D_mm": 48.3,
+      "t_mm": 2.5,
+      "d_mm": 43.3,
+      "A_mm2": 359.7123588360315,
+      "Iy_mm4": 94599.40432894221,
+      "Iz_mm4": 94599.40432894221,
+      "Wel_mm3": 3917.1595995421208,
+      "Wpl_mm3": 5249.308333333334,
+      "r_mm": 16.216850804024798,
+      "J_mm4": 189198.80865788442,
+      "bare_tube_mass_kg_m": 2.8237420168628473,
+      "basis": "CALCULATED_NOMINAL_GROSS_CHS",
+      "source_ids": [
+        "TCB-SECTIONS"
+      ],
+      "actual_product_verified": false,
+      "net_section_properties": null
+    },
+    {
+      "id": "CHS-48.3x3.25",
+      "D_mm": 48.3,
+      "t_mm": 3.25,
+      "d_mm": 41.8,
+      "A_mm2": 459.96843439371565,
+      "Iy_mm4": 117295.68801392689,
+      "Iz_mm4": 117295.68801392689,
+      "Wel_mm3": 4856.9643069949025,
+      "Wpl_mm3": 6607.325833333333,
+      "r_mm": 15.968973824263095,
+      "J_mm4": 234591.37602785378,
+      "bare_tube_mass_kg_m": 3.6107522099906677,
+      "basis": "CALCULATED_NOMINAL_GROSS_CHS",
+      "source_ids": [
+        "TJJG-STANDARD"
+      ],
+      "actual_product_verified": false,
+      "net_section_properties": null
+    },
+    {
+      "id": "CHS-60.3x3.25",
+      "D_mm": 60.3,
+      "t_mm": 3.25,
+      "d_mm": 53.8,
+      "A_mm2": 582.4905478837176,
+      "Iy_mm4": 237748.24985444083,
+      "Iz_mm4": 237748.24985444083,
+      "Wel_mm3": 7885.514091357905,
+      "Wpl_mm3": 10589.22583333333,
+      "r_mm": 20.2029236745576,
+      "J_mm4": 475496.49970888166,
+      "bare_tube_mass_kg_m": 4.572550800887183,
+      "basis": "CALCULATED_NOMINAL_GROSS_CHS",
+      "source_ids": [
+        "TJJG-STANDARD"
+      ],
+      "actual_product_verified": false,
+      "net_section_properties": null
+    }
+  ],
+  "product_reference_groups": [
+    {
+      "id": "TNV-METRIC-REFERENCE",
+      "source_ids": [
+        "TNV-METRIC"
+      ],
+      "module_family": "METRIC",
+      "ledger_labels_mm": [
+        600,
+        900,
+        1200,
+        1500,
+        1800
+      ],
+      "standard_labels_mm": [
+        1000,
+        2000
+      ],
+      "rosette_pitch_mm": 500,
+      "standard_section_id": null,
+      "ledger_section_id": null,
+      "brace_section_id": null,
+      "material_grade": null,
+      "brace_tension_resistance_N": null,
+      "brace_compression_resistance_N": null,
+      "joint_stiffness": null,
+      "project_stock_verified": false
+    },
+    {
+      "id": "TCB-FOOT-BASED-REFERENCE",
+      "source_ids": [
+        "TCB-SECTIONS"
+      ],
+      "module_family": "FOOT_BASED",
+      "ledger_labels_mm": [
+        610,
+        1219,
+        1829
+      ],
+      "components": [
+        {
+          "role": "STANDARD",
+          "section_id": "CHS-48.3x3.2",
+          "grade": null
+        },
+        {
+          "role": "LEDGER",
+          "section_id": "CHS-48.3x2.75",
+          "grade": null
+        },
+        {
+          "role": "DIAGONAL_BRACE",
+          "section_id": "CHS-48.3x2.5",
+          "grade": null
+        }
+      ],
+      "jack_reference": {
+        "nominal_outer_diameter_mm": 38,
+        "nominal_wall_mm": 4,
+        "catalogue_length_mm": 600,
+        "thread_root_diameter_mm": null,
+        "working_extension_limit_mm": null,
+        "min_engagement_mm": null,
+        "resistance_N": null
+      },
+      "project_stock_verified": false,
+      "transfer_to_metric_system_allowed": false
+    },
+    {
+      "id": "YOUFA-METRIC-CANDIDATE",
+      "source_ids": [
+        "YOUFA-LEDGER",
+        "YOUFA-BRACE"
+      ],
+      "module_family": "METRIC",
+      "ledger_labels_mm": [
+        600,
+        900,
+        1200,
+        1500,
+        1800,
+        2100,
+        2400
+      ],
+      "ledger": {
+        "section_id": "CHS-48.3x2.75",
+        "grade_family_label": "Q235",
+        "finished_tube_standard": null,
+        "project_Fy_MPa": null
+      },
+      "brace": {
+        "section_id": "CHS-48.3x2.75",
+        "grade": null,
+        "grade_note": "Component detail does not unambiguously specify a grade.",
+        "actual_bay_lift_compatibility": null
+      },
+      "thai_supplier_stock_verified": false
+    },
+    {
+      "id": "TJJG-STANDARD-VARIANTS",
+      "source_ids": [
+        "TJJG-STANDARD"
+      ],
+      "module_family": null,
+      "variants": [
+        {
+          "section_id": "CHS-48.3x3.25",
+          "grade_family_label": "Q355"
+        },
+        {
+          "section_id": "CHS-60.3x3.25",
+          "grade_family_label": "Q355"
+        }
+      ],
+      "thai_supplier_stock_verified": false,
+      "interchangeability_between_48_and_60_series": false
+    }
+  ],
+  "material_grade_references": [
+    {
+      "grade": "Q235B",
+      "referenced_product_form": "HOT_ROLLED_FEEDSTOCK",
+      "reference_standard": "GB/T700 (mill manual source)",
+      "thickness_max_mm": 16,
+      "Fy_min_MPa": 235,
+      "Fu_min_MPa": 370,
+      "Fu_max_MPa": 500,
+      "source_id": "SHOUGANG-2024",
+      "project_material_verified": false
+    },
+    {
+      "grade": "Q345B",
+      "referenced_product_form": "HOT_ROLLED_FEEDSTOCK",
+      "reference_standard": "Legacy Q345B row retained separately in mill manual",
+      "thickness_max_mm": 16,
+      "Fy_min_MPa": 345,
+      "Fu_min_MPa": 470,
+      "Fu_max_MPa": 630,
+      "source_id": "SHOUGANG-2024",
+      "project_material_verified": false
+    },
+    {
+      "grade": "Q355B",
+      "referenced_product_form": "HOT_ROLLED_FEEDSTOCK",
+      "reference_standard": "GB/T1591 (mill manual source)",
+      "thickness_max_mm": 16,
+      "Fy_min_MPa": 355,
+      "Fu_min_MPa": 470,
+      "Fu_max_MPa": 630,
+      "source_id": "SHOUGANG-2024",
+      "project_material_verified": false
+    }
+  ],
+  "elastic_reference_set": {
+    "id": "EUROCODE_REFERENCE_ELASTIC",
+    "E_MPa": 210000,
+    "nu": 0.3,
+    "G_MPa": 80769.23076923077,
+    "density_kg_m3": 7850,
+    "source_id": "JRC-ELASTIC",
+    "project_design_basis_selected": false,
+    "project_default_E_MPa": null
+  },
+  "material_limits": [
+    "Do not infer steel grade from hot-dip galvanizing, tube diameter, market name or colour.",
+    "Do not equate Q235B/Q355B with S235/S355 or STK/SS grades without product-standard and certification checks.",
+    "Use the lower specified tensile strength in resistance methods where applicable, not the upper Fu range.",
+    "Fy and Fu are material properties, not allowable stresses or finished-system load ratings."
+  ],
+  "external_joint_model_example": {
+    "manufacturer": "AT-PAC",
+    "system": "RINGLOCK_Z-8.22-992",
+    "source_ids": [
+      "DIBT-2024",
+      "DIBT-2026"
+    ],
+    "applicable_to_project_metric_system": false,
+    "not_a_generic_rating": true,
+    "brace_example": {
+      "source_pdf_page": 4,
+      "table": 5,
+      "annex_B_page": "25a",
+      "bay_mm": 1570,
+      "lift_mm": 2000,
+      "tabulated_diagonal_length_mm": 2448,
+      "compression_design_resistance_N": 17200,
+      "tension_design_resistance_N": 23200,
+      "compression_equivalent_stiffness_2D_N_mm": 980,
+      "compression_equivalent_stiffness_3D_N_mm": 1510,
+      "tension_equivalent_stiffness_2D_N_mm": 2110,
+      "tension_equivalent_stiffness_3D_N_mm": 5710,
+      "conversion": "1kN/cm=100N/mm",
+      "basis": "DESIGN_RESISTANCE_AND_EQUIVALENT_MODEL_STIFFNESS",
+      "conditions": [
+        "Use the original 2D or 3D annex model corresponding to the selected stiffness.",
+        "2026 amendment clause h requires longitudinal ledgers in adjacent rosette holes parallel to the vertical diagonal in plan.",
+        "Original model includes additional connection looseness/eccentricity; these constants are not a complete analysis model.",
+        "No scaling or interpolation to 1200/1500mm project bays."
+      ]
+    },
+    "standard_example": {
+      "source_pdf_page": 5,
+      "table": 8,
+      "outer_diameter_mm": 48.3,
+      "wall_mm": 3.2,
+      "specified_yield_MPa": 400,
+      "scope": "Only the particular certified standard types described in the approval; not generic S355 or Thai product."
+    },
+    "joint_data_for_project": {
+      "ledger_M_rotation_curve": null,
+      "brace_force_slip_curve_tension": null,
+      "brace_force_slip_curve_compression": null,
+      "brace_end_eccentricities_mm": null,
+      "rosette_interaction_rule": null,
+      "spigot_M_rotation_curve": null,
+      "thread_root_and_engagement_limits": null
+    }
+  },
+  "bracing_geometry_example": {
+    "status": "ILLUSTRATIVE_ROSETTE_CENTRE_GEOMETRY_ONLY",
+    "plan_x_mm": 1200,
+    "plan_y_mm": 1500,
+    "assumed_lift_mm": 1500,
+    "x_z_diagonal_mm": 1920.9372712298548,
+    "y_z_diagonal_mm": 2121.320343559643,
+    "x_z_angle_from_horizontal_deg": 51.34019174590991,
+    "y_z_angle_from_horizontal_deg": 45,
+    "plan_diagonal_mm": 1920.9372712298548,
+    "actual_brace_product_lengths_mm": null,
+    "buckling_effective_lengths_mm": null,
+    "note": "1500mm is an illustrative vertical lift, not a selected project default. Actual tube/end geometry and effective buckling length must be obtained from product evidence."
+  },
+  "analysis_requirements": [
+    {
+      "id": "LOAD_PATH",
+      "description_th": "แรงปฏิกิริยาจริงจากตงและคานรับตงลงหัว U-head แต่ละจุด รวมตำแหน่งเยื้องศูนย์",
+      "required_data": [
+        "head_coordinates",
+        "actual_reactions",
+        "bearer_head_contact",
+        "load_combinations"
+      ]
+    },
+    {
+      "id": "GLOBAL_FRAME",
+      "description_th": "ตรวจเสถียรภาพเฟรมสามมิติทั้ง X/Y รวม P-Delta และความไม่สมบูรณ์เริ่มต้นตามวิธีออกแบบ",
+      "required_data": [
+        "actual_lifts",
+        "member_and_spigot_locations",
+        "second_order_method",
+        "imperfection_basis",
+        "wind_and_horizontal_actions",
+        "erection_and_pouring_stages"
+      ]
+    },
+    {
+      "id": "BRACE_DEMAND",
+      "description_th": "หาแรงค้ำเฉียงจากความแข็งและรูปแบบการยึดจริง ไม่แบ่งแรงให้ค้ำทุกตัวเท่ากันโดยอัตโนมัติ",
+      "required_data": [
+        "brace_layout_XZ_YZ_XY",
+        "tension_and_compression_behaviour",
+        "joint_slip",
+        "connection_eccentricities"
+      ]
+    },
+    {
+      "id": "BRACE_TENSION",
+      "description_th": "ตรวจหน้าตัดรวม/สุทธิและหัวต่อ ลิ่ม หมุด รอยเชื่อม ตามฐานกำลังเดียวกัน",
+      "required_data": [
+        "material_certificates",
+        "net_end_section",
+        "compatible_end_connection_resistances",
+        "demand_and_resistance_basis"
+      ]
+    },
+    {
+      "id": "BRACE_COMPRESSION",
+      "description_th": "ตรวจโก่งเดาะ ความยาวประสิทธิผล ปลายบี้และจุดต่อ; Euler เป็นค่าอ้างอิงอุดมคติ ไม่ใช่กำลังยอมให้",
+      "required_data": [
+        "product_compression_rating_or_validated_code_method",
+        "buckling_length_basis",
+        "end_condition_evidence",
+        "member_imperfections"
+      ]
+    },
+    {
+      "id": "STANDARD_N_M",
+      "description_th": "ตรวจเสาตั้งรับแรงอัดร่วมดัด รวมช่วงเหนือ Ledger ชั้นบน ระยะยืดหัวและฐาน และรอยต่อเสา",
+      "required_data": [
+        "unrestrained_lengths",
+        "head_base_extensions",
+        "spigot_model",
+        "N_M_interaction_method"
+      ]
+    },
+    {
+      "id": "ROSETTE_AND_RESTRAINT",
+      "description_th": "ตรวจปฏิสัมพันธ์แรงที่ Rosette และทางถ่ายแรงค้ำไปยังระนาบค้ำและจุดยึด",
+      "required_data": [
+        "rosette_interaction",
+        "plan_bracing",
+        "top_base_restraint",
+        "anchor_capacity",
+        "no_assumed_support_from_uncast_concrete"
+      ]
+    },
+    {
+      "id": "FOUNDATION",
+      "description_th": "ตรวจฐานรอง ดินหรือพื้นรองรับ การลื่น การยกตัวและการพลิกคว่ำ",
+      "required_data": [
+        "foundation_or_young_slab_evidence",
+        "friction_or_positive_restraint",
+        "base_reactions",
+        "overturning_uplift_checks"
+      ]
+    }
+  ],
+  "project_release_gate": {
+    "allow_section_property_preview": true,
+    "allow_auto_supplier_match": false,
+    "allow_auto_Fy_assignment": false,
+    "allow_configuration_rating_interpolation": false,
+    "allow_bracing_pass_with_missing_connection_data": false,
+    "remaining_project_evidence": [
+      "supplier and product codes",
+      "finished tube OD/wall tolerance and batch material certificates",
+      "metric bay/lift-specific brace drawings",
+      "brace/end-node resistance and stiffness evidence",
+      "spigot/jack thread geometry and extension limits",
+      "selected code/edition/load combination/Thai compliance mapping",
+      "independent analysis benchmarks and responsible engineer review"
+    ]
+  },
+  "app_integration_observation": {
+    "existing_source": "src/domain/workflowV07/ringlock.ts",
+    "observed_scope": "Configuration/reaction screening; frame methods remain blocked. No 3D or second-order frame solver was added in this research.",
+    "original_catalogue_preserved": true
+  }
+}

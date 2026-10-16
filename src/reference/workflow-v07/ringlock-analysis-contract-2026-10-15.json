@@ -1,0 +1,315 @@
+{
+  "schema_version": "ringlock-analysis-contract-1.0",
+  "checked_on": "2026-10-15",
+  "title_th": "ข้อมูลและรายการตรวจสำหรับเพิ่มระบบคำนวณ Ringlock",
+  "status": "IMPLEMENTATION_HANDOFF_NOT_COMPLETED_SOLVER",
+  "construction_release": "NO_GO",
+  "confirmed": false,
+  "design_defaults": {
+    "bay_x_mm": 1200,
+    "bay_y_mm": 1500,
+    "head_on_standard_axis": true,
+    "bearer_axis": "X",
+    "supplier_family_id": null,
+    "design_standard": null,
+    "load_combinations": null,
+    "horizontal_load_ratio": null,
+    "effective_length_factor": null
+  },
+  "units": {
+    "geometry": "mm",
+    "force": "N",
+    "moment": "Nmm",
+    "stress": "MPa",
+    "rotations": "rad",
+    "axial_stiffness": "N/mm",
+    "rotational_stiffness": "Nmm/rad"
+  },
+  "data_layers": [
+    "Published supplier/product reference with immutable source revision",
+    "Editable project assumptions and override history",
+    "Actual component configuration and evidence review",
+    "Solver input snapshot with hash",
+    "Per-case/per-member/per-connection result coverage"
+  ],
+  "model_inputs": {
+    "identity": [
+      "supplier",
+      "family",
+      "part codes",
+      "batch / condition",
+      "document revision and page"
+    ],
+    "geometry": [
+      "exact support grid centreline datums",
+      "number of bays X/Y",
+      "height / lift levels",
+      "ledger levels and end offsets",
+      "base collars",
+      "spigot positions and types",
+      "braces in both vertical planes and plan",
+      "head/base total length, exposed extension and engagement",
+      "U-head load bearing point and bearer eccentricity"
+    ],
+    "members": [
+      "nominal and effective / net sections",
+      "wall tolerance / corrosion",
+      "Fy / Fu / E / G with certificate and standard edition",
+      "member releases and offsets",
+      "imperfections and residual stress/buckling model selected under design basis"
+    ],
+    "connections": [
+      "six local degrees of freedom",
+      "local axes and sign convention",
+      "nonlinear springs / slack",
+      "T/C asymmetry",
+      "rosette-hole occupancy and pair interactions",
+      "spigot bolts and axial slack",
+      "head/base boundary stiffness"
+    ],
+    "loads": [
+      "concrete stage / density / geometry",
+      "reinforcement",
+      "formwork / bearers / joists",
+      "scaffold self weight including attachments",
+      "construction live loads and placement effects",
+      "pouring sequence / unbalanced bay / concentrated loads",
+      "wind and enclosure effects",
+      "horizontal actions / out-of-plumb imperfections under selected code",
+      "load combinations with factor ownership"
+    ],
+    "supports": [
+      "top restraint stiffness and supporting structure",
+      "base translation and rotation restraint",
+      "contact / uplift / sliding",
+      "anchors / ties / plan restraint",
+      "sole plates / supporting slab / soil settlement",
+      "support slab age / punching / reshoring stages"
+    ]
+  },
+  "analysis_routes": [
+    {
+      "id": "EXACT_MANUFACTURER_CONFIGURATION",
+      "requirements": [
+        "same certified product and part revision",
+        "exact grid/lifts/height",
+        "permitted extensions and eccentricities",
+        "same bracing and top/base restraint",
+        "same loading distribution and design basis"
+      ],
+      "out_of_scope": "Do not interpolate / extrapolate without documented manufacturer method. Switch to a separately verified calculation route or return INCOMPLETE."
+    },
+    {
+      "id": "ENGINEERED_FRAME",
+      "requirements": [
+        "validated beam-column geometric nonlinear formulation",
+        "connection springs/slack/offsets with stated validity",
+        "appropriate material and member buckling resistance model",
+        "construction stages",
+        "stable solution and convergence checks",
+        "force and moment equilibrium checks"
+      ],
+      "scope": "A first-order pin-jointed truss or Euler-only column check cannot close all checks."
+    }
+  ],
+  "checks": [
+    {
+      "id": "LOAD_PATH",
+      "scope": "all load cases",
+      "required_inputs": [
+        "joist/bearer reactions",
+        "actual U-head coordinates",
+        "loads at beam/slab junctions"
+      ],
+      "method": "Transfer nodal reactions and eccentric moments. Tributary area is valid only where the actual load path supports it.",
+      "implementation_status": "PROPOSED_NOT_IMPLEMENTED_BY_THIS_HANDOFF",
+      "on_missing": "INCOMPLETE"
+    },
+    {
+      "id": "GLOBAL_STABILITY",
+      "scope": "each erection/pouring/service stage",
+      "required_inputs": [
+        "3D geometry",
+        "imperfections",
+        "springs",
+        "loads",
+        "boundary stiffness"
+      ],
+      "method": "Check P-Delta and P-delta, sway/torsional modes and plan stability. A failed/singular or unconverged solve is not a valid low-utilization result.",
+      "implementation_status": "PROPOSED_NOT_IMPLEMENTED_BY_THIS_HANDOFF",
+      "on_missing": "INCOMPLETE"
+    },
+    {
+      "id": "STANDARD_N_M_V",
+      "scope": "every standard segment",
+      "required_inputs": [
+        "N, My, Mz, Vy, Vz, T",
+        "effective sections",
+        "member resistance model"
+      ],
+      "method": "Check compression buckling, biaxial bending/interactions, shear/torsion, local section effects and splice locations under the selected standard.",
+      "implementation_status": "PROPOSED_NOT_IMPLEMENTED_BY_THIS_HANDOFF",
+      "on_missing": "INCOMPLETE"
+    },
+    {
+      "id": "LEDGER_MEMBER",
+      "scope": "every ledger",
+      "required_inputs": [
+        "end actions",
+        "connection conditions",
+        "section and grade"
+      ],
+      "method": "Check member resistance and deformation separately from joint resistance.",
+      "implementation_status": "PROPOSED_NOT_IMPLEMENTED_BY_THIS_HANDOFF",
+      "on_missing": "INCOMPLETE"
+    },
+    {
+      "id": "BRACE_T_C",
+      "scope": "every brace",
+      "required_inputs": [
+        "force sign",
+        "actual bay/lift and offsets",
+        "assembly stiffness",
+        "connection and member resistance"
+      ],
+      "method": "Evaluate tension and compression with the applicable separate values. Include clearance and geometry. Record whether assembly capacity already covers the member.",
+      "implementation_status": "PROPOSED_NOT_IMPLEMENTED_BY_THIS_HANDOFF",
+      "on_missing": "INCOMPLETE"
+    },
+    {
+      "id": "LEDGER_ROSETTE",
+      "scope": "every ledger end",
+      "required_inputs": [
+        "local end actions",
+        "joint limits and laws",
+        "adjacent hole loads"
+      ],
+      "method": "Check individual limits and all combined-action / standard-ledger / rosette occupancy interactions. Evaluate source sign convention explicitly.",
+      "implementation_status": "PROPOSED_NOT_IMPLEMENTED_BY_THIS_HANDOFF",
+      "on_missing": "INCOMPLETE"
+    },
+    {
+      "id": "ROSETTE_WELD",
+      "scope": "each occupied rosette",
+      "required_inputs": [
+        "all connected forces/moments",
+        "hole occupancy",
+        "validated rosette and weld method"
+      ],
+      "method": "Check concurrent actions around the complete node. A single connection rating does not establish whole-rosette resistance.",
+      "implementation_status": "PROPOSED_NOT_IMPLEMENTED_BY_THIS_HANDOFF",
+      "on_missing": "INCOMPLETE"
+    },
+    {
+      "id": "SPIGOT",
+      "scope": "every standard splice",
+      "required_inputs": [
+        "types above and below",
+        "bolts",
+        "slack",
+        "N-M interaction"
+      ],
+      "method": "Check axial tension/contact compression and resultant bending with pairing and installation limits. No tension transfer from an unpinned friction-only assumption.",
+      "implementation_status": "PROPOSED_NOT_IMPLEMENTED_BY_THIS_HANDOFF",
+      "on_missing": "INCOMPLETE"
+    },
+    {
+      "id": "JACK_HEAD_BASE",
+      "scope": "every head and base",
+      "required_inputs": [
+        "extension/engagement",
+        "thread section",
+        "N-M-V",
+        "nut/weld/head/base data"
+      ],
+      "method": "Check exposed screw stability, thread and nut strength, contact plate, welds, eccentric loading and product assembly limits.",
+      "implementation_status": "PROPOSED_NOT_IMPLEMENTED_BY_THIS_HANDOFF",
+      "on_missing": "INCOMPLETE"
+    },
+    {
+      "id": "SUPPORT_CONTACT",
+      "scope": "every support",
+      "required_inputs": [
+        "plate footprint",
+        "support strength/stiffness",
+        "reactions"
+      ],
+      "method": "Check bearing, slab bending/punching, settlement, sliding, uplift and overturning including anchors/ties where used.",
+      "implementation_status": "PROPOSED_NOT_IMPLEMENTED_BY_THIS_HANDOFF",
+      "on_missing": "INCOMPLETE"
+    },
+    {
+      "id": "SLS",
+      "scope": "all relevant service cases",
+      "required_inputs": [
+        "service combinations",
+        "movement/deflection limits"
+      ],
+      "method": "Check vertical settlement, differential settlement, sway and bearer/joist deformation with traceable project limits.",
+      "implementation_status": "PROPOSED_NOT_IMPLEMENTED_BY_THIS_HANDOFF",
+      "on_missing": "INCOMPLETE"
+    },
+    {
+      "id": "STAGE_RELEASE",
+      "scope": "each stage",
+      "required_inputs": [
+        "completed required checks",
+        "erection / alteration sequence",
+        "support evidence"
+      ],
+      "method": "Track checks during erection, pouring, stripping and reshoring. Report unsupported stages individually.",
+      "implementation_status": "PROPOSED_NOT_IMPLEMENTED_BY_THIS_HANDOFF",
+      "on_missing": "INCOMPLETE"
+    }
+  ],
+  "resistance_basis_rules": {
+    "ALLOWABLE": "Only service actions matching the documented allowable convention.",
+    "DESIGN_Rd": "Only design actions from compatible ULS combinations.",
+    "CHARACTERISTIC_Rk": "Requires the chosen standard and explicit conversion/factors before comparison.",
+    "ULTIMATE_TEST": "Test result only; no automatic conversion to working capacity.",
+    "STIFFNESS": "Model property, never a load resistance.",
+    "factor_ownership": "Record each load/resistance factor once. Do not apply an extra generic safety factor or divide a published Rd again by default."
+  },
+  "result_record": {
+    "check_id": null,
+    "entity_id": null,
+    "stage_id": null,
+    "combination_id": null,
+    "input_revision": null,
+    "solver_revision": null,
+    "source_document_revision": null,
+    "demand": null,
+    "demand_unit": null,
+    "capacity": null,
+    "capacity_unit": null,
+    "action_basis": null,
+    "resistance_basis": null,
+    "utilization": null,
+    "status": "INCOMPLETE",
+    "missing_inputs": [],
+    "assumptions": [],
+    "coverage_refs": [],
+    "construction_release": "NO_GO"
+  },
+  "aggregation_rules": [
+    "Any known exceeded check remains FAIL even if another required check is incomplete.",
+    "Any missing required check/input or stale result prevents PASS.",
+    "PASS for screening requires every required entity/stage/combination covered and comparable bases, plus valid convergence/equilibrium.",
+    "confirmed=true is never assigned by data import, calculation, dropdown selection or manual capacity entry.",
+    "A changed source or geometry invalidates dependent results; no carry-forward of prior PASS."
+  ],
+  "acceptance_benchmarks": [
+    "Analytic axial member / simply supported beam and cantilever responses",
+    "3D local/global axes and rigid-body invariance",
+    "Portal second-order reference under sway",
+    "Spring envelope inverse and tangent / zero gap / sign reversal boundaries",
+    "Asymmetric tension/compression braces with slack",
+    "Eccentric U-head and brace nodal moment equilibrium",
+    "Pinned/partial/fixed support sensitivity and genuine instability",
+    "Asymmetric pours / corner loads and global force-moment balance",
+    "Manufacturers independently checked exact configurations within stated scope",
+    "Units and factor ownership, null vs zero, incompatible basis rejection",
+    "Required-check coverage, stale-revision invalidation and no automatic confirmation"
+  ],
+  "integration_note": "This file specifies proposed coverage and data requirements. It does not claim the shared app implements a complete nonlinear frame, joint interaction or system capacity solver."
+}

@@ -1,0 +1,61 @@
+{
+  "schema_version": "closure-v1",
+  "issue_kinds": [
+    {
+      "id": "FORM_TIE_PAYLOAD",
+      "owner": "CODEX_IMPLEMENTATION",
+      "evidence_in_pack": "data/form_tie_machine_bridge.json",
+      "close_when": "Actual loader/schema/mapping tests pass; component design evidence separate"
+    },
+    {
+      "id": "FORM_TIE_ASSEMBLY_CAPACITY",
+      "owner": "VENDOR_DOCUMENT_AND_PROJECT_ENGINEER",
+      "evidence_in_pack": null,
+      "close_when": "Actual compatible assembly/engagement/plate/outer/nut evidence and load-path checks accepted"
+    },
+    {
+      "id": "RINGLOCK_REFERENCE_IMPORT",
+      "owner": "CODEX_IMPLEMENTATION",
+      "evidence_in_pack": "data/ringlock_component_rating_sidecar.json",
+      "close_when": "Sidecar imported without modifying protected JSON; exact-scope guards verified"
+    },
+    {
+      "id": "RINGLOCK_CONFIGURATION",
+      "owner": "VENDOR_DOCUMENT_AND_PROJECT_ENGINEER",
+      "evidence_in_pack": null,
+      "close_when": "Actual equipment/configuration rating or complete reviewed analysis with head/base/joint rules"
+    },
+    {
+      "id": "SUPPORT_BASIS",
+      "owner": "PROJECT_ENGINEER_INPUT",
+      "evidence_in_pack": "templates/support_soil.json / templates/support_slab.json",
+      "close_when": "Actual basis/resistance/stage/contact/slab/soil checks accepted"
+    },
+    {
+      "id": "SERVICEABILITY_CRITERIA",
+      "owner": "PROJECT_ENGINEER_INPUT",
+      "evidence_in_pack": "templates/serviceability.json",
+      "close_when": "Role-specific limits and matching load definitions reviewed"
+    },
+    {
+      "id": "RULE_PACK_REVIEW",
+      "owner": "AUTHORIZED_REVIEW",
+      "evidence_in_pack": "docs/RULE_REVIEW_CHECKLIST.md",
+      "close_when": "Reviewed code/edition/scope/units/benchmarks and trusted acceptance record"
+    },
+    {
+      "id": "STAGE_RELEASE",
+      "owner": "AUTHORIZED_REVIEW",
+      "evidence_in_pack": "templates/stage_release.json",
+      "close_when": "Current stage/revision/load-case evidence and inspections accepted through trusted workflow"
+    },
+    {
+      "id": "PROTECTED_TEST_TYPO",
+      "owner": "OWNER_PERMISSION",
+      "evidence_in_pack": "docs/TEST_TRIAGE.md",
+      "close_when": "Explicit permission, actual minimal fix and new focused/full logs; no skips/shims"
+    }
+  ],
+  "confirmed": false,
+  "constructionRelease": "NO_GO"
+}

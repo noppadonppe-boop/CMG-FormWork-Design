@@ -1,0 +1,211 @@
+{
+  "method": "Two-element matrix-stiffness assembly; Python independent of JS closed form",
+  "comparisons": [
+    {
+      "input": {
+        "w": 0.0,
+        "L": 0.5
+      },
+      "matrix_reactions_kN": [
+        -0.0,
+        -0.0,
+        -0.0
+      ],
+      "javascript_closed_form_kN": [
+        0,
+        0,
+        0
+      ],
+      "result": "MATCH_ARITHMETIC_ONLY"
+    },
+    {
+      "input": {
+        "w": 0.0,
+        "L": 0.6
+      },
+      "matrix_reactions_kN": [
+        -0.0,
+        -0.0,
+        -0.0
+      ],
+      "javascript_closed_form_kN": [
+        0,
+        0,
+        0
+      ],
+      "result": "MATCH_ARITHMETIC_ONLY"
+    },
+    {
+      "input": {
+        "w": 0.0,
+        "L": 1.2
+      },
+      "matrix_reactions_kN": [
+        -0.0,
+        -0.0,
+        -0.0
+      ],
+      "javascript_closed_form_kN": [
+        0,
+        0,
+        0
+      ],
+      "result": "MATCH_ARITHMETIC_ONLY"
+    },
+    {
+      "input": {
+        "w": 0.0,
+        "L": 2.1
+      },
+      "matrix_reactions_kN": [
+        -0.0,
+        -0.0,
+        -0.0
+      ],
+      "javascript_closed_form_kN": [
+        0,
+        0,
+        0
+      ],
+      "result": "MATCH_ARITHMETIC_ONLY"
+    },
+    {
+      "input": {
+        "w": 3.7,
+        "L": 0.5
+      },
+      "matrix_reactions_kN": [
+        0.6937500000000001,
+        2.3125,
+        0.6937500000000001
+      ],
+      "javascript_closed_form_kN": [
+        0.6937500000000001,
+        2.3125,
+        0.6937500000000001
+      ],
+      "result": "MATCH_ARITHMETIC_ONLY"
+    },
+    {
+      "input": {
+        "w": 3.7,
+        "L": 0.6
+      },
+      "matrix_reactions_kN": [
+        0.8325000000000001,
+        2.7750000000000004,
+        0.8325000000000001
+      ],
+      "javascript_closed_form_kN": [
+        0.8325000000000001,
+        2.775,
+        0.8325000000000001
+      ],
+      "result": "MATCH_ARITHMETIC_ONLY"
+    },
+    {
+      "input": {
+        "w": 3.7,
+        "L": 1.2
+      },
+      "matrix_reactions_kN": [
+        1.6650000000000003,
+        5.550000000000001,
+        1.6650000000000003
+      ],
+      "javascript_closed_form_kN": [
+        1.6650000000000003,
+        5.55,
+        1.6650000000000003
+      ],
+      "result": "MATCH_ARITHMETIC_ONLY"
+    },
+    {
+      "input": {
+        "w": 3.7,
+        "L": 2.1
+      },
+      "matrix_reactions_kN": [
+        2.9137500000000003,
+        9.7125,
+        2.9137500000000003
+      ],
+      "javascript_closed_form_kN": [
+        2.9137500000000003,
+        9.7125,
+        2.9137500000000003
+      ],
+      "result": "MATCH_ARITHMETIC_ONLY"
+    },
+    {
+      "input": {
+        "w": 32.4,
+        "L": 0.5
+      },
+      "matrix_reactions_kN": [
+        6.074999999999999,
+        20.25,
+        6.074999999999999
+      ],
+      "javascript_closed_form_kN": [
+        6.074999999999999,
+        20.25,
+        6.074999999999999
+      ],
+      "result": "MATCH_ARITHMETIC_ONLY"
+    },
+    {
+      "input": {
+        "w": 32.4,
+        "L": 0.6
+      },
+      "matrix_reactions_kN": [
+        7.289999999999999,
+        24.299999999999997,
+        7.289999999999999
+      ],
+      "javascript_closed_form_kN": [
+        7.289999999999999,
+        24.3,
+        7.289999999999999
+      ],
+      "result": "MATCH_ARITHMETIC_ONLY"
+    },
+    {
+      "input": {
+        "w": 32.4,
+        "L": 1.2
+      },
+      "matrix_reactions_kN": [
+        14.579999999999998,
+        48.599999999999994,
+        14.579999999999998
+      ],
+      "javascript_closed_form_kN": [
+        14.579999999999998,
+        48.6,
+        14.579999999999998
+      ],
+      "result": "MATCH_ARITHMETIC_ONLY"
+    },
+    {
+      "input": {
+        "w": 32.4,
+        "L": 2.1
+      },
+      "matrix_reactions_kN": [
+        25.515,
+        85.05000000000001,
+        25.515
+      ],
+      "javascript_closed_form_kN": [
+        25.514999999999997,
+        85.05,
+        25.514999999999997
+      ],
+      "result": "MATCH_ARITHMETIC_ONLY"
+    }
+  ],
+  "count": 12,
+  "engineering_signoff": false
+}

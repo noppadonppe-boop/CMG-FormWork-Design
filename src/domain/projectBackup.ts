@@ -1,0 +1,11 @@
+import {upgradeInput,validateInput,type Input} from './index.js';
+export interface BackupProject{id:string;name:string;code:string;cases:{id:string;name:string;input:Input}[]}
+export function parseProjectBackup(text:string,makeId:()=>string=()=>crypto.randomUUID()):BackupProject{
+  if(text.length>2*1024*1024)throw Error('ไฟล์โครงการใหญ่เกินขอบเขต');
+  const raw=JSON.parse(text);
+  if(![1,2,3].includes(raw?.schemaVersion)||!raw.project||typeof raw.project.name!=='string'||raw.project.name.length<1||raw.project.name.length>200||typeof raw.project.code!=='string'||raw.project.code.length>60||!Array.isArray(raw.project.cases)||raw.project.cases.length<1||raw.project.cases.length>100)throw Error('รูปแบบไฟล์โครงการไม่ถูกต้อง');
+  return {id:makeId(),name:raw.project.name,code:raw.project.code,cases:raw.project.cases.map((item:unknown)=>{
+    if(!item||typeof item!=='object'||!('name' in item)||typeof item.name!=='string'||item.name.length<1||item.name.length>200||!('input' in item))throw Error('รายการแบบไม่ถูกต้อง');
+    return {id:makeId(),name:item.name,input:{...(raw.schemaVersion===3?validateInput(item.input):upgradeInput(item.input,raw.schemaVersion)),confirmed:false}};
+  })};
+}

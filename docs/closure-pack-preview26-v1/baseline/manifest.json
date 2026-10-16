@@ -1,0 +1,46 @@
+{
+  "original_formtie_zip_sha256": "c16048eb092046fce0307f6934bb456ba6bfb710f3ce356fdd559a75d7d0664b",
+  "workflow_v07_zip_sha256": "cad89f207a76a2eef4319bbd8fffbbfd46cac1894b602d88cfdea07775f5bf89",
+  "formtie_related_paths_found_in_v07_zip": [
+    "RC-FormWork_Workflow_Ringlock_v0.7/baseline/RC-FormWork_FormTie_Addendum_v0.6.2/engineering/Form_Tie_Design_Manual.md"
+  ],
+  "finding": "v0.7 carries the Form Tie design manual, not the Form Tie data/template/rule/schema payload. This demonstrates a packaging gap, not the cause of the current application blocker without source inspection.",
+  "files": [
+    {
+      "path": "baseline/formtie_v0.6.2/data/inner_unit_reference_presets.json",
+      "source_path_in_original_zip": "RC-FormWork_FormTie_Addendum_v0.6.2/data/inner_unit_reference_presets.json",
+      "sha256": "45932a90b26fb96732a9b0a782385c3c381dec5bbd6025bd5da723fb2d5418bd",
+      "bytes": 6022
+    },
+    {
+      "path": "baseline/formtie_v0.6.2/data/tie_system_templates.json",
+      "source_path_in_original_zip": "RC-FormWork_FormTie_Addendum_v0.6.2/data/tie_system_templates.json",
+      "sha256": "7629497b41287c2e9c82985d545b37d0a5383c3600cdfe361aadd5ae054c35b3",
+      "bytes": 7894
+    },
+    {
+      "path": "baseline/formtie_v0.6.2/engineering/tie_rule_register.json",
+      "source_path_in_original_zip": "RC-FormWork_FormTie_Addendum_v0.6.2/engineering/tie_rule_register.json",
+      "sha256": "9a4a53b41e85fc3eada1a43397cfb9fd2707afdbda846b534fc509c097e33bfe",
+      "bytes": 8235
+    },
+    {
+      "path": "baseline/formtie_v0.6.2/engineering/tie_design_parameters.json",
+      "source_path_in_original_zip": "RC-FormWork_FormTie_Addendum_v0.6.2/engineering/tie_design_parameters.json",
+      "sha256": "e076687154a45f7277b2a5a9fece31c3727cdebab7aca35e86ac7fa2e45379e2",
+      "bytes": 20991
+    },
+    {
+      "path": "baseline/formtie_v0.6.2/examples/wall_tie_extension_v0.6.2.json",
+      "source_path_in_original_zip": "RC-FormWork_FormTie_Addendum_v0.6.2/examples/wall_tie_extension_v0.6.2.json",
+      "sha256": "ceb951ed9d303a2962cf1c21b41f8078c8083d5a35f5abdd71636eed021c3817",
+      "bytes": 3997
+    },
+    {
+      "path": "baseline/formtie_v0.6.2/schemas/tie_preintegration.schema.json",
+      "source_path_in_original_zip": "RC-FormWork_FormTie_Addendum_v0.6.2/schemas/tie_preintegration.schema.json",
+      "sha256": "f7f77da10831af1828ae645b5326fe00f7f3feab64b5e153206cad4708f0d318",
+      "bytes": 6160
+    }
+  ]
+}

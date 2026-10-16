@@ -1,0 +1,31 @@
+{
+  "schema_version": "closure-v1",
+  "defaultSelection": null,
+  "options": [
+    {
+      "policy_id": "PROJECT_SPECIFIED",
+      "label_th": "เกณฑ์โครงการ — ต้องระบุค่าและหลักฐาน",
+      "relative_denominator": null,
+      "absolute_limit_mm": null,
+      "source_id": null,
+      "load_definition": null,
+      "automatic_design_use": false
+    },
+    {
+      "policy_id": "CALTRANS_FW4_2023_L240",
+      "label_th": "อ้างอิง Caltrans 2023 L/240 — เฉพาะ falsework beam และกรณีโหลดที่ระบุ",
+      "relative_denominator": 240,
+      "absolute_limit_mm": null,
+      "source_id": "CALTRANS-FW4",
+      "source_clause": "4-2.01 / Eq4-2.01-1",
+      "load_definition": "Weight of all concrete in the whole superstructure cross-section as one pour; excludes falsework self-weight for this particular specification check. Separate actual-deflection/camber/other-load checks remain.",
+      "scope": "CALTRANS_BRIDGE_FALSEWORK_BEAM_REFERENCE_ONLY",
+      "automatic_design_use": false
+    }
+  ],
+  "settlement_limit_default_mm": null,
+  "punching_capacity_default": null,
+  "custom_preserves_original": true,
+  "confirmed": false,
+  "constructionRelease": "NO_GO"
+}

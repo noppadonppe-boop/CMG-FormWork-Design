@@ -1,0 +1,229 @@
+{
+  "schema_version": "ringlock-joint-research-1.0",
+  "checked_on": "2026-10-15",
+  "status": "REFERENCE_SUBSET_NOT_A_COMPLETE_DESIGN_METHOD",
+  "construction_release": "NO_GO",
+  "confirmed": false,
+  "scope": {
+    "manufacturer": "AT-PAC",
+    "system": "RINGLOCK",
+    "approval": "Z-8.22-992",
+    "source_documents": "2024 approval together with 2026 amendment",
+    "applies_to_thai_supplier_registry": false,
+    "project_product_verified": false,
+    "automatic_capacity_mapping": false,
+    "solver_implemented": false
+  },
+  "sources": [
+    {
+      "id": "DIBT-2024",
+      "url": "https://www.dibt.de/pdf_storage/2024/Z-8.22-992%281.8.22-31%2123%29.pdf",
+      "file": "F:\\Project Code\\RC-FormWork-app\\artifacts\\ringlock-research-2026-10-15\\sources\\at-pac-dibt-2024.pdf",
+      "sha256": "339dbfcfb661e05fa0154f438e35e610b19e4b6edf7c76fe6e6bc7549122d0df",
+      "checked_on": "2026-10-15"
+    },
+    {
+      "id": "DIBT-2026",
+      "url": "https://www.dibt.de/pdf_storage/2026/Z-8.22-992%281.8.22-16%2124%29.pdf",
+      "file": "F:\\Project Code\\RC-FormWork-app\\artifacts\\ringlock-research-2026-10-15\\sources\\at-pac-dibt-amendment-2026.pdf",
+      "sha256": "208019051df1e8ae6e6a0a4606f5a85d73fd291f0335308bfeaeb88ccb501ed6",
+      "checked_on": "2026-10-15"
+    }
+  ],
+  "ledger_joint": {
+    "source_id": "DIBT-2024",
+    "source_pages": [
+      13,
+      14,
+      15,
+      28,
+      29,
+      30
+    ],
+    "basis": "DESIGN_Rd",
+    "local_axes": {
+      "x": "ledger axis",
+      "y": "horizontal transverse",
+      "z": "vertical",
+      "signs": "Map Annex A drawing signs explicitly before using unequal My limits"
+    },
+    "single_action_limits": {
+      "My_positive_Nmm": 1320000,
+      "My_negative_magnitude_Nmm": 1210000,
+      "Vz_magnitude_N": 27300,
+      "Mz_magnitude_Nmm": 453000,
+      "Vy_magnitude_N": 11100,
+      "N_magnitude_N": 36800,
+      "O_ledger_torsion_magnitude_Nmm": 585000,
+      "U_ledger_torsion": "NOT_PERMITTED"
+    },
+    "nonlinear_monotonic_envelopes": [
+      {
+        "dof": "rotation_y",
+        "input_unit": "Nmm",
+        "output_unit": "rad",
+        "equation": "phi = M / (a - b*abs(M))",
+        "a": 103000000,
+        "b": 56.9,
+        "initial_tangent_Nmm_per_rad": 103000000
+      },
+      {
+        "dof": "rotation_z",
+        "input_unit": "Nmm",
+        "output_unit": "rad",
+        "equation": "phi = M / (a - b*abs(M))",
+        "a": 8540000,
+        "b": 13.1,
+        "initial_tangent_Nmm_per_rad": 8540000
+      },
+      {
+        "dof": "translation_y",
+        "input_unit": "N",
+        "output_unit": "mm",
+        "equation": "delta = 10*V / (a - b*abs(V))",
+        "a": 410000,
+        "b": 27,
+        "initial_tangent_N_per_mm": 41000
+      },
+      {
+        "dof": "O_ledger_torsion",
+        "input_unit": "Nmm",
+        "output_unit": "rad",
+        "equation": "phi = sign(M)*(gap + abs(M)/(a-b*abs(M))); zero moment has a zero-force gap",
+        "a": 22810000,
+        "b": 22.1,
+        "gap_rad": 0.0208,
+        "U_ledger_applicable": false
+      }
+    ],
+    "use_limits": [
+      "Strictly positive denominator and applicable single-action limit are necessary, not sufficient.",
+      "Combined ledger actions, standard/ledger interaction and adjacent rosette-hole interactions must also be checked from the complete approval.",
+      "No cyclic/unloading/hysteresis law is established by this extraction.",
+      "Use spring tangent stiffness in iterative analysis, not a secant treated as tangent.",
+      "A limit violation is FAIL. Missing interaction evaluation is INCOMPLETE even when each individual ratio is below one."
+    ],
+    "connection_offset_from_standard_axis_mm": 25
+  },
+  "brace_reference_rows": {
+    "source_id": "DIBT-2026",
+    "source_page": 4,
+    "table": 5,
+    "basis": "DESIGN_Rd",
+    "rows": [
+      {
+        "bay_mm": 1090,
+        "lift_mm": 2000,
+        "Ldia_mm": 2205,
+        "Cc2D_N_per_mm": 1220,
+        "Cc3D_N_per_mm": 1710,
+        "Ct2D_N_per_mm": 2060,
+        "Ct3D_N_per_mm": 4280,
+        "NcRd_N": 19900,
+        "NtRd_N": 23200
+      },
+      {
+        "bay_mm": 1570,
+        "lift_mm": 2000,
+        "Ldia_mm": 2448,
+        "Cc2D_N_per_mm": 980,
+        "Cc3D_N_per_mm": 1510,
+        "Ct2D_N_per_mm": 2110,
+        "Ct3D_N_per_mm": 5710,
+        "NcRd_N": 17200,
+        "NtRd_N": 23200
+      },
+      {
+        "bay_mm": 1570,
+        "lift_mm": 1500,
+        "Ldia_mm": 2060,
+        "Cc2D_N_per_mm": 860,
+        "Cc3D_N_per_mm": 1550,
+        "Ct2D_N_per_mm": 2220,
+        "Ct3D_N_per_mm": 8970,
+        "NcRd_N": 19200,
+        "NtRd_N": 21700
+      }
+    ],
+    "conditions": [
+      "Only the exact approved brace and assembly apply. Adjacent rosette holes must contain longitudinal ledgers parallel to the brace in plan.",
+      "No interpolation, rounding or transfer to metric 1200/1500 bays.",
+      "C is assembly equivalent axial stiffness; EA_eff = Ldia*C. Do not add the same joint flexibility again.",
+      "Annex A 2D and 3D idealisations differ: select the matching C column, offsets and omitted-eccentricity checks together."
+    ],
+    "model_source_id": "DIBT-2024",
+    "model_pages": [
+      31,
+      32
+    ],
+    "model_parameters": {
+      "ex_mm": 80,
+      "ey_mm": 50,
+      "looseness_f0_mm": 9,
+      "alpha": "angle from vertical",
+      "nodal_moment_expressions": [
+        "Mstx=Nv*cos(alpha)*ey",
+        "Msty=Nv*cos(alpha)*ex",
+        "Mstz=Nv*sin(alpha)*ey"
+      ]
+    },
+    "model_status": "SCHEMATIC_PARAMETERS_ONLY_REVIEW_COMPLETE_DRAWINGS"
+  },
+  "spigot_reference": {
+    "source_id": "DIBT-2026",
+    "source_pages": [
+      5,
+      6,
+      7
+    ],
+    "status": "PARTIAL_DO_NOT_USE_AS_COMPLETE_CAPACITY",
+    "variants": [
+      {
+        "type": 1,
+        "Myz_resultant_Rd_Nmm": 1040000,
+        "rotation_model": "rigid after slack within approved conditions",
+        "rotation_slack_rad": 0.0307
+      },
+      {
+        "type": 2,
+        "Myz_resultant_Rd_Nmm": 919000,
+        "rotation_stiffness_Nmm_per_rad": 100000000,
+        "rotation_slack_rad": 0.02
+      }
+    ],
+    "additional_initial_misalignment_rad": 0.01,
+    "unextracted_requirements": [
+      "type pairing",
+      "M12-8.8 fasteners and their number",
+      "tension/compression and N-M contact interaction",
+      "axial slack and centring",
+      "spigot position and standard section"
+    ],
+    "note": "Do not use the work-scaffold rigid alternative for shoring without checking its applicability."
+  },
+  "jack_reference_policy": {
+    "source_ids": [
+      "DIBT-2024",
+      "DIBT-2026"
+    ],
+    "pages": [
+      25,
+      7,
+      8
+    ],
+    "tube_plastic_axial_resistance_is_assembled_jack_rating": false,
+    "requires": [
+      "product drawing",
+      "thread root / effective section",
+      "extension / engagement",
+      "eccentricity",
+      "moment / axial / shear interaction",
+      "nut / weld / base / head",
+      "bearing and support restraint"
+    ]
+  },
+  "missing_system_capacity": {
+    "value": null,
+    "reason": "No manufacturer configuration table has been verified for the selected Thai product at 1200 × 1500 mm. Joint resistance or a tube section resistance alone does not establish tower capacity."
+  }
+}

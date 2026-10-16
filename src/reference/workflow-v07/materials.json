@@ -1,0 +1,2573 @@
+{
+  "schema_version": "0.5.0",
+  "metadata": {
+    "library_version": "0.5.0",
+    "checked_on": "2026-10-15",
+    "materials_count": 39,
+    "steel_grade_count": 10,
+    "timber_EN338_count": 10,
+    "timber_legacy_count": 5,
+    "plywood_thickness_count": 14,
+    "property_count": 43,
+    "release": "DATA_REFERENCE_ONLY",
+    "app_installation": "NOT_INSTALLED",
+    "section_baseline_version": "0.4",
+    "scope": "Mechanical properties + immutable presets + custom draft data. Not member capacity, connection capacity or construction approval.",
+    "unit_conversions": {
+      "kgf_cm2_to_MPa": 0.0980665,
+      "GPa_to_MPa": 1000,
+      "g_standard_m_s2": 9.80665
+    },
+    "provenance_policy": "Source per record, fixed property basis per key, effective overrides separately recorded; latest published content is never auto-adopted in an approved revision."
+  },
+  "sources": [
+    {
+      "source_id": "YM-GRADES",
+      "title": "Yamato Steel company brochure — JIS grade mechanical properties",
+      "publisher": "Yamato Steel",
+      "edition": "2025.12 (brochure cover); retrieved 2026-10-15",
+      "locator": "PDF p4 (printed pp5–6), grade table and footnote 7; PDF p5 (printed p8) SS400/SM490A",
+      "url": "https://www.yamatokogyo.co.jp/steel/en/catalog/pdf/company-brochureA3.pdf",
+      "scope": "SS400/SS490/SM490A yield and tensile limits. SS490 library scope conservatively limited to 6–40 mm as visible table. Material governing thickness: H uses flange; I/channel uses web per footnote 7."
+    },
+    {
+      "source_id": "PAP-TUBE-2026",
+      "title": "Pacific Pipe Structural Steel catalogue 2026_2 — TIS107",
+      "publisher": "Pacific Pipe",
+      "edition": "2026_2; TIS107-2566 identified in product-marking page",
+      "locator": "PDF p10, printed p18 (mechanical properties); PDF p9 product markings",
+      "url": "https://www.pacificpipe.co.th/files/download/pap%20catalog%20for%20structural%20steel%202026_2.pdf",
+      "scope": "STK400/490 and STKR400/490 minimum yield and minimum tensile strength. Strength ranges are not ultimate test results."
+    },
+    {
+      "source_id": "PAP-CLIP-2026",
+      "title": "Pacific Pipe Structural Steel catalogue 2026_2 — TIS1228",
+      "publisher": "Pacific Pipe",
+      "edition": "2026_2; TIS1228-2561 identified on product-marking page",
+      "locator": "PDF p26, printed p50 grade table, and p51 sections; PDF p9 product markings",
+      "url": "https://www.pacificpipe.co.th/files/download/pap%20catalog%20for%20structural%20steel%202026_2.pdf",
+      "scope": "SSCS400/490/540 cold formed uncoated grade properties. Nominal thickness in the published grade table up to 6 mm. Not applicable automatically to coated/high-tensile coil."
+    },
+    {
+      "source_id": "SW-EN338-2022",
+      "title": "Design of timber structures — Volume 2",
+      "publisher": "Swedish Wood",
+      "edition": "Edition 3:2022, values according to EN338:2016",
+      "locator": "PDF p10, printed p10, Table 3.3",
+      "url": "https://www.swedishwood.com/siteassets/5-publikationer/pdfer/sw-design-of-timber-structures-vol2-2022.pdf",
+      "scope": "C14–C40 strength classes: characteristic strengths, mean/5th percentile elastic values and density. Not equivalence to ungraded Thai timber species."
+    },
+    {
+      "source_id": "UPM007-2026",
+      "title": "Declaration of Performance UPM007CPR — Structural birch plywood",
+      "publisher": "UPM Plywood",
+      "edition": "2026-01-01",
+      "locator": "PDF p1 product scope, p2 density, p3 directional properties; all 14 thicknesses",
+      "url": "https://www.wisaplywood.com/siteassets/documents/dop/upm007cpr-2026-01-01-en.pdf",
+      "scope": "Characteristic strengths and mean moduli for crosswise veneer structural birch panels. Match actual product DoP, nominal thickness, ply count, coating/edge sealing and exposure. In-plane compression perpendicular to face grain is NOT through-thickness bearing."
+    },
+    {
+      "source_id": "UPM-MAP",
+      "title": "WISA DoP Reference List",
+      "publisher": "UPM Plywood",
+      "edition": "Webpage retrieved 2026-10-15",
+      "locator": "UPM007CPR product family; corroborated by product documentation",
+      "url": "https://www.wisaplywood.com/specifying-wisa/downloads/dop-reference-list/",
+      "scope": "Product/DoP selection. Multiple DoPs can apply depending on product, layup and thickness. Actual label governs."
+    },
+    {
+      "source_id": "BOOK-T34",
+      "title": "หนังสือ Design Form Work — ตาราง 3.4",
+      "publisher": "User-provided scanned textbook; bibliographic edition not verified",
+      "edition": "Historical reference; not certified current EIT requirements",
+      "locator": "Printed p57, Table3.4; original PDF p32/right. Original mounted PDF 314 pages; Files preview indexes only first150.",
+      "url": null,
+      "scope": "Five historical Thai timber class reference E and allowable stresses. Original kg/cm2 interpreted as kgf/cm2; conversion 0.0980665 MPa per kgf/cm2. Do not merge with different BMA Table3.5. Original first-class Fv dash retained null."
+    },
+    {
+      "source_id": "AISC-E-EXAMPLE",
+      "title": "Simplified LRFD Design of Steel Members for Fire — normal temperature example",
+      "publisher": "AISC Engineering Journal",
+      "edition": "2008 Q4 research paper (not a current product standard)",
+      "locator": "PDF p9, printed p241, normal-temperature E=200000 MPa input",
+      "url": "https://ej.aisc.org/index.php/engj/article/download/945/944/944",
+      "scope": "Supports conventional 200 GPa elastic model only. No fire-reduction or code-compliance claims are imported. Project must select its governing material/design model."
+    },
+    {
+      "source_id": "SCI-ELASTIC",
+      "title": "Steel material properties — Other mechanical properties of steel",
+      "publisher": "Steel Construction Institute / BCSA information resource",
+      "edition": "Webpage retrieved 2026-10-15",
+      "locator": "Other mechanical properties of steel",
+      "url": "https://steelconstruction.info/topics/design/steel-material-properties/",
+      "scope": "E=210000 MPa, nu=0.3, G=E/[2(1+nu)], alpha=12e-6/C. Alternative elastic model, not a grade-strength definition."
+    },
+    {
+      "source_id": "MODEL-CONSTANTS",
+      "title": "Explicit library model assumptions and exact unit conversions",
+      "publisher": "RC-FormWork data specification",
+      "edition": "0.5.0",
+      "locator": "SETTINGS and glossary",
+      "url": null,
+      "scope": "Steel density7850 kg/m3 is an engineering reference assumption, not batch measurement. Standard gravity9.80665 m/s2; no fabrication tolerances or material safety factors implied."
+    }
+  ],
+  "property_definitions": [
+    {
+      "key": "density_mean_kg_m3",
+      "label_th": "ความหนาแน่นเฉลี่ย/อ้างอิง",
+      "unit": "kg/m3",
+      "categories": [
+        "STEEL",
+        "TIMBER",
+        "PLYWOOD"
+      ],
+      "basis": "MEAN_OR_REFERENCE",
+      "meaning": "For self-weight; not characteristic density used in connection design. Steel is explicit model assumption.",
+      "custom_allowed": true
+    },
+    {
+      "key": "density_k_kg_m3",
+      "label_th": "ความหนาแน่นลักษณะเฉพาะ",
+      "unit": "kg/m3",
+      "categories": [
+        "TIMBER",
+        "PLYWOOD"
+      ],
+      "basis": "CHARACTERISTIC",
+      "meaning": "For code checks requiring characteristic density; not substituted for self-weight density.",
+      "custom_allowed": true
+    },
+    {
+      "key": "E_MPa",
+      "label_th": "Young’s modulus — เหล็ก",
+      "unit": "MPa",
+      "categories": [
+        "STEEL"
+      ],
+      "basis": "REFERENCE_ELASTIC",
+      "meaning": "Elastic stiffness; not strength. Choose project elastic model.",
+      "custom_allowed": true
+    },
+    {
+      "key": "nu",
+      "label_th": "Poisson’s ratio — เหล็ก",
+      "unit": "1",
+      "categories": [
+        "STEEL"
+      ],
+      "basis": "REFERENCE_ELASTIC",
+      "meaning": "Isotropic elastic model only.",
+      "custom_allowed": true
+    },
+    {
+      "key": "G_MPa",
+      "label_th": "Shear modulus — เหล็ก",
+      "unit": "MPa",
+      "categories": [
+        "STEEL"
+      ],
+      "basis": "DERIVED_ELASTIC",
+      "meaning": "Default E/[2(1+nu)], unless independently overridden and documented.",
+      "custom_allowed": true
+    },
+    {
+      "key": "alpha_per_C",
+      "label_th": "สัมประสิทธิ์ขยายตัวความร้อน — เหล็ก",
+      "unit": "1/degC",
+      "categories": [
+        "STEEL"
+      ],
+      "basis": "REFERENCE_ELASTIC",
+      "meaning": "Ambient-temperature reference; not a fire model.",
+      "custom_allowed": true
+    },
+    {
+      "key": "Fy_MPa",
+      "label_th": "กำลังครากขั้นต่ำ Fy",
+      "unit": "MPa",
+      "categories": [
+        "STEEL"
+      ],
+      "basis": "SPECIFIED_MINIMUM",
+      "meaning": "Resolved from grade and applicable material thickness; never a final allowable member stress.",
+      "custom_allowed": true
+    },
+    {
+      "key": "Fu_min_MPa",
+      "label_th": "กำลังดึงสูงสุดขั้นต่ำตามเกรด Fu,min",
+      "unit": "MPa",
+      "categories": [
+        "STEEL"
+      ],
+      "basis": "SPECIFIED_MINIMUM_UTS",
+      "meaning": "Minimum specified ultimate tensile strength, not a measured test value.",
+      "custom_allowed": true
+    },
+    {
+      "key": "Fu_max_MPa",
+      "label_th": "ขีดบนกำลังดึงตามเกรด Fu,max",
+      "unit": "MPa",
+      "categories": [
+        "STEEL"
+      ],
+      "basis": "SPECIFIED_UPPER_UTS",
+      "meaning": "Upper specification limit when published. Null means not supplied, NOT zero.",
+      "custom_allowed": true
+    },
+    {
+      "key": "E0_mean_MPa",
+      "label_th": "E เฉลี่ยขนานเสี้ยน",
+      "unit": "MPa",
+      "categories": [
+        "TIMBER"
+      ],
+      "basis": "MEAN",
+      "meaning": "For deflection subject to design method and exposure.",
+      "custom_allowed": true
+    },
+    {
+      "key": "E0_05_MPa",
+      "label_th": "E ขนานเสี้ยน ค่าร้อยละ5",
+      "unit": "MPa",
+      "categories": [
+        "TIMBER"
+      ],
+      "basis": "FIFTH_PERCENTILE",
+      "meaning": "For stability where specified by code; not mean E.",
+      "custom_allowed": true
+    },
+    {
+      "key": "E90_mean_MPa",
+      "label_th": "E เฉลี่ยตั้งฉากเสี้ยน",
+      "unit": "MPa",
+      "categories": [
+        "TIMBER"
+      ],
+      "basis": "MEAN",
+      "meaning": "Transverse timber modulus; do not derive from steel Poisson ratio.",
+      "custom_allowed": true
+    },
+    {
+      "key": "Gmean_MPa",
+      "label_th": "G เฉลี่ยของไม้",
+      "unit": "MPa",
+      "categories": [
+        "TIMBER"
+      ],
+      "basis": "MEAN",
+      "meaning": "Source-defined timber shear modulus.",
+      "custom_allowed": true
+    },
+    {
+      "key": "fm_k_MPa",
+      "label_th": "กำลังดัด fm,k",
+      "unit": "MPa",
+      "categories": [
+        "TIMBER"
+      ],
+      "basis": "CHARACTERISTIC",
+      "meaning": "Characteristic bending strength, not allowable stress or Fy.",
+      "custom_allowed": true
+    },
+    {
+      "key": "ft0_k_MPa",
+      "label_th": "กำลังดึงขนานเสี้ยน ft,0,k",
+      "unit": "MPa",
+      "categories": [
+        "TIMBER"
+      ],
+      "basis": "CHARACTERISTIC",
+      "meaning": "Characteristic tension parallel to grain.",
+      "custom_allowed": true
+    },
+    {
+      "key": "ft90_k_MPa",
+      "label_th": "กำลังดึงตั้งฉากเสี้ยน ft,90,k",
+      "unit": "MPa",
+      "categories": [
+        "TIMBER"
+      ],
+      "basis": "CHARACTERISTIC",
+      "meaning": "Characteristic tension perpendicular to grain.",
+      "custom_allowed": true
+    },
+    {
+      "key": "fc0_k_MPa",
+      "label_th": "กำลังอัดขนานเสี้ยน fc,0,k",
+      "unit": "MPa",
+      "categories": [
+        "TIMBER"
+      ],
+      "basis": "CHARACTERISTIC",
+      "meaning": "Characteristic compression parallel to grain.",
+      "custom_allowed": true
+    },
+    {
+      "key": "fc90_k_MPa",
+      "label_th": "กำลังอัดตั้งฉากเสี้ยน fc,90,k",
+      "unit": "MPa",
+      "categories": [
+        "TIMBER"
+      ],
+      "basis": "CHARACTERISTIC",
+      "meaning": "Timber perpendicular-to-grain compression; not plywood in-plane90 property.",
+      "custom_allowed": true
+    },
+    {
+      "key": "fv_k_MPa",
+      "label_th": "กำลังเฉือน fv,k",
+      "unit": "MPa",
+      "categories": [
+        "TIMBER"
+      ],
+      "basis": "CHARACTERISTIC",
+      "meaning": "Characteristic shear; code crack/load-duration effects are not yet applied.",
+      "custom_allowed": true
+    },
+    {
+      "key": "E_ref_MPa",
+      "label_th": "E อ้างอิงจากหนังสือเดิม",
+      "unit": "MPa",
+      "categories": [
+        "TIMBER"
+      ],
+      "basis": "LEGACY_REFERENCE",
+      "meaning": "Table3.4 modulus; statistical basis not stated, do not silently rename as mean or E05.",
+      "custom_allowed": true
+    },
+    {
+      "key": "Fb_base_MPa",
+      "label_th": "หน่วยแรงดัดยอมให้พื้นฐาน Fb",
+      "unit": "MPa",
+      "categories": [
+        "TIMBER"
+      ],
+      "basis": "LEGACY_ALLOWABLE_BASE",
+      "meaning": "Historical textbook allowable value. Not a current approval, and not a characteristic strength. Adjustment rules require engineer approval.",
+      "custom_allowed": true
+    },
+    {
+      "key": "Fc0_base_MPa",
+      "label_th": "หน่วยแรงอัดขนานเสี้ยนยอมให้ Fc0",
+      "unit": "MPa",
+      "categories": [
+        "TIMBER"
+      ],
+      "basis": "LEGACY_ALLOWABLE_BASE",
+      "meaning": "Historical textbook allowable value. Not a current approval, and not a characteristic strength. Adjustment rules require engineer approval.",
+      "custom_allowed": true
+    },
+    {
+      "key": "Fc90_base_MPa",
+      "label_th": "หน่วยแรงอัดตั้งฉากเสี้ยนยอมให้ Fc90",
+      "unit": "MPa",
+      "categories": [
+        "TIMBER"
+      ],
+      "basis": "LEGACY_ALLOWABLE_BASE",
+      "meaning": "Historical textbook allowable value. Not a current approval, and not a characteristic strength. Adjustment rules require engineer approval.",
+      "custom_allowed": true
+    },
+    {
+      "key": "Fv_base_MPa",
+      "label_th": "หน่วยแรงเฉือนยอมให้พื้นฐาน Fv",
+      "unit": "MPa",
+      "categories": [
+        "TIMBER"
+      ],
+      "basis": "LEGACY_ALLOWABLE_BASE",
+      "meaning": "Historical textbook allowable value. Not a current approval, and not a characteristic strength. Adjustment rules require engineer approval.",
+      "custom_allowed": true
+    },
+    {
+      "key": "Eb0_mean_MPa",
+      "label_th": "E ดัดไม้อัด 0°",
+      "unit": "MPa",
+      "categories": [
+        "PLYWOOD"
+      ],
+      "basis": "MEAN",
+      "meaning": "Bending parallel to face grain, gross nominal panel convention per DoP.",
+      "custom_allowed": true
+    },
+    {
+      "key": "Eb90_mean_MPa",
+      "label_th": "E ดัดไม้อัด 90°",
+      "unit": "MPa",
+      "categories": [
+        "PLYWOOD"
+      ],
+      "basis": "MEAN",
+      "meaning": "Bending perpendicular to face grain; rotate orientation, not material identity.",
+      "custom_allowed": true
+    },
+    {
+      "key": "Etc0_mean_MPa",
+      "label_th": "E ดึง/อัดในระนาบไม้อัด 0°",
+      "unit": "MPa",
+      "categories": [
+        "PLYWOOD"
+      ],
+      "basis": "MEAN",
+      "meaning": "Axial in-plane modulus parallel to face grain, not bending E.",
+      "custom_allowed": true
+    },
+    {
+      "key": "Etc90_mean_MPa",
+      "label_th": "E ดึง/อัดในระนาบไม้อัด 90°",
+      "unit": "MPa",
+      "categories": [
+        "PLYWOOD"
+      ],
+      "basis": "MEAN",
+      "meaning": "Axial in-plane modulus perpendicular to face grain, not through thickness.",
+      "custom_allowed": true
+    },
+    {
+      "key": "fm0_k_MPa",
+      "label_th": "กำลังดัดไม้อัด 0°",
+      "unit": "MPa",
+      "categories": [
+        "PLYWOOD"
+      ],
+      "basis": "CHARACTERISTIC",
+      "meaning": "Characteristic bending parallel to face grain.",
+      "custom_allowed": true
+    },
+    {
+      "key": "fm90_k_MPa",
+      "label_th": "กำลังดัดไม้อัด 90°",
+      "unit": "MPa",
+      "categories": [
+        "PLYWOOD"
+      ],
+      "basis": "CHARACTERISTIC",
+      "meaning": "Characteristic bending perpendicular to face grain.",
+      "custom_allowed": true
+    },
+    {
+      "key": "ft_inplane0_k_MPa",
+      "label_th": "กำลังดึงในระนาบไม้อัด 0°",
+      "unit": "MPa",
+      "categories": [
+        "PLYWOOD"
+      ],
+      "basis": "CHARACTERISTIC",
+      "meaning": "In-plane tensile characteristic strength; not test ultimate.",
+      "custom_allowed": true
+    },
+    {
+      "key": "ft_inplane90_k_MPa",
+      "label_th": "กำลังดึงในระนาบไม้อัด 90°",
+      "unit": "MPa",
+      "categories": [
+        "PLYWOOD"
+      ],
+      "basis": "CHARACTERISTIC",
+      "meaning": "In-plane tensile characteristic strength; not test ultimate.",
+      "custom_allowed": true
+    },
+    {
+      "key": "fc_inplane0_k_MPa",
+      "label_th": "กำลังอัดในระนาบไม้อัด 0°",
+      "unit": "MPa",
+      "categories": [
+        "PLYWOOD"
+      ],
+      "basis": "CHARACTERISTIC",
+      "meaning": "In-plane compression parallel to face grain.",
+      "custom_allowed": true
+    },
+    {
+      "key": "fc_inplane90_k_MPa",
+      "label_th": "กำลังอัดในระนาบไม้อัด 90°",
+      "unit": "MPa",
+      "categories": [
+        "PLYWOOD"
+      ],
+      "basis": "CHARACTERISTIC",
+      "meaning": "In-plane compression perpendicular to face grain; NOT through-thickness bearing.",
+      "custom_allowed": true
+    },
+    {
+      "key": "fv_panel_k_MPa",
+      "label_th": "กำลังเฉือนในระนาบแผ่น",
+      "unit": "MPa",
+      "categories": [
+        "PLYWOOD"
+      ],
+      "basis": "CHARACTERISTIC",
+      "meaning": "Panel shear; different from planar/rolling shear in bending.",
+      "custom_allowed": true
+    },
+    {
+      "key": "fr0_k_MPa",
+      "label_th": "กำลัง planar shear 0°",
+      "unit": "MPa",
+      "categories": [
+        "PLYWOOD"
+      ],
+      "basis": "CHARACTERISTIC",
+      "meaning": "Planar/rolling shear parallel to face grain per DoP.",
+      "custom_allowed": true
+    },
+    {
+      "key": "fr90_k_MPa",
+      "label_th": "กำลัง planar shear 90°",
+      "unit": "MPa",
+      "categories": [
+        "PLYWOOD"
+      ],
+      "basis": "CHARACTERISTIC",
+      "meaning": "Planar/rolling shear perpendicular to face grain per DoP.",
+      "custom_allowed": true
+    },
+    {
+      "key": "fc_through_thickness_k_MPa",
+      "label_th": "กำลังอัดทะลุความหนา/กดรองรับไม้อัด",
+      "unit": "MPa",
+      "categories": [
+        "PLYWOOD"
+      ],
+      "basis": "CHARACTERISTIC",
+      "meaning": "Not declared in selected DoP. Remains null; obtain bearing data separately.",
+      "custom_allowed": true
+    },
+    {
+      "key": "Gv_panel_mean_MPa",
+      "label_th": "G เฉือนในระนาบไม้อัด",
+      "unit": "MPa",
+      "categories": [
+        "PLYWOOD"
+      ],
+      "basis": "MEAN_RIGIDITY",
+      "meaning": "DoP labels Mean MOR in panel shear; G symbol interpreted as modulus of rigidity, not modulus of rupture.",
+      "custom_allowed": true
+    },
+    {
+      "key": "Gr0_mean_MPa",
+      "label_th": "G planar shear ไม้อัด 0°",
+      "unit": "MPa",
+      "categories": [
+        "PLYWOOD"
+      ],
+      "basis": "MEAN_RIGIDITY",
+      "meaning": "Planar/rolling shear rigidity parallel to face grain.",
+      "custom_allowed": true
+    },
+    {
+      "key": "Gr90_mean_MPa",
+      "label_th": "G planar shear ไม้อัด 90°",
+      "unit": "MPa",
+      "categories": [
+        "PLYWOOD"
+      ],
+      "basis": "MEAN_RIGIDITY",
+      "meaning": "Planar/rolling shear rigidity perpendicular to face grain.",
+      "custom_allowed": true
+    },
+    {
+      "key": "MOR_test_MPa",
+      "label_th": "กำลังดัดสูงสุดจากการทดสอบ MOR",
+      "unit": "MPa",
+      "categories": [
+        "TIMBER",
+        "PLYWOOD"
+      ],
+      "basis": "TEST_ULTIMATE",
+      "meaning": "No default. Actual test result + specimen/method/moisture/statistics required; not usable as characteristic or allowable strength automatically.",
+      "custom_allowed": true
+    },
+    {
+      "key": "Ft_test_MPa",
+      "label_th": "กำลังดึงสูงสุดจากการทดสอบ",
+      "unit": "MPa",
+      "categories": [
+        "TIMBER",
+        "PLYWOOD"
+      ],
+      "basis": "TEST_ULTIMATE",
+      "meaning": "No default. Actual test result required; cannot substitute for Fy or a design tensile value.",
+      "custom_allowed": true
+    }
+  ],
+  "elastic_models": [
+    {
+      "id": "ELASTIC-200GPA",
+      "label": "200 GPa — reference elastic model",
+      "E_MPa": 200000,
+      "nu": 0.3,
+      "G_MPa": 76923.07692307692,
+      "source_ids": [
+        "AISC-E-EXAMPLE",
+        "SCI-ELASTIC"
+      ],
+      "scope": "Project-selectable reference stiffness; NOT certification to AISC of any grade."
+    },
+    {
+      "id": "ELASTIC-210GPA",
+      "label": "210 GPa — SCI / Eurocode reference model",
+      "E_MPa": 210000,
+      "nu": 0.3,
+      "G_MPa": 80769.23076923077,
+      "source_ids": [
+        "SCI-ELASTIC"
+      ],
+      "scope": "Alternative project-selectable elastic model. Do not change E simply to improve deflection result."
+    }
+  ],
+  "materials": [
+    {
+      "material_id": "STEEL-SS400",
+      "category": "STEEL",
+      "label_th": "SS400 — เหล็กรีดร้อน",
+      "standard": "JIS G3101",
+      "grade_or_product": "SS400",
+      "version": "0.5.0",
+      "properties": {
+        "density_mean_kg_m3": 7850,
+        "E_MPa": 200000,
+        "nu": 0.3,
+        "G_MPa": 76923.07692307692,
+        "alpha_per_C": 1.2e-05,
+        "Fy_MPa": null,
+        "Fu_min_MPa": 400,
+        "Fu_max_MPa": 510
+      },
+      "source_ids": [
+        "YM-GRADES",
+        "AISC-E-EXAMPLE",
+        "SCI-ELASTIC",
+        "MODEL-CONSTANTS"
+      ],
+      "applicability": {
+        "product_form": "HOT_ROLLED",
+        "compatible_section_families": [
+          "H",
+          "I",
+          "C"
+        ],
+        "temperature": "AMBIENT",
+        "thickness_min_mm": 0,
+        "thickness_min_inclusive": false,
+        "thickness_max_mm": 40,
+        "governing_thickness_rule": "H -> tf; I and hot-rolled C -> tw (Yamato footnote7). Other forms need their own evidence."
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "SPECIFIED_GRADE_LIMITS",
+      "elastic_model_id": "ELASTIC-200GPA",
+      "strength_bands": [
+        {
+          "min_mm": 0,
+          "min_inclusive": false,
+          "max_mm": 16,
+          "Fy_MPa": 245
+        },
+        {
+          "min_mm": 16,
+          "min_inclusive": false,
+          "max_mm": 40,
+          "Fy_MPa": 235
+        }
+      ],
+      "preset_sha256": "68e0285ccf4bc740b5965816c903dfceecc58e174b30a46cc59d04c60ae911a0"
+    },
+    {
+      "material_id": "STEEL-SS490",
+      "category": "STEEL",
+      "label_th": "SS490 — เหล็กรีดร้อน",
+      "standard": "JIS G3101",
+      "grade_or_product": "SS490",
+      "version": "0.5.0",
+      "properties": {
+        "density_mean_kg_m3": 7850,
+        "E_MPa": 200000,
+        "nu": 0.3,
+        "G_MPa": 76923.07692307692,
+        "alpha_per_C": 1.2e-05,
+        "Fy_MPa": null,
+        "Fu_min_MPa": 490,
+        "Fu_max_MPa": 610
+      },
+      "source_ids": [
+        "YM-GRADES",
+        "AISC-E-EXAMPLE",
+        "SCI-ELASTIC",
+        "MODEL-CONSTANTS"
+      ],
+      "applicability": {
+        "product_form": "HOT_ROLLED",
+        "compatible_section_families": [
+          "H",
+          "I",
+          "C"
+        ],
+        "temperature": "AMBIENT",
+        "thickness_min_mm": 6,
+        "thickness_min_inclusive": true,
+        "thickness_max_mm": 40,
+        "governing_thickness_rule": "H -> tf; I and hot-rolled C -> tw (Yamato footnote7). Other forms need their own evidence."
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "SPECIFIED_GRADE_LIMITS",
+      "elastic_model_id": "ELASTIC-200GPA",
+      "strength_bands": [
+        {
+          "min_mm": 6,
+          "min_inclusive": true,
+          "max_mm": 16,
+          "Fy_MPa": 285
+        },
+        {
+          "min_mm": 16,
+          "min_inclusive": false,
+          "max_mm": 40,
+          "Fy_MPa": 275
+        }
+      ],
+      "preset_sha256": "d3bc464a4cd813912c0aba75ddd06e8d119e931a8b111fe6537a636363c083d9"
+    },
+    {
+      "material_id": "STEEL-SM490A",
+      "category": "STEEL",
+      "label_th": "SM490A — เหล็กรีดร้อน",
+      "standard": "JIS G3106",
+      "grade_or_product": "SM490A",
+      "version": "0.5.0",
+      "properties": {
+        "density_mean_kg_m3": 7850,
+        "E_MPa": 200000,
+        "nu": 0.3,
+        "G_MPa": 76923.07692307692,
+        "alpha_per_C": 1.2e-05,
+        "Fy_MPa": null,
+        "Fu_min_MPa": 490,
+        "Fu_max_MPa": 610
+      },
+      "source_ids": [
+        "YM-GRADES",
+        "AISC-E-EXAMPLE",
+        "SCI-ELASTIC",
+        "MODEL-CONSTANTS"
+      ],
+      "applicability": {
+        "product_form": "HOT_ROLLED",
+        "compatible_section_families": [
+          "H",
+          "I",
+          "C"
+        ],
+        "temperature": "AMBIENT",
+        "thickness_min_mm": 0,
+        "thickness_min_inclusive": false,
+        "thickness_max_mm": 40,
+        "governing_thickness_rule": "H -> tf; I and hot-rolled C -> tw (Yamato footnote7). Other forms need their own evidence."
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "SPECIFIED_GRADE_LIMITS",
+      "elastic_model_id": "ELASTIC-200GPA",
+      "strength_bands": [
+        {
+          "min_mm": 0,
+          "min_inclusive": false,
+          "max_mm": 16,
+          "Fy_MPa": 325
+        },
+        {
+          "min_mm": 16,
+          "min_inclusive": false,
+          "max_mm": 40,
+          "Fy_MPa": 315
+        }
+      ],
+      "preset_sha256": "1465fd5d39a7ac41a3250d07cb8f760a6d72f75350322af09d8baae3010449d0"
+    },
+    {
+      "material_id": "STEEL-STK400",
+      "category": "STEEL",
+      "label_th": "STK400 — ท่อกลม",
+      "standard": "TIS107-2566 / JIS G3444",
+      "grade_or_product": "STK400",
+      "version": "0.5.0",
+      "properties": {
+        "density_mean_kg_m3": 7850,
+        "E_MPa": 200000,
+        "nu": 0.3,
+        "G_MPa": 76923.07692307692,
+        "alpha_per_C": 1.2e-05,
+        "Fy_MPa": 235,
+        "Fu_min_MPa": 400,
+        "Fu_max_MPa": null
+      },
+      "source_ids": [
+        "PAP-TUBE-2026",
+        "AISC-E-EXAMPLE",
+        "SCI-ELASTIC",
+        "MODEL-CONSTANTS"
+      ],
+      "applicability": {
+        "product_form": "TUBE",
+        "compatible_section_families": [
+          "CHS"
+        ],
+        "temperature": "AMBIENT",
+        "thickness_min_mm": 0,
+        "thickness_min_inclusive": false,
+        "thickness_max_mm": null,
+        "certificate_required": true
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "SPECIFIED_MINIMUM",
+      "elastic_model_id": "ELASTIC-200GPA",
+      "preset_sha256": "ed5ed3a290bd5d218ff4f6031a7ecb3fd645e09f67109d384397e6affe5f4fc5"
+    },
+    {
+      "material_id": "STEEL-STK490",
+      "category": "STEEL",
+      "label_th": "STK490 — ท่อกลม",
+      "standard": "TIS107-2566 / JIS G3444",
+      "grade_or_product": "STK490",
+      "version": "0.5.0",
+      "properties": {
+        "density_mean_kg_m3": 7850,
+        "E_MPa": 200000,
+        "nu": 0.3,
+        "G_MPa": 76923.07692307692,
+        "alpha_per_C": 1.2e-05,
+        "Fy_MPa": 315,
+        "Fu_min_MPa": 490,
+        "Fu_max_MPa": null
+      },
+      "source_ids": [
+        "PAP-TUBE-2026",
+        "AISC-E-EXAMPLE",
+        "SCI-ELASTIC",
+        "MODEL-CONSTANTS"
+      ],
+      "applicability": {
+        "product_form": "TUBE",
+        "compatible_section_families": [
+          "CHS"
+        ],
+        "temperature": "AMBIENT",
+        "thickness_min_mm": 0,
+        "thickness_min_inclusive": false,
+        "thickness_max_mm": null,
+        "certificate_required": true
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "SPECIFIED_MINIMUM",
+      "elastic_model_id": "ELASTIC-200GPA",
+      "preset_sha256": "756b600f68eed1a87dfe03350cc1e530ce3202666c2a60fc8436b1facd68dc97"
+    },
+    {
+      "material_id": "STEEL-STKR400",
+      "category": "STEEL",
+      "label_th": "STKR400 — ท่อเหลี่ยม",
+      "standard": "TIS107-2566 / JIS G3466",
+      "grade_or_product": "STKR400",
+      "version": "0.5.0",
+      "properties": {
+        "density_mean_kg_m3": 7850,
+        "E_MPa": 200000,
+        "nu": 0.3,
+        "G_MPa": 76923.07692307692,
+        "alpha_per_C": 1.2e-05,
+        "Fy_MPa": 245,
+        "Fu_min_MPa": 400,
+        "Fu_max_MPa": null
+      },
+      "source_ids": [
+        "PAP-TUBE-2026",
+        "AISC-E-EXAMPLE",
+        "SCI-ELASTIC",
+        "MODEL-CONSTANTS"
+      ],
+      "applicability": {
+        "product_form": "TUBE",
+        "compatible_section_families": [
+          "SHS",
+          "RHS"
+        ],
+        "temperature": "AMBIENT",
+        "thickness_min_mm": 0,
+        "thickness_min_inclusive": false,
+        "thickness_max_mm": null,
+        "certificate_required": true
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "SPECIFIED_MINIMUM",
+      "elastic_model_id": "ELASTIC-200GPA",
+      "preset_sha256": "9ce2cd687f0315ee3036447febd2477c7680e1f40648ab4019b447197a35b37e"
+    },
+    {
+      "material_id": "STEEL-STKR490",
+      "category": "STEEL",
+      "label_th": "STKR490 — ท่อเหลี่ยม",
+      "standard": "TIS107-2566 / JIS G3466",
+      "grade_or_product": "STKR490",
+      "version": "0.5.0",
+      "properties": {
+        "density_mean_kg_m3": 7850,
+        "E_MPa": 200000,
+        "nu": 0.3,
+        "G_MPa": 76923.07692307692,
+        "alpha_per_C": 1.2e-05,
+        "Fy_MPa": 325,
+        "Fu_min_MPa": 490,
+        "Fu_max_MPa": null
+      },
+      "source_ids": [
+        "PAP-TUBE-2026",
+        "AISC-E-EXAMPLE",
+        "SCI-ELASTIC",
+        "MODEL-CONSTANTS"
+      ],
+      "applicability": {
+        "product_form": "TUBE",
+        "compatible_section_families": [
+          "SHS",
+          "RHS"
+        ],
+        "temperature": "AMBIENT",
+        "thickness_min_mm": 0,
+        "thickness_min_inclusive": false,
+        "thickness_max_mm": null,
+        "certificate_required": true
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "SPECIFIED_MINIMUM",
+      "elastic_model_id": "ELASTIC-200GPA",
+      "preset_sha256": "f78332073e28d39ab8f3e1467822d8b279d9ac1d7db55e1ed5ff7a9274077ee5"
+    },
+    {
+      "material_id": "STEEL-SSCS400",
+      "category": "STEEL",
+      "label_th": "SSCS400 — ตัวซีขึ้นรูปเย็น",
+      "standard": "TIS1228-2561 (manufacturer marking reference)",
+      "grade_or_product": "SSCS400",
+      "version": "0.5.0",
+      "properties": {
+        "density_mean_kg_m3": 7850,
+        "E_MPa": 200000,
+        "nu": 0.3,
+        "G_MPa": 76923.07692307692,
+        "alpha_per_C": 1.2e-05,
+        "Fy_MPa": 245,
+        "Fu_min_MPa": 400,
+        "Fu_max_MPa": 510
+      },
+      "source_ids": [
+        "PAP-CLIP-2026",
+        "AISC-E-EXAMPLE",
+        "SCI-ELASTIC",
+        "MODEL-CONSTANTS"
+      ],
+      "applicability": {
+        "product_form": "COLD_FORMED_UNCOATED",
+        "compatible_section_families": [
+          "C_LIP"
+        ],
+        "temperature": "AMBIENT",
+        "thickness_min_mm": 0,
+        "thickness_min_inclusive": false,
+        "thickness_max_mm": 6,
+        "certificate_required": true
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "SPECIFIED_GRADE_LIMITS",
+      "elastic_model_id": "ELASTIC-200GPA",
+      "preset_sha256": "6755456dabd86b3451accc565d309a843cfeecb2d8125af80a3343c5bf121bf5"
+    },
+    {
+      "material_id": "STEEL-SSCS490",
+      "category": "STEEL",
+      "label_th": "SSCS490 — ตัวซีขึ้นรูปเย็น",
+      "standard": "TIS1228-2561 (manufacturer marking reference)",
+      "grade_or_product": "SSCS490",
+      "version": "0.5.0",
+      "properties": {
+        "density_mean_kg_m3": 7850,
+        "E_MPa": 200000,
+        "nu": 0.3,
+        "G_MPa": 76923.07692307692,
+        "alpha_per_C": 1.2e-05,
+        "Fy_MPa": 285,
+        "Fu_min_MPa": 490,
+        "Fu_max_MPa": 610
+      },
+      "source_ids": [
+        "PAP-CLIP-2026",
+        "AISC-E-EXAMPLE",
+        "SCI-ELASTIC",
+        "MODEL-CONSTANTS"
+      ],
+      "applicability": {
+        "product_form": "COLD_FORMED_UNCOATED",
+        "compatible_section_families": [
+          "C_LIP"
+        ],
+        "temperature": "AMBIENT",
+        "thickness_min_mm": 0,
+        "thickness_min_inclusive": false,
+        "thickness_max_mm": 6,
+        "certificate_required": true
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "SPECIFIED_GRADE_LIMITS",
+      "elastic_model_id": "ELASTIC-200GPA",
+      "preset_sha256": "01d93579d47154c3c11a919e1bf55c764ba9e6cf74f337564d01a5a464e6688d"
+    },
+    {
+      "material_id": "STEEL-SSCS540",
+      "category": "STEEL",
+      "label_th": "SSCS540 — ตัวซีขึ้นรูปเย็น",
+      "standard": "TIS1228-2561 (manufacturer marking reference)",
+      "grade_or_product": "SSCS540",
+      "version": "0.5.0",
+      "properties": {
+        "density_mean_kg_m3": 7850,
+        "E_MPa": 200000,
+        "nu": 0.3,
+        "G_MPa": 76923.07692307692,
+        "alpha_per_C": 1.2e-05,
+        "Fy_MPa": 400,
+        "Fu_min_MPa": null,
+        "Fu_max_MPa": null
+      },
+      "source_ids": [
+        "PAP-CLIP-2026",
+        "AISC-E-EXAMPLE",
+        "SCI-ELASTIC",
+        "MODEL-CONSTANTS"
+      ],
+      "applicability": {
+        "product_form": "COLD_FORMED_UNCOATED",
+        "compatible_section_families": [
+          "C_LIP"
+        ],
+        "temperature": "AMBIENT",
+        "thickness_min_mm": 0,
+        "thickness_min_inclusive": false,
+        "thickness_max_mm": 6,
+        "certificate_required": true
+      },
+      "data_status": "PARTIAL_SOURCE_REVIEW_REQUIRED",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "SPECIFIED_GRADE_LIMITS",
+      "elastic_model_id": "ELASTIC-200GPA",
+      "source_issues": [
+        {
+          "field": "Fu_min_MPa",
+          "source_literal": "ต่ำกว่า 540",
+          "source_locator": "Pacific Pipe 2026_2, PDF page26 / printed50, SSCS540 tensile-strength cell",
+          "issue": "Printed text says below540 under a minimum-properties heading; not silently corrected to >=540.",
+          "resolution": "Fu limits remain null until manufacturer/standard evidence clarifies the source."
+        }
+      ],
+      "preset_sha256": "c7f6c2363ea63d49ad47e50b3b23df50b6fcab623ee512e474e3f4a618a44e84"
+    },
+    {
+      "material_id": "TIMBER-EN338-C14",
+      "category": "TIMBER",
+      "label_th": "C14 — ไม้จัดชั้นกำลัง EN338",
+      "standard": "EN338:2016 (Swedish Wood 2022)",
+      "grade_or_product": "C14",
+      "version": "0.5.0",
+      "properties": {
+        "fm_k_MPa": 14,
+        "ft0_k_MPa": 7.2,
+        "ft90_k_MPa": 0.4,
+        "fc0_k_MPa": 16,
+        "fc90_k_MPa": 2.0,
+        "fv_k_MPa": 3.0,
+        "E0_05_MPa": 4700,
+        "E0_mean_MPa": 7000,
+        "E90_mean_MPa": 230,
+        "Gmean_MPa": 440,
+        "density_k_kg_m3": 290,
+        "density_mean_kg_m3": 350,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null,
+        "E_ref_MPa": null,
+        "Fb_base_MPa": null,
+        "Fc0_base_MPa": null,
+        "Fc90_base_MPa": null,
+        "Fv_base_MPa": null
+      },
+      "source_ids": [
+        "SW-EN338-2022"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "TIMBER_RECT"
+        ],
+        "certified_strength_class_required": true,
+        "ungraded_species_equivalence": false,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "grain": "PARALLEL/PERPENDICULAR",
+        "reference_condition": "EN338 reference conditions, not wet-site approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "03ca40c7a8cea7b515f5720202cffd45aec2c8a6603128d7662c17f33fe47aa0"
+    },
+    {
+      "material_id": "TIMBER-EN338-C16",
+      "category": "TIMBER",
+      "label_th": "C16 — ไม้จัดชั้นกำลัง EN338",
+      "standard": "EN338:2016 (Swedish Wood 2022)",
+      "grade_or_product": "C16",
+      "version": "0.5.0",
+      "properties": {
+        "fm_k_MPa": 16,
+        "ft0_k_MPa": 8.5,
+        "ft90_k_MPa": 0.4,
+        "fc0_k_MPa": 17,
+        "fc90_k_MPa": 2.2,
+        "fv_k_MPa": 3.2,
+        "E0_05_MPa": 5400,
+        "E0_mean_MPa": 8000,
+        "E90_mean_MPa": 270,
+        "Gmean_MPa": 500,
+        "density_k_kg_m3": 310,
+        "density_mean_kg_m3": 370,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null,
+        "E_ref_MPa": null,
+        "Fb_base_MPa": null,
+        "Fc0_base_MPa": null,
+        "Fc90_base_MPa": null,
+        "Fv_base_MPa": null
+      },
+      "source_ids": [
+        "SW-EN338-2022"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "TIMBER_RECT"
+        ],
+        "certified_strength_class_required": true,
+        "ungraded_species_equivalence": false,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "grain": "PARALLEL/PERPENDICULAR",
+        "reference_condition": "EN338 reference conditions, not wet-site approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "57c4b46b5333e2d5b1c3ca53132063a60a4d783cd589b888abb3e2eabd055a77"
+    },
+    {
+      "material_id": "TIMBER-EN338-C18",
+      "category": "TIMBER",
+      "label_th": "C18 — ไม้จัดชั้นกำลัง EN338",
+      "standard": "EN338:2016 (Swedish Wood 2022)",
+      "grade_or_product": "C18",
+      "version": "0.5.0",
+      "properties": {
+        "fm_k_MPa": 18,
+        "ft0_k_MPa": 10,
+        "ft90_k_MPa": 0.4,
+        "fc0_k_MPa": 18,
+        "fc90_k_MPa": 2.2,
+        "fv_k_MPa": 3.4,
+        "E0_05_MPa": 6000,
+        "E0_mean_MPa": 9000,
+        "E90_mean_MPa": 300,
+        "Gmean_MPa": 560,
+        "density_k_kg_m3": 320,
+        "density_mean_kg_m3": 380,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null,
+        "E_ref_MPa": null,
+        "Fb_base_MPa": null,
+        "Fc0_base_MPa": null,
+        "Fc90_base_MPa": null,
+        "Fv_base_MPa": null
+      },
+      "source_ids": [
+        "SW-EN338-2022"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "TIMBER_RECT"
+        ],
+        "certified_strength_class_required": true,
+        "ungraded_species_equivalence": false,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "grain": "PARALLEL/PERPENDICULAR",
+        "reference_condition": "EN338 reference conditions, not wet-site approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "c4eb0e9d0340c37c86aa4e4cb5e8117a8ae90862849a732b1c29a652fcea6fee"
+    },
+    {
+      "material_id": "TIMBER-EN338-C20",
+      "category": "TIMBER",
+      "label_th": "C20 — ไม้จัดชั้นกำลัง EN338",
+      "standard": "EN338:2016 (Swedish Wood 2022)",
+      "grade_or_product": "C20",
+      "version": "0.5.0",
+      "properties": {
+        "fm_k_MPa": 20,
+        "ft0_k_MPa": 11.5,
+        "ft90_k_MPa": 0.4,
+        "fc0_k_MPa": 19,
+        "fc90_k_MPa": 2.3,
+        "fv_k_MPa": 3.6,
+        "E0_05_MPa": 6400,
+        "E0_mean_MPa": 9500,
+        "E90_mean_MPa": 320,
+        "Gmean_MPa": 590,
+        "density_k_kg_m3": 330,
+        "density_mean_kg_m3": 400,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null,
+        "E_ref_MPa": null,
+        "Fb_base_MPa": null,
+        "Fc0_base_MPa": null,
+        "Fc90_base_MPa": null,
+        "Fv_base_MPa": null
+      },
+      "source_ids": [
+        "SW-EN338-2022"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "TIMBER_RECT"
+        ],
+        "certified_strength_class_required": true,
+        "ungraded_species_equivalence": false,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "grain": "PARALLEL/PERPENDICULAR",
+        "reference_condition": "EN338 reference conditions, not wet-site approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "105068963161ce90faf2b87041aad8fe6aa568572d0b8d0f618e2a6916b7b391"
+    },
+    {
+      "material_id": "TIMBER-EN338-C22",
+      "category": "TIMBER",
+      "label_th": "C22 — ไม้จัดชั้นกำลัง EN338",
+      "standard": "EN338:2016 (Swedish Wood 2022)",
+      "grade_or_product": "C22",
+      "version": "0.5.0",
+      "properties": {
+        "fm_k_MPa": 22,
+        "ft0_k_MPa": 13,
+        "ft90_k_MPa": 0.4,
+        "fc0_k_MPa": 20,
+        "fc90_k_MPa": 2.4,
+        "fv_k_MPa": 3.8,
+        "E0_05_MPa": 6700,
+        "E0_mean_MPa": 10000,
+        "E90_mean_MPa": 330,
+        "Gmean_MPa": 630,
+        "density_k_kg_m3": 340,
+        "density_mean_kg_m3": 410,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null,
+        "E_ref_MPa": null,
+        "Fb_base_MPa": null,
+        "Fc0_base_MPa": null,
+        "Fc90_base_MPa": null,
+        "Fv_base_MPa": null
+      },
+      "source_ids": [
+        "SW-EN338-2022"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "TIMBER_RECT"
+        ],
+        "certified_strength_class_required": true,
+        "ungraded_species_equivalence": false,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "grain": "PARALLEL/PERPENDICULAR",
+        "reference_condition": "EN338 reference conditions, not wet-site approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "b43d25076cd6ff1912b643b12bfc4dcafc6341acd2a38e4e7e08cc63f41b7c1f"
+    },
+    {
+      "material_id": "TIMBER-EN338-C24",
+      "category": "TIMBER",
+      "label_th": "C24 — ไม้จัดชั้นกำลัง EN338",
+      "standard": "EN338:2016 (Swedish Wood 2022)",
+      "grade_or_product": "C24",
+      "version": "0.5.0",
+      "properties": {
+        "fm_k_MPa": 24,
+        "ft0_k_MPa": 14.5,
+        "ft90_k_MPa": 0.4,
+        "fc0_k_MPa": 21,
+        "fc90_k_MPa": 2.5,
+        "fv_k_MPa": 4,
+        "E0_05_MPa": 7400,
+        "E0_mean_MPa": 11000,
+        "E90_mean_MPa": 370,
+        "Gmean_MPa": 690,
+        "density_k_kg_m3": 350,
+        "density_mean_kg_m3": 420,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null,
+        "E_ref_MPa": null,
+        "Fb_base_MPa": null,
+        "Fc0_base_MPa": null,
+        "Fc90_base_MPa": null,
+        "Fv_base_MPa": null
+      },
+      "source_ids": [
+        "SW-EN338-2022"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "TIMBER_RECT"
+        ],
+        "certified_strength_class_required": true,
+        "ungraded_species_equivalence": false,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "grain": "PARALLEL/PERPENDICULAR",
+        "reference_condition": "EN338 reference conditions, not wet-site approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "0145b70259cabf96aedcc4604042c0bf64011d9bac239034266b8c2c1e188bb4"
+    },
+    {
+      "material_id": "TIMBER-EN338-C27",
+      "category": "TIMBER",
+      "label_th": "C27 — ไม้จัดชั้นกำลัง EN338",
+      "standard": "EN338:2016 (Swedish Wood 2022)",
+      "grade_or_product": "C27",
+      "version": "0.5.0",
+      "properties": {
+        "fm_k_MPa": 27,
+        "ft0_k_MPa": 16.5,
+        "ft90_k_MPa": 0.4,
+        "fc0_k_MPa": 22,
+        "fc90_k_MPa": 2.5,
+        "fv_k_MPa": 4,
+        "E0_05_MPa": 7700,
+        "E0_mean_MPa": 11500,
+        "E90_mean_MPa": 380,
+        "Gmean_MPa": 720,
+        "density_k_kg_m3": 360,
+        "density_mean_kg_m3": 430,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null,
+        "E_ref_MPa": null,
+        "Fb_base_MPa": null,
+        "Fc0_base_MPa": null,
+        "Fc90_base_MPa": null,
+        "Fv_base_MPa": null
+      },
+      "source_ids": [
+        "SW-EN338-2022"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "TIMBER_RECT"
+        ],
+        "certified_strength_class_required": true,
+        "ungraded_species_equivalence": false,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "grain": "PARALLEL/PERPENDICULAR",
+        "reference_condition": "EN338 reference conditions, not wet-site approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "7e3a61f3fde5b3c91e4d768d91dac00b4855b331f7cf64322e733fd4a1bff352"
+    },
+    {
+      "material_id": "TIMBER-EN338-C30",
+      "category": "TIMBER",
+      "label_th": "C30 — ไม้จัดชั้นกำลัง EN338",
+      "standard": "EN338:2016 (Swedish Wood 2022)",
+      "grade_or_product": "C30",
+      "version": "0.5.0",
+      "properties": {
+        "fm_k_MPa": 30,
+        "ft0_k_MPa": 19,
+        "ft90_k_MPa": 0.4,
+        "fc0_k_MPa": 24,
+        "fc90_k_MPa": 2.7,
+        "fv_k_MPa": 4,
+        "E0_05_MPa": 8000,
+        "E0_mean_MPa": 12000,
+        "E90_mean_MPa": 400,
+        "Gmean_MPa": 750,
+        "density_k_kg_m3": 380,
+        "density_mean_kg_m3": 460,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null,
+        "E_ref_MPa": null,
+        "Fb_base_MPa": null,
+        "Fc0_base_MPa": null,
+        "Fc90_base_MPa": null,
+        "Fv_base_MPa": null
+      },
+      "source_ids": [
+        "SW-EN338-2022"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "TIMBER_RECT"
+        ],
+        "certified_strength_class_required": true,
+        "ungraded_species_equivalence": false,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "grain": "PARALLEL/PERPENDICULAR",
+        "reference_condition": "EN338 reference conditions, not wet-site approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "3b0d61ec1594c27797577d5d47b2e4c82c487c625c8711fd383facb01a6ee8fa"
+    },
+    {
+      "material_id": "TIMBER-EN338-C35",
+      "category": "TIMBER",
+      "label_th": "C35 — ไม้จัดชั้นกำลัง EN338",
+      "standard": "EN338:2016 (Swedish Wood 2022)",
+      "grade_or_product": "C35",
+      "version": "0.5.0",
+      "properties": {
+        "fm_k_MPa": 35,
+        "ft0_k_MPa": 22.5,
+        "ft90_k_MPa": 0.4,
+        "fc0_k_MPa": 25,
+        "fc90_k_MPa": 2.7,
+        "fv_k_MPa": 4,
+        "E0_05_MPa": 8700,
+        "E0_mean_MPa": 13000,
+        "E90_mean_MPa": 430,
+        "Gmean_MPa": 810,
+        "density_k_kg_m3": 390,
+        "density_mean_kg_m3": 470,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null,
+        "E_ref_MPa": null,
+        "Fb_base_MPa": null,
+        "Fc0_base_MPa": null,
+        "Fc90_base_MPa": null,
+        "Fv_base_MPa": null
+      },
+      "source_ids": [
+        "SW-EN338-2022"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "TIMBER_RECT"
+        ],
+        "certified_strength_class_required": true,
+        "ungraded_species_equivalence": false,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "grain": "PARALLEL/PERPENDICULAR",
+        "reference_condition": "EN338 reference conditions, not wet-site approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "945abadeb7445732ec8fb55c93819a7eafa37c9acc4cc8882b1d556113de7713"
+    },
+    {
+      "material_id": "TIMBER-EN338-C40",
+      "category": "TIMBER",
+      "label_th": "C40 — ไม้จัดชั้นกำลัง EN338",
+      "standard": "EN338:2016 (Swedish Wood 2022)",
+      "grade_or_product": "C40",
+      "version": "0.5.0",
+      "properties": {
+        "fm_k_MPa": 40,
+        "ft0_k_MPa": 26,
+        "ft90_k_MPa": 0.4,
+        "fc0_k_MPa": 27,
+        "fc90_k_MPa": 2.8,
+        "fv_k_MPa": 4,
+        "E0_05_MPa": 9400,
+        "E0_mean_MPa": 14000,
+        "E90_mean_MPa": 470,
+        "Gmean_MPa": 880,
+        "density_k_kg_m3": 400,
+        "density_mean_kg_m3": 480,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null,
+        "E_ref_MPa": null,
+        "Fb_base_MPa": null,
+        "Fc0_base_MPa": null,
+        "Fc90_base_MPa": null,
+        "Fv_base_MPa": null
+      },
+      "source_ids": [
+        "SW-EN338-2022"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "TIMBER_RECT"
+        ],
+        "certified_strength_class_required": true,
+        "ungraded_species_equivalence": false,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "grain": "PARALLEL/PERPENDICULAR",
+        "reference_condition": "EN338 reference conditions, not wet-site approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "2eb4701608e8e98f4900fd0e68c4a9a15aaa6eb8c69f13bbdee3702a66416790"
+    },
+    {
+      "material_id": "TIMBER-BOOK-VERY_SOFT",
+      "category": "TIMBER",
+      "label_th": "ไม้เนื้ออ่อนมาก — หนังสือเดิม/รอตรวจรับรอง",
+      "standard": "หนังสือ Design Form Work ตาราง3.4 (อ้าง ว.ส.ท.; ไม่ยืนยันฉบับปัจจุบัน)",
+      "grade_or_product": "ไม้เนื้ออ่อนมาก",
+      "version": "0.5.0",
+      "properties": {
+        "E_ref_MPa": 7737.44685,
+        "Fb_base_MPa": 5.88399,
+        "Fc0_base_MPa": 4.4129925,
+        "Fc90_base_MPa": 1.176798,
+        "Fv_base_MPa": null,
+        "density_mean_kg_m3": null,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null,
+        "density_k_kg_m3": null,
+        "E0_mean_MPa": null,
+        "E0_05_MPa": null,
+        "E90_mean_MPa": null,
+        "Gmean_MPa": null,
+        "fm_k_MPa": null,
+        "ft0_k_MPa": null,
+        "ft90_k_MPa": null,
+        "fc0_k_MPa": null,
+        "fc90_k_MPa": null,
+        "fv_k_MPa": null
+      },
+      "source_ids": [
+        "BOOK-T34"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "TIMBER_RECT"
+        ],
+        "historical_reference_only": true,
+        "default_in_auto_design": false,
+        "actual_species_grade_moisture_required": true
+      },
+      "data_status": "LEGACY_REFERENCE_ONLY",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "LEGACY_ALLOWABLE_BASE",
+      "raw_source_values_kgf_cm2": {
+        "E_ref_MPa": 78900,
+        "Fb_base_MPa": 60,
+        "Fc0_base_MPa": 45,
+        "Fc90_base_MPa": 12,
+        "Fv_base_MPa": null
+      },
+      "preset_sha256": "0dae1be2e88de4ac73f165f207d6e1a4a8d52a2dbfff9a9998fe2b81ac497bf9"
+    },
+    {
+      "material_id": "TIMBER-BOOK-SOFT",
+      "category": "TIMBER",
+      "label_th": "ไม้เนื้ออ่อน — หนังสือเดิม/รอตรวจรับรอง",
+      "standard": "หนังสือ Design Form Work ตาราง3.4 (อ้าง ว.ส.ท.; ไม่ยืนยันฉบับปัจจุบัน)",
+      "grade_or_product": "ไม้เนื้ออ่อน",
+      "version": "0.5.0",
+      "properties": {
+        "E_ref_MPa": 9228.05765,
+        "Fb_base_MPa": 7.84532,
+        "Fc0_base_MPa": 5.88399,
+        "Fc90_base_MPa": 1.569064,
+        "Fv_base_MPa": 0.784532,
+        "density_mean_kg_m3": null,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null,
+        "density_k_kg_m3": null,
+        "E0_mean_MPa": null,
+        "E0_05_MPa": null,
+        "E90_mean_MPa": null,
+        "Gmean_MPa": null,
+        "fm_k_MPa": null,
+        "ft0_k_MPa": null,
+        "ft90_k_MPa": null,
+        "fc0_k_MPa": null,
+        "fc90_k_MPa": null,
+        "fv_k_MPa": null
+      },
+      "source_ids": [
+        "BOOK-T34"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "TIMBER_RECT"
+        ],
+        "historical_reference_only": true,
+        "default_in_auto_design": false,
+        "actual_species_grade_moisture_required": true
+      },
+      "data_status": "LEGACY_REFERENCE_ONLY",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "LEGACY_ALLOWABLE_BASE",
+      "raw_source_values_kgf_cm2": {
+        "E_ref_MPa": 94100,
+        "Fb_base_MPa": 80,
+        "Fc0_base_MPa": 60,
+        "Fc90_base_MPa": 16,
+        "Fv_base_MPa": 8
+      },
+      "preset_sha256": "a2d6a9c0f1b88f749d6d9cecac8c0267883a08792178c6c7cd509be4458bfaf5"
+    },
+    {
+      "material_id": "TIMBER-BOOK-MEDIUM",
+      "category": "TIMBER",
+      "label_th": "ไม้เนื้อปานกลาง — หนังสือเดิม/รอตรวจรับรอง",
+      "standard": "หนังสือ Design Form Work ตาราง3.4 (อ้าง ว.ส.ท.; ไม่ยืนยันฉบับปัจจุบัน)",
+      "grade_or_product": "ไม้เนื้อปานกลาง",
+      "version": "0.5.0",
+      "properties": {
+        "E_ref_MPa": 11012.86795,
+        "Fb_base_MPa": 9.80665,
+        "Fc0_base_MPa": 7.3549875,
+        "Fc90_base_MPa": 2.157463,
+        "Fv_base_MPa": 0.980665,
+        "density_mean_kg_m3": null,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null,
+        "density_k_kg_m3": null,
+        "E0_mean_MPa": null,
+        "E0_05_MPa": null,
+        "E90_mean_MPa": null,
+        "Gmean_MPa": null,
+        "fm_k_MPa": null,
+        "ft0_k_MPa": null,
+        "ft90_k_MPa": null,
+        "fc0_k_MPa": null,
+        "fc90_k_MPa": null,
+        "fv_k_MPa": null
+      },
+      "source_ids": [
+        "BOOK-T34"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "TIMBER_RECT"
+        ],
+        "historical_reference_only": true,
+        "default_in_auto_design": false,
+        "actual_species_grade_moisture_required": true
+      },
+      "data_status": "LEGACY_REFERENCE_ONLY",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "LEGACY_ALLOWABLE_BASE",
+      "raw_source_values_kgf_cm2": {
+        "E_ref_MPa": 112300,
+        "Fb_base_MPa": 100,
+        "Fc0_base_MPa": 75,
+        "Fc90_base_MPa": 22,
+        "Fv_base_MPa": 10
+      },
+      "preset_sha256": "e8c6a293d81c74bf231f99f4add437993a7cbc7c1ae82928260af69c3dffabc5"
+    },
+    {
+      "material_id": "TIMBER-BOOK-HARD",
+      "category": "TIMBER",
+      "label_th": "ไม้เนื้อแข็ง — หนังสือเดิม/รอตรวจรับรอง",
+      "standard": "หนังสือ Design Form Work ตาราง3.4 (อ้าง ว.ส.ท.; ไม่ยืนยันฉบับปัจจุบัน)",
+      "grade_or_product": "ไม้เนื้อแข็ง",
+      "version": "0.5.0",
+      "properties": {
+        "E_ref_MPa": 13366.46395,
+        "Fb_base_MPa": 11.76798,
+        "Fc0_base_MPa": 8.825985,
+        "Fc90_base_MPa": 2.941995,
+        "Fv_base_MPa": 1.176798,
+        "density_mean_kg_m3": null,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null,
+        "density_k_kg_m3": null,
+        "E0_mean_MPa": null,
+        "E0_05_MPa": null,
+        "E90_mean_MPa": null,
+        "Gmean_MPa": null,
+        "fm_k_MPa": null,
+        "ft0_k_MPa": null,
+        "ft90_k_MPa": null,
+        "fc0_k_MPa": null,
+        "fc90_k_MPa": null,
+        "fv_k_MPa": null
+      },
+      "source_ids": [
+        "BOOK-T34"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "TIMBER_RECT"
+        ],
+        "historical_reference_only": true,
+        "default_in_auto_design": false,
+        "actual_species_grade_moisture_required": true
+      },
+      "data_status": "LEGACY_REFERENCE_ONLY",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "LEGACY_ALLOWABLE_BASE",
+      "raw_source_values_kgf_cm2": {
+        "E_ref_MPa": 136300,
+        "Fb_base_MPa": 120,
+        "Fc0_base_MPa": 90,
+        "Fc90_base_MPa": 30,
+        "Fv_base_MPa": 12
+      },
+      "preset_sha256": "4edd8546387ba62f1a59eace74ef6cf7d806c5df66e5331895c95fdc53d315f6"
+    },
+    {
+      "material_id": "TIMBER-BOOK-VERY_HARD",
+      "category": "TIMBER",
+      "label_th": "ไม้เนื้อแข็งมาก — หนังสือเดิม/รอตรวจรับรอง",
+      "standard": "หนังสือ Design Form Work ตาราง3.4 (อ้าง ว.ส.ท.; ไม่ยืนยันฉบับปัจจุบัน)",
+      "grade_or_product": "ไม้เนื้อแข็งมาก",
+      "version": "0.5.0",
+      "properties": {
+        "E_ref_MPa": 18534.5685,
+        "Fb_base_MPa": 14.709975,
+        "Fc0_base_MPa": 10.787315,
+        "Fc90_base_MPa": 3.92266,
+        "Fv_base_MPa": 1.4709975,
+        "density_mean_kg_m3": null,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null,
+        "density_k_kg_m3": null,
+        "E0_mean_MPa": null,
+        "E0_05_MPa": null,
+        "E90_mean_MPa": null,
+        "Gmean_MPa": null,
+        "fm_k_MPa": null,
+        "ft0_k_MPa": null,
+        "ft90_k_MPa": null,
+        "fc0_k_MPa": null,
+        "fc90_k_MPa": null,
+        "fv_k_MPa": null
+      },
+      "source_ids": [
+        "BOOK-T34"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "TIMBER_RECT"
+        ],
+        "historical_reference_only": true,
+        "default_in_auto_design": false,
+        "actual_species_grade_moisture_required": true
+      },
+      "data_status": "LEGACY_REFERENCE_ONLY",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "LEGACY_ALLOWABLE_BASE",
+      "raw_source_values_kgf_cm2": {
+        "E_ref_MPa": 189000,
+        "Fb_base_MPa": 150,
+        "Fc0_base_MPa": 110,
+        "Fc90_base_MPa": 40,
+        "Fv_base_MPa": 15
+      },
+      "preset_sha256": "4d3ec2f2e6ed023670b0745a09dc5e002289247e2f4de81f01e74b6b0cb83f2b"
+    },
+    {
+      "material_id": "PLY-UPM007-6P5",
+      "category": "PLYWOOD",
+      "label_th": "WISA / UPM007CPR — 6.5 mm / 5 ชั้น",
+      "standard": "EN13986:2004+A1:2015 / DoP UPM007CPR 2026-01-01",
+      "grade_or_product": "Structural birch plywood UPM007CPR 6.5 mm",
+      "version": "0.5.0",
+      "properties": {
+        "fm0_k_MPa": 44.6,
+        "fm90_k_MPa": 18.5,
+        "fc_inplane0_k_MPa": 29.3,
+        "fc_inplane90_k_MPa": 22.8,
+        "ft_inplane0_k_MPa": 42.2,
+        "ft_inplane90_k_MPa": 32.8,
+        "Eb0_mean_MPa": 11400,
+        "Eb90_mean_MPa": 4270,
+        "Etc0_mean_MPa": 9844,
+        "Etc90_mean_MPa": 7656,
+        "density_mean_kg_m3": 680,
+        "density_k_kg_m3": 650,
+        "fv_panel_k_MPa": 9.5,
+        "fr0_k_MPa": 3.2,
+        "fr90_k_MPa": 1.8,
+        "Gv_panel_mean_MPa": 620,
+        "Gr0_mean_MPa": 170,
+        "Gr90_mean_MPa": 120,
+        "fc_through_thickness_k_MPa": null,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null
+      },
+      "source_ids": [
+        "UPM007-2026",
+        "UPM-MAP"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "PLYWOOD_GROSS_STRIP"
+        ],
+        "nominal_thickness_mm": 6.5,
+        "number_of_plies": 5,
+        "match_actual_dop_required": true,
+        "face_grain_orientation_required": true,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "gross_effective_convention": "DoP declared full-panel properties: do not pair with separately reduced I without a consistent product model",
+        "external_use": "Coating + edge sealing and product suitability required; not automatic reuse approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "4dac33552e21869e12ff76f302505bb720933099ce406e958ce7db610cceee91"
+    },
+    {
+      "material_id": "PLY-UPM007-9",
+      "category": "PLYWOOD",
+      "label_th": "WISA / UPM007CPR — 9 mm / 7 ชั้น",
+      "standard": "EN13986:2004+A1:2015 / DoP UPM007CPR 2026-01-01",
+      "grade_or_product": "Structural birch plywood UPM007CPR 9 mm",
+      "version": "0.5.0",
+      "properties": {
+        "fm0_k_MPa": 46.4,
+        "fm90_k_MPa": 27.4,
+        "fc_inplane0_k_MPa": 28.3,
+        "fc_inplane90_k_MPa": 23.7,
+        "ft_inplane0_k_MPa": 40.8,
+        "ft_inplane90_k_MPa": 34.2,
+        "Eb0_mean_MPa": 10850,
+        "Eb90_mean_MPa": 6060,
+        "Etc0_mean_MPa": 9511,
+        "Etc90_mean_MPa": 7989,
+        "density_mean_kg_m3": 680,
+        "density_k_kg_m3": 650,
+        "fv_panel_k_MPa": 9.5,
+        "fr0_k_MPa": 2.6,
+        "fr90_k_MPa": 2.4,
+        "Gv_panel_mean_MPa": 620,
+        "Gr0_mean_MPa": 205,
+        "Gr90_mean_MPa": 160,
+        "fc_through_thickness_k_MPa": null,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null
+      },
+      "source_ids": [
+        "UPM007-2026",
+        "UPM-MAP"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "PLYWOOD_GROSS_STRIP"
+        ],
+        "nominal_thickness_mm": 9,
+        "number_of_plies": 7,
+        "match_actual_dop_required": true,
+        "face_grain_orientation_required": true,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "gross_effective_convention": "DoP declared full-panel properties: do not pair with separately reduced I without a consistent product model",
+        "external_use": "Coating + edge sealing and product suitability required; not automatic reuse approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "1404745154cff5a1ed735b6f308a922033d5d253e2e995c1d2ef560b9204a5af"
+    },
+    {
+      "material_id": "PLY-UPM007-12",
+      "category": "PLYWOOD",
+      "label_th": "WISA / UPM007CPR — 12 mm / 9 ชั้น",
+      "standard": "EN13986:2004+A1:2015 / DoP UPM007CPR 2026-01-01",
+      "grade_or_product": "Structural birch plywood UPM007CPR 12 mm",
+      "version": "0.5.0",
+      "properties": {
+        "fm0_k_MPa": 42.9,
+        "fm90_k_MPa": 33.2,
+        "fc_inplane0_k_MPa": 27.7,
+        "fc_inplane90_k_MPa": 24.3,
+        "ft_inplane0_k_MPa": 40.0,
+        "ft_inplane90_k_MPa": 35.0,
+        "Eb0_mean_MPa": 10719,
+        "Eb90_mean_MPa": 6781,
+        "Etc0_mean_MPa": 9333,
+        "Etc90_mean_MPa": 8167,
+        "density_mean_kg_m3": 680,
+        "density_k_kg_m3": 650,
+        "fv_panel_k_MPa": 9.5,
+        "fr0_k_MPa": 2.6,
+        "fr90_k_MPa": 2.4,
+        "Gv_panel_mean_MPa": 620,
+        "Gr0_mean_MPa": 205,
+        "Gr90_mean_MPa": 180,
+        "fc_through_thickness_k_MPa": null,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null
+      },
+      "source_ids": [
+        "UPM007-2026",
+        "UPM-MAP"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "PLYWOOD_GROSS_STRIP"
+        ],
+        "nominal_thickness_mm": 12,
+        "number_of_plies": 9,
+        "match_actual_dop_required": true,
+        "face_grain_orientation_required": true,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "gross_effective_convention": "DoP declared full-panel properties: do not pair with separately reduced I without a consistent product model",
+        "external_use": "Coating + edge sealing and product suitability required; not automatic reuse approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "f1d29ec1be209ccc3a1d4688eba25220bdec53bfc8eea7df08829e4c1a04f541"
+    },
+    {
+      "material_id": "PLY-UPM007-15",
+      "category": "PLYWOOD",
+      "label_th": "WISA / UPM007CPR — 15 mm / 11 ชั้น",
+      "standard": "EN13986:2004+A1:2015 / DoP UPM007CPR 2026-01-01",
+      "grade_or_product": "Structural birch plywood UPM007CPR 15 mm",
+      "version": "0.5.0",
+      "properties": {
+        "fm0_k_MPa": 41.3,
+        "fm90_k_MPa": 33.8,
+        "fc_inplane0_k_MPa": 27.4,
+        "fc_inplane90_k_MPa": 24.6,
+        "ft_inplane0_k_MPa": 39.5,
+        "ft_inplane90_k_MPa": 35.5,
+        "Eb0_mean_MPa": 10316,
+        "Eb90_mean_MPa": 7184,
+        "Etc0_mean_MPa": 9223,
+        "Etc90_mean_MPa": 8277,
+        "density_mean_kg_m3": 680,
+        "density_k_kg_m3": 650,
+        "fv_panel_k_MPa": 9.5,
+        "fr0_k_MPa": 2.6,
+        "fr90_k_MPa": 2.4,
+        "Gv_panel_mean_MPa": 620,
+        "Gr0_mean_MPa": 205,
+        "Gr90_mean_MPa": 180,
+        "fc_through_thickness_k_MPa": null,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null
+      },
+      "source_ids": [
+        "UPM007-2026",
+        "UPM-MAP"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "PLYWOOD_GROSS_STRIP"
+        ],
+        "nominal_thickness_mm": 15,
+        "number_of_plies": 11,
+        "match_actual_dop_required": true,
+        "face_grain_orientation_required": true,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "gross_effective_convention": "DoP declared full-panel properties: do not pair with separately reduced I without a consistent product model",
+        "external_use": "Coating + edge sealing and product suitability required; not automatic reuse approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "b65cf88809c854890c67d1b5c3d6cc81c80a01d852dc55ae3633b555721d657c"
+    },
+    {
+      "material_id": "PLY-UPM007-18",
+      "category": "PLYWOOD",
+      "label_th": "WISA / UPM007CPR — 18 mm / 13 ชั้น",
+      "standard": "EN13986:2004+A1:2015 / DoP UPM007CPR 2026-01-01",
+      "grade_or_product": "Structural birch plywood UPM007CPR 18 mm",
+      "version": "0.5.0",
+      "properties": {
+        "fm0_k_MPa": 40.2,
+        "fm90_k_MPa": 34.1,
+        "fc_inplane0_k_MPa": 27.2,
+        "fc_inplane90_k_MPa": 24.8,
+        "ft_inplane0_k_MPa": 39.2,
+        "ft_inplane90_k_MPa": 35.8,
+        "Eb0_mean_MPa": 10048,
+        "Eb90_mean_MPa": 7452,
+        "Etc0_mean_MPa": 9148,
+        "Etc90_mean_MPa": 8352,
+        "density_mean_kg_m3": 680,
+        "density_k_kg_m3": 650,
+        "fv_panel_k_MPa": 9.5,
+        "fr0_k_MPa": 2.6,
+        "fr90_k_MPa": 2.4,
+        "Gv_panel_mean_MPa": 620,
+        "Gr0_mean_MPa": 205,
+        "Gr90_mean_MPa": 180,
+        "fc_through_thickness_k_MPa": null,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null
+      },
+      "source_ids": [
+        "UPM007-2026",
+        "UPM-MAP"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "PLYWOOD_GROSS_STRIP"
+        ],
+        "nominal_thickness_mm": 18,
+        "number_of_plies": 13,
+        "match_actual_dop_required": true,
+        "face_grain_orientation_required": true,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "gross_effective_convention": "DoP declared full-panel properties: do not pair with separately reduced I without a consistent product model",
+        "external_use": "Coating + edge sealing and product suitability required; not automatic reuse approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "af7a8fb1289d58beb3456cbecfd48702f9b8efb24bdc40c7afdbbc39162e19a5"
+    },
+    {
+      "material_id": "PLY-UPM007-21",
+      "category": "PLYWOOD",
+      "label_th": "WISA / UPM007CPR — 21 mm / 15 ชั้น",
+      "standard": "EN13986:2004+A1:2015 / DoP UPM007CPR 2026-01-01",
+      "grade_or_product": "Structural birch plywood UPM007CPR 21 mm",
+      "version": "0.5.0",
+      "properties": {
+        "fm0_k_MPa": 39.4,
+        "fm90_k_MPa": 34.3,
+        "fc_inplane0_k_MPa": 27.0,
+        "fc_inplane90_k_MPa": 25.0,
+        "ft_inplane0_k_MPa": 39.0,
+        "ft_inplane90_k_MPa": 36.0,
+        "Eb0_mean_MPa": 9858,
+        "Eb90_mean_MPa": 7642,
+        "Etc0_mean_MPa": 9093,
+        "Etc90_mean_MPa": 8407,
+        "density_mean_kg_m3": 680,
+        "density_k_kg_m3": 650,
+        "fv_panel_k_MPa": 9.5,
+        "fr0_k_MPa": 2.6,
+        "fr90_k_MPa": 2.4,
+        "Gv_panel_mean_MPa": 620,
+        "Gr0_mean_MPa": 205,
+        "Gr90_mean_MPa": 180,
+        "fc_through_thickness_k_MPa": null,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null
+      },
+      "source_ids": [
+        "UPM007-2026",
+        "UPM-MAP"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "PLYWOOD_GROSS_STRIP"
+        ],
+        "nominal_thickness_mm": 21,
+        "number_of_plies": 15,
+        "match_actual_dop_required": true,
+        "face_grain_orientation_required": true,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "gross_effective_convention": "DoP declared full-panel properties: do not pair with separately reduced I without a consistent product model",
+        "external_use": "Coating + edge sealing and product suitability required; not automatic reuse approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "7c6468a371dd2f1a80d0562e5dc2e329b0d070d3c0b6396c095789446fc199b3"
+    },
+    {
+      "material_id": "PLY-UPM007-24",
+      "category": "PLYWOOD",
+      "label_th": "WISA / UPM007CPR — 24 mm / 17 ชั้น",
+      "standard": "EN13986:2004+A1:2015 / DoP UPM007CPR 2026-01-01",
+      "grade_or_product": "Structural birch plywood UPM007CPR 24 mm",
+      "version": "0.5.0",
+      "properties": {
+        "fm0_k_MPa": 38.9,
+        "fm90_k_MPa": 34.4,
+        "fc_inplane0_k_MPa": 26.9,
+        "fc_inplane90_k_MPa": 25.1,
+        "ft_inplane0_k_MPa": 38.8,
+        "ft_inplane90_k_MPa": 36.2,
+        "Eb0_mean_MPa": 9717,
+        "Eb90_mean_MPa": 7783,
+        "Etc0_mean_MPa": 9052,
+        "Etc90_mean_MPa": 8448,
+        "density_mean_kg_m3": 680,
+        "density_k_kg_m3": 650,
+        "fv_panel_k_MPa": 9.5,
+        "fr0_k_MPa": 2.6,
+        "fr90_k_MPa": 2.4,
+        "Gv_panel_mean_MPa": 620,
+        "Gr0_mean_MPa": 205,
+        "Gr90_mean_MPa": 180,
+        "fc_through_thickness_k_MPa": null,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null
+      },
+      "source_ids": [
+        "UPM007-2026",
+        "UPM-MAP"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "PLYWOOD_GROSS_STRIP"
+        ],
+        "nominal_thickness_mm": 24,
+        "number_of_plies": 17,
+        "match_actual_dop_required": true,
+        "face_grain_orientation_required": true,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "gross_effective_convention": "DoP declared full-panel properties: do not pair with separately reduced I without a consistent product model",
+        "external_use": "Coating + edge sealing and product suitability required; not automatic reuse approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "b01c9b7d9febff1014c2c3b2bee94f3d965c984dd63740f5db86e1a4bc70516e"
+    },
+    {
+      "material_id": "PLY-UPM007-27",
+      "category": "PLYWOOD",
+      "label_th": "WISA / UPM007CPR — 27 mm / 19 ชั้น",
+      "standard": "EN13986:2004+A1:2015 / DoP UPM007CPR 2026-01-01",
+      "grade_or_product": "Structural birch plywood UPM007CPR 27 mm",
+      "version": "0.5.0",
+      "properties": {
+        "fm0_k_MPa": 38.4,
+        "fm90_k_MPa": 34.5,
+        "fc_inplane0_k_MPa": 26.8,
+        "fc_inplane90_k_MPa": 25.2,
+        "ft_inplane0_k_MPa": 38.7,
+        "ft_inplane90_k_MPa": 36.3,
+        "Eb0_mean_MPa": 9607,
+        "Eb90_mean_MPa": 7893,
+        "Etc0_mean_MPa": 9019,
+        "Etc90_mean_MPa": 8481,
+        "density_mean_kg_m3": 680,
+        "density_k_kg_m3": 650,
+        "fv_panel_k_MPa": 9.5,
+        "fr0_k_MPa": 2.6,
+        "fr90_k_MPa": 2.4,
+        "Gv_panel_mean_MPa": 620,
+        "Gr0_mean_MPa": 205,
+        "Gr90_mean_MPa": 180,
+        "fc_through_thickness_k_MPa": null,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null
+      },
+      "source_ids": [
+        "UPM007-2026",
+        "UPM-MAP"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "PLYWOOD_GROSS_STRIP"
+        ],
+        "nominal_thickness_mm": 27,
+        "number_of_plies": 19,
+        "match_actual_dop_required": true,
+        "face_grain_orientation_required": true,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "gross_effective_convention": "DoP declared full-panel properties: do not pair with separately reduced I without a consistent product model",
+        "external_use": "Coating + edge sealing and product suitability required; not automatic reuse approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "387dcc0ab102b70aa4fc542f7dead9a0f8e0a93a5ebea25de083a8a2a3465b01"
+    },
+    {
+      "material_id": "PLY-UPM007-30",
+      "category": "PLYWOOD",
+      "label_th": "WISA / UPM007CPR — 30 mm / 21 ชั้น",
+      "standard": "EN13986:2004+A1:2015 / DoP UPM007CPR 2026-01-01",
+      "grade_or_product": "Structural birch plywood UPM007CPR 30 mm",
+      "version": "0.5.0",
+      "properties": {
+        "fm0_k_MPa": 38.1,
+        "fm90_k_MPa": 34.6,
+        "fc_inplane0_k_MPa": 26.7,
+        "fc_inplane90_k_MPa": 25.3,
+        "ft_inplane0_k_MPa": 38.5,
+        "ft_inplane90_k_MPa": 36.5,
+        "Eb0_mean_MPa": 9519,
+        "Eb90_mean_MPa": 7981,
+        "Etc0_mean_MPa": 8993,
+        "Etc90_mean_MPa": 8507,
+        "density_mean_kg_m3": 680,
+        "density_k_kg_m3": 650,
+        "fv_panel_k_MPa": 9.5,
+        "fr0_k_MPa": 2.6,
+        "fr90_k_MPa": 2.4,
+        "Gv_panel_mean_MPa": 620,
+        "Gr0_mean_MPa": 205,
+        "Gr90_mean_MPa": 180,
+        "fc_through_thickness_k_MPa": null,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null
+      },
+      "source_ids": [
+        "UPM007-2026",
+        "UPM-MAP"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "PLYWOOD_GROSS_STRIP"
+        ],
+        "nominal_thickness_mm": 30,
+        "number_of_plies": 21,
+        "match_actual_dop_required": true,
+        "face_grain_orientation_required": true,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "gross_effective_convention": "DoP declared full-panel properties: do not pair with separately reduced I without a consistent product model",
+        "external_use": "Coating + edge sealing and product suitability required; not automatic reuse approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "18ba6f39d0b2ffad576222df6d3c0f04d375fadd17313a1410740492c7ae7954"
+    },
+    {
+      "material_id": "PLY-UPM007-32",
+      "category": "PLYWOOD",
+      "label_th": "WISA / UPM007CPR — 32 mm / 23 ชั้น",
+      "standard": "EN13986:2004+A1:2015 / DoP UPM007CPR 2026-01-01",
+      "grade_or_product": "Structural birch plywood UPM007CPR 32 mm",
+      "version": "0.5.0",
+      "properties": {
+        "fm0_k_MPa": 37.8,
+        "fm90_k_MPa": 34.6,
+        "fc_inplane0_k_MPa": 26.7,
+        "fc_inplane90_k_MPa": 25.3,
+        "ft_inplane0_k_MPa": 38.4,
+        "ft_inplane90_k_MPa": 36.6,
+        "Eb0_mean_MPa": 9448,
+        "Eb90_mean_MPa": 8052,
+        "Etc0_mean_MPa": 8972,
+        "Etc90_mean_MPa": 8528,
+        "density_mean_kg_m3": 680,
+        "density_k_kg_m3": 650,
+        "fv_panel_k_MPa": 9.5,
+        "fr0_k_MPa": 2.6,
+        "fr90_k_MPa": 2.4,
+        "Gv_panel_mean_MPa": 620,
+        "Gr0_mean_MPa": 205,
+        "Gr90_mean_MPa": 180,
+        "fc_through_thickness_k_MPa": null,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null
+      },
+      "source_ids": [
+        "UPM007-2026",
+        "UPM-MAP"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "PLYWOOD_GROSS_STRIP"
+        ],
+        "nominal_thickness_mm": 32,
+        "number_of_plies": 23,
+        "match_actual_dop_required": true,
+        "face_grain_orientation_required": true,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "gross_effective_convention": "DoP declared full-panel properties: do not pair with separately reduced I without a consistent product model",
+        "external_use": "Coating + edge sealing and product suitability required; not automatic reuse approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "d6a29d052e3df0fbc066482bee619b3a2d8f4a372d97be759234d428a9b0aa88"
+    },
+    {
+      "material_id": "PLY-UPM007-35",
+      "category": "PLYWOOD",
+      "label_th": "WISA / UPM007CPR — 35 mm / 25 ชั้น",
+      "standard": "EN13986:2004+A1:2015 / DoP UPM007CPR 2026-01-01",
+      "grade_or_product": "Structural birch plywood UPM007CPR 35 mm",
+      "version": "0.5.0",
+      "properties": {
+        "fm0_k_MPa": 37.6,
+        "fm90_k_MPa": 34.7,
+        "fc_inplane0_k_MPa": 26.6,
+        "fc_inplane90_k_MPa": 25.4,
+        "ft_inplane0_k_MPa": 38.4,
+        "ft_inplane90_k_MPa": 36.6,
+        "Eb0_mean_MPa": 9389,
+        "Eb90_mean_MPa": 8111,
+        "Etc0_mean_MPa": 8953,
+        "Etc90_mean_MPa": 8547,
+        "density_mean_kg_m3": 680,
+        "density_k_kg_m3": 650,
+        "fv_panel_k_MPa": 9.5,
+        "fr0_k_MPa": 2.6,
+        "fr90_k_MPa": 2.4,
+        "Gv_panel_mean_MPa": 620,
+        "Gr0_mean_MPa": 205,
+        "Gr90_mean_MPa": 180,
+        "fc_through_thickness_k_MPa": null,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null
+      },
+      "source_ids": [
+        "UPM007-2026",
+        "UPM-MAP"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "PLYWOOD_GROSS_STRIP"
+        ],
+        "nominal_thickness_mm": 35,
+        "number_of_plies": 25,
+        "match_actual_dop_required": true,
+        "face_grain_orientation_required": true,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "gross_effective_convention": "DoP declared full-panel properties: do not pair with separately reduced I without a consistent product model",
+        "external_use": "Coating + edge sealing and product suitability required; not automatic reuse approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "3174394a485da3863784006e40d5ea76957d03d3eb75f72374a5343c2f32a5f5"
+    },
+    {
+      "material_id": "PLY-UPM007-40",
+      "category": "PLYWOOD",
+      "label_th": "WISA / UPM007CPR — 40 mm / 29 ชั้น",
+      "standard": "EN13986:2004+A1:2015 / DoP UPM007CPR 2026-01-01",
+      "grade_or_product": "Structural birch plywood UPM007CPR 40 mm",
+      "version": "0.5.0",
+      "properties": {
+        "fm0_k_MPa": 37.2,
+        "fm90_k_MPa": 34.7,
+        "fc_inplane0_k_MPa": 26.5,
+        "fc_inplane90_k_MPa": 25.5,
+        "ft_inplane0_k_MPa": 38.3,
+        "ft_inplane90_k_MPa": 36.8,
+        "Eb0_mean_MPa": 9296,
+        "Eb90_mean_MPa": 8204,
+        "Etc0_mean_MPa": 8925,
+        "Etc90_mean_MPa": 8575,
+        "density_mean_kg_m3": 680,
+        "density_k_kg_m3": 650,
+        "fv_panel_k_MPa": 9.5,
+        "fr0_k_MPa": 2.6,
+        "fr90_k_MPa": 2.4,
+        "Gv_panel_mean_MPa": 620,
+        "Gr0_mean_MPa": 205,
+        "Gr90_mean_MPa": 180,
+        "fc_through_thickness_k_MPa": null,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null
+      },
+      "source_ids": [
+        "UPM007-2026",
+        "UPM-MAP"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "PLYWOOD_GROSS_STRIP"
+        ],
+        "nominal_thickness_mm": 40,
+        "number_of_plies": 29,
+        "match_actual_dop_required": true,
+        "face_grain_orientation_required": true,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "gross_effective_convention": "DoP declared full-panel properties: do not pair with separately reduced I without a consistent product model",
+        "external_use": "Coating + edge sealing and product suitability required; not automatic reuse approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "34847e307443119042d68699d647476f311e9b1ffa07c169257961ba9032d910"
+    },
+    {
+      "material_id": "PLY-UPM007-45",
+      "category": "PLYWOOD",
+      "label_th": "WISA / UPM007CPR — 45 mm / 33 ชั้น",
+      "standard": "EN13986:2004+A1:2015 / DoP UPM007CPR 2026-01-01",
+      "grade_or_product": "Structural birch plywood UPM007CPR 45 mm",
+      "version": "0.5.0",
+      "properties": {
+        "fm0_k_MPa": 36.9,
+        "fm90_k_MPa": 34.8,
+        "fc_inplane0_k_MPa": 26.5,
+        "fc_inplane90_k_MPa": 25.5,
+        "ft_inplane0_k_MPa": 38.2,
+        "ft_inplane90_k_MPa": 36.8,
+        "Eb0_mean_MPa": 9227,
+        "Eb90_mean_MPa": 8273,
+        "Etc0_mean_MPa": 8904,
+        "Etc90_mean_MPa": 8596,
+        "density_mean_kg_m3": 680,
+        "density_k_kg_m3": 650,
+        "fv_panel_k_MPa": 9.5,
+        "fr0_k_MPa": 2.6,
+        "fr90_k_MPa": 2.4,
+        "Gv_panel_mean_MPa": 620,
+        "Gr0_mean_MPa": 205,
+        "Gr90_mean_MPa": 180,
+        "fc_through_thickness_k_MPa": null,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null
+      },
+      "source_ids": [
+        "UPM007-2026",
+        "UPM-MAP"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "PLYWOOD_GROSS_STRIP"
+        ],
+        "nominal_thickness_mm": 45,
+        "number_of_plies": 33,
+        "match_actual_dop_required": true,
+        "face_grain_orientation_required": true,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "gross_effective_convention": "DoP declared full-panel properties: do not pair with separately reduced I without a consistent product model",
+        "external_use": "Coating + edge sealing and product suitability required; not automatic reuse approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "31605e9609032a8e70165bd922de97b56b6025ed0ec52a8b321f2f04292852e1"
+    },
+    {
+      "material_id": "PLY-UPM007-50",
+      "category": "PLYWOOD",
+      "label_th": "WISA / UPM007CPR — 50 mm / 37 ชั้น",
+      "standard": "EN13986:2004+A1:2015 / DoP UPM007CPR 2026-01-01",
+      "grade_or_product": "Structural birch plywood UPM007CPR 50 mm",
+      "version": "0.5.0",
+      "properties": {
+        "fm0_k_MPa": 36.7,
+        "fm90_k_MPa": 34.8,
+        "fc_inplane0_k_MPa": 26.4,
+        "fc_inplane90_k_MPa": 25.6,
+        "ft_inplane0_k_MPa": 38.1,
+        "ft_inplane90_k_MPa": 36.9,
+        "Eb0_mean_MPa": 9173,
+        "Eb90_mean_MPa": 8327,
+        "Etc0_mean_MPa": 8887,
+        "Etc90_mean_MPa": 8613,
+        "density_mean_kg_m3": 680,
+        "density_k_kg_m3": 650,
+        "fv_panel_k_MPa": 9.5,
+        "fr0_k_MPa": 2.6,
+        "fr90_k_MPa": 2.4,
+        "Gv_panel_mean_MPa": 620,
+        "Gr0_mean_MPa": 205,
+        "Gr90_mean_MPa": 180,
+        "fc_through_thickness_k_MPa": null,
+        "MOR_test_MPa": null,
+        "Ft_test_MPa": null
+      },
+      "source_ids": [
+        "UPM007-2026",
+        "UPM-MAP"
+      ],
+      "applicability": {
+        "compatible_section_families": [
+          "PLYWOOD_GROSS_STRIP"
+        ],
+        "nominal_thickness_mm": 50,
+        "number_of_plies": 37,
+        "match_actual_dop_required": true,
+        "face_grain_orientation_required": true,
+        "service_class_required": true,
+        "load_duration_required": true,
+        "gross_effective_convention": "DoP declared full-panel properties: do not pair with separately reduced I without a consistent product model",
+        "external_use": "Coating + edge sealing and product suitability required; not automatic reuse approval"
+      },
+      "data_status": "REFERENCE_PRESET",
+      "review_status": "PENDING_PROJECT_REVIEW",
+      "construction_release": "NO_GO",
+      "strength_basis": "CHARACTERISTIC",
+      "preset_sha256": "69d54b8ce24811e5320bb90885be9a51d6bb17f2b89682c72d0bba05f918b75c"
+    }
+  ]
+}

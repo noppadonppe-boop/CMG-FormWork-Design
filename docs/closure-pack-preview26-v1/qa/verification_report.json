@@ -1,0 +1,136 @@
+{
+  "package": "RC-FormWork_Closure_Pack_preview26_v1",
+  "checked_on": "2026-10-15",
+  "status": "HANDOFF_DATA_AND_OFFLINE_HELPER_VERIFICATION_ONLY",
+  "node_tests": {
+    "tests": 77,
+    "pass": 77,
+    "fail": 0,
+    "skipped": 0,
+    "todo": 0
+  },
+  "independent_matrix_comparisons": 12,
+  "positive_schema_validations": [
+    {
+      "data": "data/form_tie_machine_bridge.json",
+      "schema": "schemas/form_tie_bridge.schema.json",
+      "result": "VALID_UNAPPROVED_DATA"
+    },
+    {
+      "data": "data/ringlock_component_rating_sidecar.json",
+      "schema": "schemas/ringlock_reference.schema.json",
+      "result": "VALID_UNAPPROVED_DATA"
+    },
+    {
+      "data": "examples/tie_pending_product_evidence.json",
+      "schema": "schemas/tie_draft.schema.json",
+      "result": "VALID_UNAPPROVED_DATA"
+    },
+    {
+      "data": "templates/ringlock_configuration.json",
+      "schema": "schemas/project_input_template.schema.json",
+      "result": "VALID_UNAPPROVED_DATA"
+    },
+    {
+      "data": "templates/serviceability.json",
+      "schema": "schemas/project_input_template.schema.json",
+      "result": "VALID_UNAPPROVED_DATA"
+    },
+    {
+      "data": "templates/stage_release.json",
+      "schema": "schemas/project_input_template.schema.json",
+      "result": "VALID_UNAPPROVED_DATA"
+    },
+    {
+      "data": "templates/support_slab.json",
+      "schema": "schemas/project_input_template.schema.json",
+      "result": "VALID_UNAPPROVED_DATA"
+    },
+    {
+      "data": "templates/support_soil.json",
+      "schema": "schemas/project_input_template.schema.json",
+      "result": "VALID_UNAPPROVED_DATA"
+    }
+  ],
+  "negative_schema_mutations": [
+    {
+      "mutation": "client_confirmation",
+      "result": "REJECTED"
+    },
+    {
+      "mutation": "release_go",
+      "result": "REJECTED"
+    },
+    {
+      "mutation": "empty_checks",
+      "result": "REJECTED"
+    },
+    {
+      "mutation": "duplicate_slot",
+      "result": "REJECTED"
+    },
+    {
+      "mutation": "negative_capacity",
+      "result": "REJECTED"
+    },
+    {
+      "mutation": "string_capacity",
+      "result": "REJECTED"
+    },
+    {
+      "mutation": "unapproved_topology",
+      "result": "REJECTED"
+    },
+    {
+      "mutation": "missing_hash",
+      "result": "REJECTED"
+    }
+  ],
+  "baseline_files_hash_matched": 6,
+  "baseline_ids_retained": [
+    "BOOK-T46-B",
+    "BOOK-T46-BC",
+    "BOOK-T46-C",
+    "BOOK-T46-D",
+    "OKABE-B-W3_8",
+    "OKABE-B-W5_16",
+    "OKABE-D-W1_2",
+    "OKABE-S45C-W3_8"
+  ],
+  "data_counts": {
+    "formtie_references": 11,
+    "tie_topology_templates": 6,
+    "tie_check_slots": 13,
+    "ringlock_component_references": 17,
+    "pending_project_templates": 5,
+    "helper_rule_entries": 13
+  },
+  "typecheck": {
+    "scope": "src/contracts.ts proposed handoff types, not application source",
+    "exit_code": 0
+  },
+  "environment": {
+    "python": "3.13.5",
+    "node": "v22.16.0",
+    "tsc": "Version 5.8.3"
+  },
+  "initial_test_observation": "Initial local pack run:76/77; one new test read limits.My_kNm instead of actual schema limits.value/unit. Fixed only this new test to assert value,unit and source conversion; manufacturer data unchanged. Initial TAP retained. Not the protected application test.",
+  "actual_application": {
+    "read": false,
+    "modified": false,
+    "tests_rerun": false,
+    "preview26_counts": "User-reported only",
+    "protected_test_modified": false,
+    "full_suite_status": "NOT_RERUN; USER_REPORT_RED"
+  },
+  "engineering_acceptance": false,
+  "confirmed": false,
+  "constructionRelease": "NO_GO",
+  "not_performed": [
+    "Complete tie assembly or thread strength verification",
+    "Whole Ringlock configuration/head/base or joint interaction verification",
+    "Geotechnical/slab/punching design verification",
+    "Engineer-reviewed design-code rule release",
+    "Manual acceptance, app launch, Firebase/MCP live/deploy"
+  ]
+}

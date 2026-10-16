@@ -1,0 +1,472 @@
+TAP version 13
+# Subtest: 11 references, 6 templates and 13 check slots with unique IDs
+ok 1 - 11 references, 6 templates and 13 check slots with unique IDs
+  ---
+  duration_ms: 1.407235
+  type: 'test'
+  ...
+# Subtest: all reference records deny automatic design use
+ok 2 - all reference records deny automatic design use
+  ---
+  duration_ms: 0.322187
+  type: 'test'
+  ...
+# Subtest: legacy area not silently used as effective tensile area
+ok 3 - legacy area not silently used as effective tensile area
+  ---
+  duration_ms: 0.128094
+  type: 'test'
+  ...
+# Subtest: Okabe B W3/8 keeps separate breaking30 and allowable21
+ok 4 - Okabe B W3/8 keeps separate breaking30 and allowable21
+  ---
+  duration_ms: 0.162565
+  type: 'test'
+  ...
+# Subtest: no complete tie assembly rating or invented engagement default
+ok 5 - no complete tie assembly rating or invented engagement default
+  ---
+  duration_ms: 0.227033
+  type: 'test'
+  ...
+# Subtest: tie stress unit conversion
+ok 6 - tie stress unit conversion
+  ---
+  duration_ms: 0.243578
+  type: 'test'
+  ...
+# Subtest: zero tensile demand permitted, not zero effective area
+ok 7 - zero tensile demand permitted, not zero effective area
+  ---
+  duration_ms: 0.355507
+  type: 'test'
+  ...
+# Subtest: negative axial tension rejected
+ok 8 - negative axial tension rejected
+  ---
+  duration_ms: 0.101403
+  type: 'test'
+  ...
+# Subtest: strict input types reject unknown/coercion/nonfinite
+ok 9 - strict input types reject unknown/coercion/nonfinite
+  ---
+  duration_ms: 0.785326
+  type: 'test'
+  ...
+# Subtest: numeric overflow rejected
+ok 10 - numeric overflow rejected
+  ---
+  duration_ms: 0.48999
+  type: 'test'
+  ...
+# Subtest: rod extension uses stiffness areas of separate terms
+ok 11 - rod extension uses stiffness areas of separate terms
+  ---
+  duration_ms: 0.31814
+  type: 'test'
+  ...
+# Subtest: rod extension empty array rejected
+ok 12 - rod extension empty array rejected
+  ---
+  duration_ms: 0.094703
+  type: 'test'
+  ...
+# Subtest: rod extension missing E rejected
+ok 13 - rod extension missing E rejected
+  ---
+  duration_ms: 0.212471
+  type: 'test'
+  ...
+# Subtest: rod extension zero/negative dimensions rejected
+ok 14 - rod extension zero/negative dimensions rejected
+  ---
+  duration_ms: 0.13231
+  type: 'test'
+  ...
+# Subtest: two equal spans reaction24.3 not area19.44
+ok 15 - two equal spans reaction24.3 not area19.44
+  ---
+  duration_ms: 0.146081
+  type: 'test'
+  ...
+# Subtest: two equal spans vertical equilibrium
+ok 16 - two equal spans vertical equilibrium
+  ---
+  duration_ms: 0.109605
+  type: 'test'
+  ...
+# Subtest: two equal spans hogging moment
+ok 17 - two equal spans hogging moment
+  ---
+  duration_ms: 0.0665
+  type: 'test'
+  ...
+# Subtest: two spans zero load valid, zero span invalid
+ok 18 - two spans zero load valid, zero span invalid
+  ---
+  duration_ms: 0.178149
+  type: 'test'
+  ...
+# Subtest: symmetric rail split does not halve tie force
+ok 19 - symmetric rail split does not halve tie force
+  ---
+  duration_ms: 0.174524
+  type: 'test'
+  ...
+# Subtest: eccentric rail split maintains force and moment equilibrium
+ok 20 - eccentric rail split maintains force and moment equilibrium
+  ---
+  duration_ms: 0.113741
+  type: 'test'
+  ...
+# Subtest: outside rail support polygon blocked; negative force not clipped
+ok 21 - outside rail support polygon blocked; negative force not clipped
+  ---
+  duration_ms: 0.195866
+  type: 'test'
+  ...
+# Subtest: zero contact on one rail blocked for dedicated model
+ok 22 - zero contact on one rail blocked for dedicated model
+  ---
+  duration_ms: 1.61657
+  type: 'test'
+  ...
+# Subtest: invalid rail separation rejected
+ok 23 - invalid rail separation rejected
+  ---
+  duration_ms: 0.235446
+  type: 'test'
+  ...
+# Subtest: central rectangular contact units, no geotech capacity
+ok 24 - central rectangular contact units, no geotech capacity
+  ---
+  duration_ms: 0.322968
+  type: 'test'
+  ...
+# Subtest: full contact moment gradient uses matching footprint axes
+ok 25 - full contact moment gradient uses matching footprint axes
+  ---
+  duration_ms: 0.100402
+  type: 'test'
+  ...
+# Subtest: negative trial contact pressure is reported, not clamped
+ok 26 - negative trial contact pressure is reported, not clamped
+  ---
+  duration_ms: 0.274996
+  type: 'test'
+  ...
+# Subtest: uplift never becomes compression by absolute value
+ok 27 - uplift never becomes compression by absolute value
+  ---
+  duration_ms: 0.115214
+  type: 'test'
+  ...
+# Subtest: zero compression contact blocked
+ok 28 - zero compression contact blocked
+  ---
+  duration_ms: 0.105028
+  type: 'test'
+  ...
+# Subtest: contact does not default missing moments to zero
+ok 29 - contact does not default missing moments to zero
+  ---
+  duration_ms: 0.083106
+  type: 'test'
+  ...
+# Subtest: punching helper yields average stress only
+ok 30 - punching helper yields average stress only
+  ---
+  duration_ms: 0.101513
+  type: 'test'
+  ...
+# Subtest: punching cannot infer effective depth or critical perimeter
+ok 31 - punching cannot infer effective depth or critical perimeter
+  ---
+  duration_ms: 0.088213
+  type: 'test'
+  ...
+# Subtest: serviceability missing limits blocked
+ok 32 - serviceability missing limits blocked
+  ---
+  duration_ms: 0.13902
+  type: 'test'
+  ...
+# Subtest: serviceability source and load definition mandatory
+ok 33 - serviceability source and load definition mandatory
+  ---
+  duration_ms: 0.124658
+  type: 'test'
+  ...
+# Subtest: serviceability two explicit criteria select tighter one
+ok 34 - serviceability two explicit criteria select tighter one
+  ---
+  duration_ms: 0.143136
+  type: 'test'
+  ...
+# Subtest: serviceability exceeded reported
+ok 35 - serviceability exceeded reported
+  ---
+  duration_ms: 0.103436
+  type: 'test'
+  ...
+# Subtest: serviceability numeric string criterion rejected
+ok 36 - serviceability numeric string criterion rejected
+  ---
+  duration_ms: 0.130847
+  type: 'test'
+  ...
+# Subtest: same stage and snapshot match never grants acceptance
+ok 37 - same stage and snapshot match never grants acceptance
+  ---
+  duration_ms: 0.330579
+  type: 'test'
+  ...
+# Subtest: each context identity mismatch invalidates previous result
+ok 38 - each context identity mismatch invalidates previous result
+  ---
+  duration_ms: 0.366563
+  type: 'test'
+  ...
+# Subtest: captured historical stage cannot be relabelled active
+ok 39 - captured historical stage cannot be relabelled active
+  ---
+  duration_ms: 0.160423
+  type: 'test'
+  ...
+# Subtest: missing context not accepted even on both sides
+ok 40 - missing context not accepted even on both sides
+  ---
+  duration_ms: 0.162846
+  type: 'test'
+  ...
+# Subtest: invalid snapshot hash blocked
+ok 41 - invalid snapshot hash blocked
+  ---
+  duration_ms: 0.07939
+  type: 'test'
+  ...
+# Subtest: signed support forces and moments balance in same datum
+ok 42 - signed support forces and moments balance in same datum
+  ---
+  duration_ms: 0.520006
+  type: 'test'
+  ...
+# Subtest: same sign transfers do not balance
+ok 43 - same sign transfers do not balance
+  ---
+  duration_ms: 0.129135
+  type: 'test'
+  ...
+# Subtest: transfer moments must balance too
+ok 44 - transfer moments must balance too
+  ---
+  duration_ms: 0.134163
+  type: 'test'
+  ...
+# Subtest: different transfer datum blocked, no silent moment translation
+ok 45 - different transfer datum blocked, no silent moment translation
+  ---
+  duration_ms: 0.248445
+  type: 'test'
+  ...
+# Subtest: transfer reference frame mismatch blocked
+ok 46 - transfer reference frame mismatch blocked
+  ---
+  duration_ms: 0.160533
+  type: 'test'
+  ...
+# Subtest: transfer strict three finite components required
+ok 47 - transfer strict three finite components required
+  ---
+  duration_ms: 0.207393
+  type: 'test'
+  ...
+# Subtest: plate slot alias maps explicitly
+ok 48 - plate slot alias maps explicitly
+  ---
+  duration_ms: 0.083977
+  type: 'test'
+  ...
+# Subtest: unknown slot not coerced to nearest spelling
+ok 49 - unknown slot not coerced to nearest spelling
+  ---
+  duration_ms: 0.102234
+  type: 'test'
+  ...
+# Subtest: draft creates all13 empty slots and no capacities
+ok 50 - draft creates all13 empty slots and no capacities
+  ---
+  duration_ms: 0.177679
+  type: 'test'
+  ...
+# Subtest: draft is isolated copy of context
+ok 51 - draft is isolated copy of context
+  ---
+  duration_ms: 0.085129
+  type: 'test'
+  ...
+# Subtest: continuous or custom topology cannot use segmented checks silently
+ok 52 - continuous or custom topology cannot use segmented checks silently
+  ---
+  duration_ms: 0.263608
+  type: 'test'
+  ...
+# Subtest: recovered example remains blocked with known inner reference only
+ok 53 - recovered example remains blocked with known inner reference only
+  ---
+  duration_ms: 0.603231
+  type: 'test'
+  ...
+# Subtest: empty checks never pass
+ok 54 - empty checks never pass
+  ---
+  duration_ms: 0.327895
+  type: 'test'
+  ...
+# Subtest: duplicate slots blocked, including duplicate after alias normalization
+ok 55 - duplicate slots blocked, including duplicate after alias normalization
+  ---
+  duration_ms: 0.38422
+  type: 'test'
+  ...
+# Subtest: all13 supplied synthetic limits only produce numerical screen
+ok 56 - all13 supplied synthetic limits only produce numerical screen
+  ---
+  duration_ms: 0.261896
+  type: 'test'
+  ...
+# Subtest: weakest supplied compatible-basis limit governs
+ok 57 - weakest supplied compatible-basis limit governs
+  ---
+  duration_ms: 0.246613
+  type: 'test'
+  ...
+# Subtest: missing one capacity blocks instead of MIN ignoring empty
+ok 58 - missing one capacity blocks instead of MIN ignoring empty
+  ---
+  duration_ms: 0.223939
+  type: 'test'
+  ...
+# Subtest: breaking capacity cannot substitute allowable
+ok 59 - breaking capacity cannot substitute allowable
+  ---
+  duration_ms: 0.207823
+  type: 'test'
+  ...
+# Subtest: mixed design resistance and working demand rejected
+ok 60 - mixed design resistance and working demand rejected
+  ---
+  duration_ms: 0.205831
+  type: 'test'
+  ...
+# Subtest: separate factored-demand and design-resistance pairing permitted as arithmetic
+ok 61 - separate factored-demand and design-resistance pairing permitted as arithmetic
+  ---
+  duration_ms: 0.257158
+  type: 'test'
+  ...
+# Subtest: inner catalogue entry cannot rate nut/plate/thread independently
+ok 62 - inner catalogue entry cannot rate nut/plate/thread independently
+  ---
+  duration_ms: 0.235275
+  type: 'test'
+  ...
+# Subtest: legacy record cannot certify current product
+ok 63 - legacy record cannot certify current product
+  ---
+  duration_ms: 0.19873
+  type: 'test'
+  ...
+# Subtest: thread engagement shortfall blocked
+ok 64 - thread engagement shortfall blocked
+  ---
+  duration_ms: 0.421636
+  type: 'test'
+  ...
+# Subtest: thread engagement unknown blocked
+ok 65 - thread engagement unknown blocked
+  ---
+  duration_ms: 0.222676
+  type: 'test'
+  ...
+# Subtest: contact capacity must be normalized to full tie axial demand
+ok 66 - contact capacity must be normalized to full tie axial demand
+  ---
+  duration_ms: 0.305532
+  type: 'test'
+  ...
+# Subtest: client confirmed true or GO never accepted
+ok 67 - client confirmed true or GO never accepted
+  ---
+  duration_ms: 0.245501
+  type: 'test'
+  ...
+# Subtest: reference string alone not accepted as verified product or approval
+ok 68 - reference string alone not accepted as verified product or approval
+  ---
+  duration_ms: 0.250558
+  type: 'test'
+  ...
+# Subtest: 17 Doka component rows not tower ratings
+ok 69 - 17 Doka component rows not tower ratings
+  ---
+  duration_ms: 0.113201
+  type: 'test'
+  ...
+# Subtest: exact Doka 2m ledger spacing row returns29 not60kN
+ok 70 - exact Doka 2m ledger spacing row returns29 not60kN
+  ---
+  duration_ms: 0.323308
+  type: 'test'
+  ...
+# Subtest: no interpolation at1750mm or arbitrary geometry fallback
+ok 71 - no interpolation at1750mm or arbitrary geometry fallback
+  ---
+  duration_ms: 0.174023
+  type: 'test'
+  ...
+# Subtest: another manufacturer or year cannot inherit reference
+ok 72 - another manufacturer or year cannot inherit reference
+  ---
+  duration_ms: 0.130597
+  type: 'test'
+  ...
+# Subtest: joint moment105kNcm =1.05kNm not105kNm
+ok 73 - joint moment105kNcm =1.05kNm not105kNm
+  ---
+  duration_ms: 0.146321
+  type: 'test'
+  ...
+# Subtest: brace data restricted to lift2000, not1500mm
+ok 74 - brace data restricted to lift2000, not1500mm
+  ---
+  duration_ms: 0.142024
+  type: 'test'
+  ...
+# Subtest: record with extra unmatched selector key cannot masquerade as exact
+ok 75 - record with extra unmatched selector key cannot masquerade as exact
+  ---
+  duration_ms: 0.130928
+  type: 'test'
+  ...
+# Subtest: duplicate matching source records quarantined
+ok 76 - duplicate matching source records quarantined
+  ---
+  duration_ms: 0.382127
+  type: 'test'
+  ...
+# Subtest: returned source row cannot mutate reference library
+ok 77 - returned source row cannot mutate reference library
+  ---
+  duration_ms: 0.161454
+  type: 'test'
+  ...
+1..77
+# tests 77
+# suites 0
+# pass 77
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 139.699154

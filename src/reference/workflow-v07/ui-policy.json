@@ -1,0 +1,70 @@
+{
+  "schema_version": "0.7.0",
+  "current_sheathing_allowed": [
+    "PLYWOOD"
+  ],
+  "future_sheathing_disabled": [
+    "STEEL_PLATE",
+    "PLASTIC_PANEL",
+    "OTHER"
+  ],
+  "stud_families": [
+    "TIMBER_RECTANGLE",
+    "SHS",
+    "RHS"
+  ],
+  "preferred_timber": {
+    "nominal_label": "1.5 x 3 in",
+    "exact_unit_conversion_mm": [
+      38.1,
+      76.2
+    ],
+    "actual_b_mm": null,
+    "actual_h_mm": null,
+    "dimensions_verified": false,
+    "note": "38.1/76.2 is mathematical conversion only, not guaranteed as-cut/dressed wood size. Historical37.5/75 must not be imported automatically."
+  },
+  "side_waler_families": [
+    "SHS",
+    "RHS",
+    "CHS",
+    "HOT_ROLLED_CHANNEL",
+    "COLD_FORMED_LIPPED_CHANNEL"
+  ],
+  "side_waler_rail_count_default": 2,
+  "rail_behavior_options": [
+    "INDEPENDENT_RAILS_WITH_VERIFIED_LOAD_SHARING",
+    "ENGINEERED_BUILT_UP_SECTION"
+  ],
+  "default_composite_action": false,
+  "paired_rail_clear_gap_mm": null,
+  "plate_product_id": null,
+  "ringlock_supplier_options": [
+    "DOKA_RINGLOCK_CAT2021",
+    "CUSTOM_VERIFIED_SYSTEM"
+  ],
+  "mode_options": [
+    "STANDARD_REFERENCE",
+    "CUSTOM"
+  ],
+  "unknown_policy": "null, never zero or universal capacity",
+  "custom_evidence_fields": [
+    "original",
+    "effective",
+    "unit",
+    "basis",
+    "reason",
+    "source",
+    "editor",
+    "revision"
+  ],
+  "optimizer_locked": [
+    "concrete_geometry",
+    "pour_height",
+    "design_code",
+    "load_definitions",
+    "manufacturer_limits",
+    "actual_stock_dimensions"
+  ],
+  "freshness_policy": "All downstream results and typology coverage invalidated after dependent changes"
+}

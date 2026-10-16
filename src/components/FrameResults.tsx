@@ -1,0 +1,62 @@
+import React from 'react';
+import type {WorkflowModel, previewWorkflow} from '../domain/workflowV07/model';
+import {FrameTubeBindingSummary} from './FrameTubeBinding';
+const show = (v: number | null | undefined) => v == null ? 'UNKNOWN' : v.toLocaleString('en-US', {maximumFractionDigits: 5});
+const values = (a: (number | null)[], factor = 1) => a.map(v => show(v === null ? null : v / factor)).join(' / ');
+export function FrameResults({model, preview}: {model: WorkflowModel; preview: ReturnType<typeof previewWorkflow>}) {
+  const layout = model.frameLayout, frame = preview.frame;
+  if (!layout || !frame) return null;
+  const analysis = frame.analysis, known = layout.nodes.filter(n => n.pointMm.every(v => v !== null));
+  return <section aria-label="ผลเฟรมอันดับหนึ่งจากฉบับร่าง"><h3>เฟรม 3D · แรงอันดับหนึ่ง / BLOCKED / NO_GO</h3>
+    <p>Stage {layout.stageId || 'UNKNOWN'} · Case {layout.loadCaseId || 'UNKNOWN'} · Revision {layout.revisionId} · {layout.loadSource ?? 'ยังไม่เลือกแหล่งแรง'}</p>
+    <p>ข้อมูลที่นำไปใช้ในร่าง: {layout.nodes.length} จุด / {layout.elements.length} สมาชิก / {layout.additionalActions.length} แรงจุดเพิ่มเติม</p>
+    {frame.sideTransfer && <><p>ส่งแรงแบบข้างทางเดียว {frame.sideTransfer.sources.length} จุด ไม่รวมการเคลื่อนตัวของเฟรมย้อนกลับไปเปลี่ยนแรงต้นทาง ยังไม่ตรวจ Clamp / Anchor / จุดสัมผัส</p>
+      <p>หลักฐานแยกสมาชิก: {frame.sideTransfer.separationEvidenceRef}</p>
+      <table aria-label="แรงรายจุดแบบข้างที่ส่งเข้าเฟรม"><thead><tr><th>Face / Waler / Support</th><th>Revision ต้นทาง / จุดเฟรม</th><th>พิกัดต้นทาง · mm</th><th>FX / FY / FZ · N</th><th>MX / MY / MZ · N·mm</th><th>ระยะเยื้อง XYZ · mm</th><th>หลักฐานจุดต่อ / ระยะเยื้อง</th></tr></thead><tbody>{frame.sideTransfer.sources.map(s => <tr key={s.action.id}><td>{s.source.faceId} / {s.source.walerId} / {s.source.supportId}</td><td>{s.upstreamRevision} / {s.action.nodeId}</td><td>{values([s.source.point.xMm, s.source.point.yMm, s.source.point.zMm])}</td><td>{values(s.action.forceN)}</td><td>{values(s.action.momentNmm)}</td><td>{values(s.action.application === 'AT_NODE' ? [0, 0, 0] : s.action.application.offsetMm)}</td><td>{s.mapping.connectionEvidenceRef} / {s.mapping.offsetEvidenceRef ?? 'ตรงจุด'}</td></tr>)}</tbody></table>
+      <p>เศษสมดุลการถ่ายแรง XYZ {values(frame.sideTransfer.equilibrium.forceResidualN)} N · โมเมนต์ XYZ {values(frame.sideTransfer.equilibrium.momentResidualNmm)} N·mm</p></>}
+    <p>ภาพแสดงพิกัดวิเคราะห์ที่ทราบ {known.length} จุด จุดที่ยังไม่ทราบพิกัด {layout.nodes.length - known.length} จุดจะไม่ถูกแทนด้วย 0 หรือย้ายเข้ารูป</p>
+    {!!known.length && <div className="grid two">{([{axes: [0, 1], title: 'XY'}, {axes: [0, 2], title: 'XZ'}] as const).map(({axes, title}) => {
+      const lo = axes.map(d => Math.min(...known.map(n => n.pointMm[d]!))), hi = axes.map(d => Math.max(...known.map(n => n.pointMm[d]!))), scale = 330 / Math.max(1, hi[0] - lo[0], hi[1] - lo[1]);
+      const x = (p: (number | null)[]) => 45 + (p[axes[0]]! - lo[0]) * scale, y = (p: (number | null)[]) => 390 - (p[axes[1]]! - lo[1]) * scale;
+      return <svg key={title} viewBox="0 0 450 440" role="img" aria-label={`เฟรมวิเคราะห์ฉาย ${title}`}>
+        {layout.elements.map(e => {const a = known.find(n => n.id === e.nodeI), b = known.find(n => n.id === e.nodeJ); if (!a || !b) return null;
+          return e.kind === 'JOINT_SPRING' ? <circle key={e.id} cx={x(a.pointMm)} cy={y(a.pointMm)} r="5" fill="none" stroke="#b17a28"/> : <line key={e.id} x1={x(a.pointMm)} y1={y(a.pointMm)} x2={x(b.pointMm)} y2={y(b.pointMm)} stroke={e.role === 'BRACE' ? '#b17a28' : '#173e62'} strokeWidth="2"/>;})}
+        {known.map(n => <g key={n.id}><circle cx={x(n.pointMm)} cy={y(n.pointMm)} r="3" fill="#173e62"/><text x={x(n.pointMm) + 5} y={y(n.pointMm) - 5} fontSize="8">{n.id}</text></g>)}
+        <text x="15" y="420" fontSize="10">{title} · mm · NTS · ตำแหน่งเริ่มต้น / ร่างวิเคราะห์ / NO_GO</text>
+      </svg>;
+    })}</div>}
+    {!analysis && <p role="status">ยังไม่มีผลเฟรมที่ใช้ได้ ข้อมูลที่ขาดหรือเหตุขัดข้องยังคงเป็น BLOCKED</p>}
+    <details><summary>ข้อจำกัด/ข้อมูลเฟรมที่ยังขาด ({frame.blockers.length})</summary><ul>{frame.blockers.map(b => <li key={b}>{b}</li>)}</ul></details>
+    <table><thead><tr><th>จุด / หน้าที่</th><th>X / Y / Z · mm</th><th>UX UY UZ RX RY RZ</th></tr></thead><tbody>{layout.nodes.map(n => <tr key={n.id}><td>{n.id} / {n.role ?? 'UNKNOWN'}</td><td>{values(n.pointMm)}</td><td>{n.boundary.map(b => b.kind === 'UNKNOWN' ? 'UNKNOWN' : b.kind === 'FIXED' ? '0' : b.kind === 'PRESCRIBED' ? show(b.value) : 'FREE').join(' / ')}</td></tr>)}</tbody></table>
+    {model.analysisCase && frame.input && <table aria-label="เงื่อนไขจุดยึดต้นทางและที่ใช้ตามกรณี"><thead><tr><th>จุด</th><th>ต้นทาง UX UY UZ RX RY RZ</th><th>ที่ส่งเข้าแบบจำลองตามกรณี</th></tr></thead><tbody>{layout.nodes.filter(n => n.boundary.some(b => b.kind === 'PRESCRIBED')).map(n => <tr key={n.id}><td>{n.id}</td><td>{n.boundary.map(b => b.kind === 'PRESCRIBED' ? show(b.value) : b.kind).join(' / ')}</td><td>{frame.input!.nodes.find(p => p.id === n.id)?.boundary.map(b => b === 'FREE' ? 'FREE' : show(b)).join(' / ')}</td></tr>)}</tbody></table>}
+    {layout.elements.filter(e => e.binding).map(e => <details key={e.id}><summary>แหล่งหน้าตัด/Elastic ของสมาชิก {e.id}</summary><FrameTubeBindingSummary binding={e.binding!}/></details>)}
+    {frame.input && <><p>สมบัติที่ส่งเข้าแบบจำลองเฟรม · ผลคำนวณสำเร็จ: {analysis ? 'มีแรงอันดับหนึ่งเท่านั้น' : 'ยังไม่มี'} · ไม่ใช่กำลังระบบ</p>
+      <table aria-label="สมบัติสมาชิกที่ส่งเข้าเฟรม"><thead><tr><th>สมาชิก / ชนิด</th><th>E / G · MPa</th><th>A · mm²</th><th>Iy / Iz / J · mm⁴</th></tr></thead><tbody>{frame.input.elements.map(e => <tr key={e.id}><td>{e.id} / {e.kind}</td><td>{e.kind === 'JOINT_SPRING' ? 'จุดต่อแยก' : `${show(e.E_MPa)} / ${show(e.kind === 'BEAM_COLUMN' ? e.G_MPa : null)}`}</td><td>{show(e.kind === 'JOINT_SPRING' ? null : e.A_mm2)}</td><td>{e.kind === 'BEAM_COLUMN' ? values([e.Iy_mm4, e.Iz_mm4, e.J_mm4]) : 'UNKNOWN / UNKNOWN / UNKNOWN'}</td></tr>)}</tbody></table></>}
+    {frame.secondOrder && <section aria-label="ผลเฟรมอันดับสอง P Delta"><h4>เฟรม 3D · P–Delta อันดับสอง / {frame.secondOrder.status} / NO_GO</h4>
+      <p>วิธี {frame.secondOrder.method} · สถานะเสถียรภาพ {frame.secondOrder.stability} · รอบที่ใช้ {frame.secondOrder.iterations} · converged {String(frame.secondOrder.converged)}</p>
+      <p>ความเคลื่อนสูงสุด {show(frame.secondOrder.diagnostics.maxTotalTranslationMm)} mm · แรงอัดอันดับหนึ่ง {show(frame.secondOrder.diagnostics.firstOrderMaxCompressionN)} N · แรงอัดอันดับสอง {show(frame.secondOrder.diagnostics.secondOrderMaxCompressionN)} N · tangent-loss multiplier {show(frame.secondOrder.diagnostics.elasticTangentMultiplier)} เทียบกับแรงแกนชุดนี้ (ไม่ใช่ SWL/กำลังระบบ) · เศษสมดุลอิสระ {show(frame.secondOrder.equilibrium.maxFreeResidualN)} N</p>
+      <table aria-label="แรงแกนเปรียบเทียบอันดับหนึ่งและอันดับสอง"><thead><tr><th>สมาชิก</th><th>N อันดับหนึ่ง · kN (+ดึง)</th><th>N อันดับสอง · kN (+ดึง)</th><th>เพิ่ม/ลด · kN</th><th>แรงอัด · kN</th></tr></thead><tbody>{frame.secondOrder.elements.map(e => <tr key={e.id}><td>{e.id} / {e.kind}</td><td>{show(e.firstOrderAxialForceN === null ? null : e.firstOrderAxialForceN / 1000)}</td><td>{show(e.secondOrderAxialForceN === null ? null : e.secondOrderAxialForceN / 1000)}</td><td>{show(e.axialForceChangeN === null ? null : e.axialForceChangeN / 1000)}</td><td>{show(e.compressionN === null ? null : e.compressionN / 1000)}</td></tr>)}</tbody></table>
+      <details><summary>ข้อจำกัด P–Delta ({frame.secondOrder.blockers.length})</summary><ul>{frame.secondOrder.blockers.map(b => <li key={b}>{b}</li>)}</ul></details>
+    </section>}
+    {analysis && <><p>วิธี {analysis.method} · {frame.actionBasis === 'FACTORED' ? 'แรงคูณสัมประสิทธิ์ตามกรณีที่ระบุ' : 'แรงเป็นค่าบริการตามที่ระบุ'} {frame.secondOrder ? 'มีผล P–Delta แสดงแยกด้านบน แต่ยังไม่ใช่กำลังระบบ' : 'ยังไม่รวมการตรวจผลอันดับสองหรือกำลังระบบ'}</p>
+      <p>เศษสมดุลแรง XYZ {values(analysis.equilibrium.forceResidualN)} N · โมเมนต์ XYZ {values(analysis.equilibrium.momentResidualNmm)} N·mm</p>
+      <table><thead><tr><th>จุด</th><th>UX / UY / UZ · mm</th><th>RX / RY / RZ · rad</th><th>ปฏิกิริยา FX/FY/FZ · kN</th><th>MX/MY/MZ · kN·m</th></tr></thead><tbody>{analysis.nodes.map(n => <tr key={n.id}><td>{n.id}</td><td>{values(n.displacementMm)}</td><td>{values(n.rotationRad)}</td><td>{values(n.reactionForceN, 1000)}</td><td>{values(n.reactionMomentNmm, 1e6)}</td></tr>)}</tbody></table>
+      <table><thead><tr><th>สมาชิก / แบบจำลอง</th><th>N · kN (+ดึง)</th><th>ปลาย I: FX/FY/FZ · kN</th><th>ปลาย I: MX/MY/MZ · kN·m</th><th>ปลาย J: FX/FY/FZ · kN</th><th>ปลาย J: MX/MY/MZ · kN·m</th></tr></thead><tbody>{analysis.elements.map(e => <tr key={e.id}><td>{e.id} / {e.kind}</td><td>{show(e.axialForceN === null ? null : e.axialForceN / 1000)}</td><td>{values(e.localNodalActionsOnElement.slice(0, 3), 1000)}</td><td>{values(e.localNodalActionsOnElement.slice(3, 6), 1e6)}</td><td>{values(e.localNodalActionsOnElement.slice(6, 9), 1000)}</td><td>{values(e.localNodalActionsOnElement.slice(9, 12), 1e6)}</td></tr>)}</tbody></table>
+      <p>แรงปลายสมาชิกเป็นแรงจากจุดที่กระทำต่อสมาชิกตามแกน local การตรวจสมาชิก/จุดต่อ/ฐานรองรับยังไม่ถูกสรุปว่าผ่าน</p>
+    </>}
+    {frame.demands && <section aria-label="บัญชีแรงสมาชิก N M V ของเฟรม"><h4>บัญชีแรงสมาชิก N–M–V–T · {frame.demands.status} / NO_GO</h4>
+      <p>ดึงจากแรงปลาย local ของผลเฟรมปัจจุบันตาม Revision/Stage/Case เดียวกัน; ค่าเป็น demand และ evidence gate เท่านั้น หากมีหลักฐานกำลังที่ผู้ใช้ป้อนครบจะแสดง SCREENED/utilization ตามฐานแรงที่ตรงกัน แต่ไม่ใช่ PASS หรือการอนุมัติก่อสร้าง; ผลอันดับสองเติมเฉพาะแรงแกนที่คำนวณได้</p>
+      <table><thead><tr><th>สมาชิก / Check</th><th>N ปลาย I/J · kN</th><th>N อันดับสอง · kN</th><th>Vy / Vz สูงสุด · kN</th><th>T / My / Mz สูงสุด · kN·m</th><th>Evidence gate</th><th>สถานะ / ข้อมูลที่ขาด</th></tr></thead><tbody>{frame.demands.records.map(d => <tr key={d.memberId}><td>{d.memberId} / {d.role ?? 'UNKNOWN'} / {d.checkId}</td><td>{values(d.signedAxialByEndN, 1000)}</td><td>{show(d.secondOrderAxialForceN === null ? null : d.secondOrderAxialForceN / 1000)}</td><td>{values([d.envelope.shearYAbsN, d.envelope.shearZAbsN], 1000)}</td><td>{values([d.envelope.torsionAbsNmm, d.envelope.momentYAbsNmm, d.envelope.momentZAbsNmm], 1e6)}</td><td>{d.resistanceChecks.map(c => `${c.quantity}:${c.status}${c.utilization === null ? '' : ` (${show(c.utilization)})`}`).join(' · ')}</td><td>{d.status}{d.utilization === null ? '' : ` · max u=${show(d.utilization)}`} · {d.missingInputs.join('; ')}</td></tr>)}</tbody></table>
+      <ul>{frame.demands.blockers.map(b => <li key={b}>{b}</li>)}</ul>
+    </section>}
+    {frame.sls && <section aria-label="ผล SLS เฟรม"><h4>เฟรม SLS · {frame.sls.status} / NO_GO</h4>
+      <p>เทียบ displacement/rotation ของ node ปัจจุบันกับ limit ที่ผู้ใช้ป้อนพร้อมหลักฐานและ source revision เดียวกัน; ค่าไม่มีหลักฐานยังเป็น INCOMPLETE และผล SCREENED ไม่ใช่ PASS หรือการอนุมัติก่อสร้าง</p>
+      <table><thead><tr><th>จุด / ปริมาณ</th><th>Demand</th><th>Limit</th><th>สถานะ / utilization</th><th>ข้อมูลที่ขาด</th></tr></thead><tbody>{frame.sls.records.map(r => <tr key={`${r.nodeId}-${r.quantity}`}><td>{r.nodeId} / {r.quantity}</td><td>{show(r.demand)} {r.evidence?.unit ?? ''}</td><td>{show(r.evidence?.limit)} {r.evidence?.unit ?? ''}</td><td>{r.status}{r.utilization === null ? '' : ` · u=${show(r.utilization)}`}</td><td>{r.blockers.join('; ')}</td></tr>)}</tbody></table>
+      <ul>{frame.sls.blockers.map(b => <li key={b}>{b}</li>)}</ul>
+    </section>}
+    {frame.contractAudit && <section aria-label="ตารางตรวจ Ringlock ตาม contract v0.7"><h4>Contract v0.7 · {frame.contractAudit.status} / NO_GO</h4>
+      <p>ตารางนี้เก็บครบ 12 checks ของ `ringlock-analysis-contract-1.0` ตาม Revision / Stage / Case เดียวกัน; SCREENED เป็นผลคัดกรองเท่านั้น ไม่ใช่ PASS หรือการอนุมัติก่อสร้าง</p>
+      <table aria-label="รายการตรวจ contract Ringlock"><thead><tr><th>Check</th><th>Entity</th><th>สถานะ</th><th>ข้อมูลที่ขาด</th><th>Blocker</th></tr></thead><tbody>{frame.contractAudit.checks.map(c => <tr key={c.checkId}><td>{c.checkId}</td><td>{c.entityIds.length ? c.entityIds.join(', ') : 'ยังไม่ระบุ'}</td><td>{c.status}</td><td>{c.missingInputs.join('; ')}</td><td>{c.blockers.join('; ')}</td></tr>)}</tbody></table>
+    </section>}
+  </section>;
+}

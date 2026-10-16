@@ -1,0 +1,23 @@
+import React from 'react';
+import {emptyPressureSource, emptySidePressure, type SidePressureDefinition} from '../domain/workflowV07/sidePressure';
+
+export function SidePressureEditor({value, onChange}: {value: SidePressureDefinition | null; onChange: (p: SidePressureDefinition | null) => void}) {
+  if (!value) return <fieldset className="side-pressure-editor"><legend>แรงดันของผิวตามตำแหน่ง</legend><p>ผิวนี้ใช้ Hydrostatic จากหัวเทร่วม สามารถระบุช่วงผิวที่สัมผัสคอนกรีตและแรงดันข้างเพิ่มเติมแยกได้</p><button className="btn secondary" onClick={() => onChange(emptySidePressure())}>เริ่มกำหนดแรงดันเฉพาะผิว</button></fieldset>;
+  const number = (s: string) => s.trim() && Number.isFinite(Number(s)) ? Number(s) : null;
+  return <fieldset className="side-pressure-editor"><legend>แรงดันเฉพาะผิว · แทน Hydrostatic ร่วม</legend>
+    <p>X ตามผิวจาก A→B และ Z ขึ้นจากฐานคอนกรีต หน่วย mm แรงดันเป็น kPa ตามแนวปกติออกจากคอนกรีต รายการนี้แทนแรงดันร่วมของผิวทั้งหมด จึงต้องระบุส่วนที่ไม่มีแรงดันด้วย</p>
+    <label className="field"><span>ขอบเขตแรงดันของผิวใน Stage นี้</span><select value={value.scope ?? ''} onChange={e => onChange({...value, scope: e.target.value ? 'REPLACE_COMPLETE_FACE_FOR_STAGE' : null})}><option value="">ยังไม่ระบุ</option><option value="REPLACE_COMPLETE_FACE_FOR_STAGE">ระบุแหล่งแรงดันครบสำหรับผิวและ Stage นี้</option></select></label>
+    <label className="field"><span>หลักฐานแผนแรงดันของผิว</span><input value={value.evidenceRef} onChange={e => onChange({...value, evidenceRef: e.target.value})}/></label>
+    <label className="field"><span>หลักฐานช่วงผิวที่ไม่มีแรงดันหรือเว้นออก</span><input value={value.omittedAreasEvidenceRef} onChange={e => onChange({...value, omittedAreasEvidenceRef: e.target.value})}/></label>
+    {value.sources.map((s, i) => {const update = (p: Partial<typeof s>) => onChange({...value, sources: value.sources.map((old, n) => n === i ? {...old, ...p} : old)}); return <fieldset className="side-pressure-source" key={i}><legend>แหล่งแรงดัน {i + 1} · {s.id}</legend>
+      <div className="form-grid">{([['id', 'รหัสแหล่งแรงดัน'], ['ownershipId', 'รหัสเจ้าของแรงดัน'], ['evidenceRef', 'หลักฐานแรงดันและตำแหน่งจริง'], ['mappingBasisRef', 'วิธี/ฐานแปลงเป็นแรงดันข้างที่อ้างอิง']] as const).map(([key, label]) => <label className="field" key={key}><span>{label}</span><input value={s[key]} onChange={e => update({[key]: e.target.value})}/></label>)}
+        <label className="field"><span>ชนิดแหล่งแรงดันข้าง</span><select value={s.kind ?? ''} onChange={e => update({kind: (e.target.value || null) as typeof s.kind, headMm: null, z0Mm: null, z1Mm: null, p0KPa: null, p1KPa: null})}><option value="">ยังไม่ระบุ</option><option value="HYDROSTATIC">คอนกรีต Hydrostatic ตามหัวเฉพาะช่วง</option><option value="DECLARED_LATERAL">แรงดันข้างที่มีฐานคำนวณแยก · ใช้ตัวคูณ OTHER</option><option value="WIND">แรงดันลมตามวิธีและทิศที่ระบุ</option><option value="PLACEMENT">แรงดัน Placement ตามวิธีที่ระบุ</option></select></label>
+        {(['x0Mm', 'x1Mm'] as const).map(key => <label className="field" key={key}><span>{key === 'x0Mm' ? 'X เริ่มแรงดันจาก A · mm' : 'X สิ้นสุดแรงดันจาก A · mm'}</span><input type="number" min="0" step="any" value={s[key] ?? ''} onChange={e => update({[key]: number(e.target.value)})}/></label>)}
+        {s.kind === 'HYDROSTATIC' ? <label className="field"><span>หัวคอนกรีตเฉพาะช่วงจากฐาน · mm</span><input type="number" min="0" step="any" value={s.headMm ?? ''} onChange={e => update({headMm: number(e.target.value)})}/></label> : s.kind && <>{([['z0Mm', 'Z เริ่มโปรไฟล์จากฐาน · mm'], ['z1Mm', 'Z สิ้นสุดโปรไฟล์จากฐาน · mm'], ['p0KPa', 'แรงดันที่ Z เริ่ม · kPa'], ['p1KPa', 'แรงดันที่ Z สิ้นสุด · kPa']] as const).map(([key, label]) => <label className="field" key={key}><span>{label}</span><input type="number" min="0" step="any" value={s[key] ?? ''} onChange={e => update({[key]: number(e.target.value)})}/></label>)}</>}
+      </div><button className="btn secondary" onClick={() => onChange({...value, sources: value.sources.filter((_, n) => n !== i)})}>ลบแหล่งแรงดัน {i + 1}</button>
+    </fieldset>;})}
+    <button className="btn secondary" disabled={value.sources.length >= 40} onClick={() => {let n = 1; while (value.sources.some(s => s.id === `P-${n}`)) n++; onChange({...value, sources: [...value.sources, emptyPressureSource(`P-${n}`)]});}}>เพิ่มแหล่งแรงดันข้าง</button>
+    <p>Hydrostatic ใช้ γ และหัวจริง แรงดันแบบอื่นต้องมีโปรไฟล์และฐานแปลงที่ทราบ ไม่เติม DL/LL แนวดิ่งเป็นแรงดันข้างให้อัตโนมัติ ยังไม่รองรับแรงกลับทิศ/หลุดสัมผัสหรือข้อสรุปเสถียรภาพระบบ</p>
+    <button className="btn secondary" onClick={() => onChange(null)}>กลับใช้ Hydrostatic จากหัวเทร่วม</button>
+  </fieldset>;
+}

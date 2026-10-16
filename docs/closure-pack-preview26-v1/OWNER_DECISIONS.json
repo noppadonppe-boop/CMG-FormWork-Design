@@ -1,0 +1,21 @@
+{
+  "test_typo_fix": {
+    "path": "tests/source-upload.test.tsx",
+    "reported_line": 21,
+    "reported_token": "rejecnืt",
+    "allowed": false,
+    "reason": "Prior explicit Owner preservation reported in preview26. The broad request to close blockers is not treated as revoking this file-specific restriction.",
+    "proposed_scope_after_explicit_authorization": "Inspect the actual Promise callback/identifier first; fix only the erroneous reference; preserve assertions; rerun affected and full suites; no exclusions, skips, aliases, global shims or swallowed exceptions."
+  },
+  "actual_equipment_selection": {
+    "formTieManufacturerSystem": null,
+    "ringlockManufacturerSystem": null,
+    "evidenceRefs": []
+  },
+  "engineering_acceptance": {
+    "authorizedEngineer": null,
+    "projectDesignBasis": null,
+    "siteDataRefs": []
+  },
+  "constructionRelease": "NO_GO"
+}

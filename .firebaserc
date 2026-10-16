@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "calculationeng"
+  },
+  "targets": {
+    "calculationeng": {
+      "hosting": {
+        "site-05": [
+          "rc-formwork"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

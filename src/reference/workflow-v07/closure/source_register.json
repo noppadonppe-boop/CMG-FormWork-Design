@@ -1,0 +1,131 @@
+{
+  "checked_on": "2026-10-15",
+  "sources": [
+    {
+      "source_id": "BASE062",
+      "title": "User-supplied Form Tie Addendum v0.6.2",
+      "edition": "0.6.2",
+      "url": null,
+      "locator": "original archive, six JSON files recovered byte-for-byte",
+      "access_status": "BYTES_READ",
+      "scope_and_limits": "Migration basis only; original engineering release restrictions retained."
+    },
+    {
+      "source_id": "OKABE-SEP",
+      "title": "Okabe Product Catalog — Separator mechanical characteristics",
+      "edition": "UNDATED",
+      "url": "https://www.okabe.co.jp/english/products/e-book/HTML/index37.html",
+      "locator": "HTML page 37 / printed p35; seven mechanical-property rows",
+      "access_status": "PRIMARY_HTML_TEXT",
+      "scope_and_limits": "PDF exceeds web fetch size; source table image not independently verified. Manufacturer/lot matching and complete-assembly capacities remain unknown."
+    },
+    {
+      "source_id": "OKABE-CONE",
+      "title": "Okabe Product Catalog — Cone",
+      "edition": "UNDATED",
+      "url": "https://www.okabe.co.jp/english/products/e-book/HTML/index38.html",
+      "locator": "HTML page 38 / printed p36, S45C compatibility footnote",
+      "access_status": "PRIMARY_HTML_TEXT",
+      "scope_and_limits": "S45C separator requires matching S45C cone and Form Tie; no numerical cone resistance or minimum thread engagement inferred."
+    },
+    {
+      "source_id": "DOKA-RL-2020",
+      "title": "Doka Ringlock brochure",
+      "edition": "11/2020 en-GB",
+      "url": "https://www.doka.com/web/products/system-groups/doka-working-scaffold-systems/working-scaffolds/ringlock/Ringlock-Doka-Scaffold-Brochure-201119.pdf",
+      "locator": "PDF pp30–32: material identity, p31 component tables/axis sketches, p32 edition",
+      "access_status": "PRIMARY_PDF_TEXT_AND_IMAGES",
+      "scope_and_limits": "Component references only, not full shoring-configuration resistance. All relevant table/axis pages visually checked. Source header says Maximum Design Forces while note calls loads permissible; preserve both and require basis interpretation."
+    },
+    {
+      "source_id": "DOKA-RL-2025",
+      "title": "Doka Ringlock User Information 999823702",
+      "edition": "12/2025",
+      "url": "https://direct.doka.com/_ext/downloads/downloadcenter/999823702_2025_12_online.pdf",
+      "locator": "Search index identifies 124 pages and Ringlock Shoring at p48",
+      "access_status": "DISCOVERED_FULL_TEXT_NOT_RETRIEVED",
+      "scope_and_limits": "Web fetch rejected file >10MB; container downloads unavailable. No capacities or assembly limits imported from snippets."
+    },
+    {
+      "source_id": "DOKA-SHORING",
+      "title": "Doka Ringlock Shoring product page",
+      "edition": "UNDATED",
+      "url": "https://www.doka.com/se/system-groups/doka-load-bearing-systems/ringlock-shoring",
+      "locator": "Shoring-frame overview; up to 60 kN per leg",
+      "access_status": "PRIMARY_HTML_TEXT",
+      "scope_and_limits": "Separate framed shoring system. Advertised maximum is NOT a rating for the user's generic Ringlock standards."
+    },
+    {
+      "source_id": "TH-SHORING-2564",
+      "title": "กฎกระทรวงความปลอดภัยเกี่ยวกับนั่งร้านและค้ำยัน พ.ศ.2564",
+      "edition": "2564; Gazette 1 March 2021",
+      "url": "https://osh.labour.go.th/wp-content/uploads/2026/02/t-0011-2564.pdf",
+      "locator": "PDF p3 / printed p13, clauses 13–14",
+      "access_status": "PRIMARY_GOVERNMENT_PDF_TEXT_AND_IMAGES",
+      "scope_and_limits": "Thai legal design/inspection criteria. Requires engineer interpretation and mapping of resistance bases; not an automatic multiplier on a published SWL."
+    },
+    {
+      "source_id": "BS5975-2-2024",
+      "title": "BS 5975-2:2024 — Temporary works, falsework design and implementation",
+      "edition": "2024",
+      "url": "https://knowledge.bsigroup.com/products/temporary-works-falsework-design-and-implementation-code-of-practice",
+      "locator": "Official scope and revision summary",
+      "access_status": "OFFICIAL_SCOPE_ONLY",
+      "scope_and_limits": "Full licensed clauses not reviewed. Covers permissible-stress and limit-state approaches; do not generate numerical factors from scope."
+    },
+    {
+      "source_id": "BS5975-1-2024",
+      "title": "BS 5975-1:2024 — Temporary works management",
+      "edition": "2024",
+      "url": "https://knowledge.bsigroup.com/products/temporary-works-management-procedures-for-the-control-of-temporary-works-code-of-practice",
+      "locator": "Official scope; with part 2 replaces BS5975:2019",
+      "access_status": "OFFICIAL_SCOPE_ONLY",
+      "scope_and_limits": "Management and review process; not proof of current project approval."
+    },
+    {
+      "source_id": "ACI3472-2025",
+      "title": "ACI PRC-347.2-17(25), Shoring/Reshoring of Concrete Multistory Buildings",
+      "edition": "2017, reapproved 2025",
+      "url": "https://www.concrete.org/store/productdetail.aspx?ItemID=347217",
+      "locator": "Official description and chapter 5 headings",
+      "access_status": "OFFICIAL_SCOPE_ONLY",
+      "scope_and_limits": "Young slab strength, construction-stage redistribution, serviceability. Full numerical clause implementation requires an authorized copy and review."
+    },
+    {
+      "source_id": "ASTM-C1074",
+      "title": "ASTM C1074-19e1, concrete maturity method",
+      "edition": "19e1, listed active when checked",
+      "url": "https://store.astm.org/c1074-19e01.html",
+      "locator": "Scope 1.2; significance/use 5.1–5.4",
+      "access_status": "OFFICIAL_SCOPE_AND_USE",
+      "scope_and_limits": "Strength–maturity calibration for the actual mix and temperature history required. No generic age-to-strength curve implemented."
+    },
+    {
+      "source_id": "CALTRANS-FW4",
+      "title": "Caltrans Falsework Manual, chapter 4",
+      "edition": "September 2023",
+      "url": "https://dot.ca.gov/-/media/dot-media/programs/engineering/documents/structureconstruction/falsework/fw-chpt04-a11y.pdf",
+      "locator": "PDF p3 / printed 4-3, §4-2.01 and equation 4-2.01-1",
+      "access_status": "PRIMARY_PDF_TEXT_AND_IMAGE",
+      "scope_and_limits": "L/240 applies to specified falsework beam concrete-only whole-superstructure load scenario; not Thai universal formwork/SLS criterion, and not settlement/punching capacity."
+    },
+    {
+      "source_id": "OSHA-703",
+      "title": "OSHA 29 CFR 1926.703",
+      "edition": "Web version checked 2026-10-15",
+      "url": "https://www.osha.gov/laws-regs/regulations/standardnumber/1926/1926.703",
+      "locator": "b(5)–b(7), e",
+      "access_status": "PRIMARY_GOVERNMENT_HTML",
+      "scope_and_limits": "US reference for firm support contact/eccentric load design/removal checks, not Thai governing law."
+    },
+    {
+      "source_id": "DERIVED-MECHANICS",
+      "title": "Explicit elementary mechanics and data-contract rules authored in this pack",
+      "edition": "closure-v1",
+      "url": null,
+      "locator": "src/closure-core.mjs and tests",
+      "access_status": "AUTHORED_DERIVATION_NOT_A_CODE",
+      "scope_and_limits": "Statical/arithmetic screening only. Not a general frame solver, proprietary rating method or engineer-approved rule pack."
+    }
+  ]
+}

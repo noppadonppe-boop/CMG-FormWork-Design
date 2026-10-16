@@ -1,0 +1,50 @@
+{
+  "schema_version": "0.7.0",
+  "rating_id": "RATING-REQUIRED",
+  "system_id": null,
+  "manufacturer": null,
+  "configuration_id": null,
+  "rating_type": null,
+  "design_code_id": null,
+  "code_edition": null,
+  "demand_basis": null,
+  "resistance_basis": null,
+  "dimensions": {
+    "bay_x_mm": null,
+    "bay_y_mm": null,
+    "total_height_mm": null,
+    "lift_heights_mm": null,
+    "head_extension_mm": null,
+    "base_extension_mm": null,
+    "top_unrestrained_mm": null,
+    "base_unrestrained_mm": null
+  },
+  "restraint": {
+    "brace_layout_id": null,
+    "horizontal_plan_restraint_id": null,
+    "top_restraint_id": null,
+    "base_restraint_id": null,
+    "joint_stiffness_model_id": null,
+    "eccentricity_limits_mm": null,
+    "wind_limit_kPa": null
+  },
+  "resistance": {
+    "leg_kN": null,
+    "u_head_kN": null,
+    "base_jack_kN": null,
+    "diagonal_tension_kN": null,
+    "diagonal_compression_kN": null,
+    "node_interaction_rule_id": null
+  },
+  "scope": {
+    "includes_self_weight": null,
+    "includes_assembly_imperfections": null,
+    "second_order_considered": null,
+    "allow_interpolation": false,
+    "allow_extrapolation": false
+  },
+  "evidence_ref": null,
+  "thai_compliance_mapping_ref": null,
+  "status": "BLOCKED_MISSING_CONFIGURATION_RATING",
+  "construction_release": "NO_GO"
+}

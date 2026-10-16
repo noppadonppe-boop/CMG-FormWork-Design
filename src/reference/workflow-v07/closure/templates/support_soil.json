@@ -1,0 +1,46 @@
+{
+  "schema_version": "closure-v1",
+  "form_type": "support_soil",
+  "context": {
+    "projectId": null,
+    "revisionId": null,
+    "designSnapshotHash": null,
+    "activeStageId": null,
+    "capturedStageId": null,
+    "loadCaseId": null
+  },
+  "inputs": {
+    "interfaceId": null,
+    "basePlateRef": null,
+    "soleBoardRef": null,
+    "actualFootprint_Bx_mm": null,
+    "actualFootprint_Ly_mm": null,
+    "contactConditionEvidenceRef": null,
+    "geotechnicalReportRef": null,
+    "soilLayerAndGroundwaterRef": null,
+    "grossOrNetBearingBasis": null,
+    "allowableBearingPressure_kPa": null,
+    "bearingDesignResistance_kN": null,
+    "loadResistanceBasis": null,
+    "subgradeModulus_kN_m3": null,
+    "subgradeCalibrationRef": null,
+    "settlementPredictionRef": null,
+    "maxTotalSettlement_mm": null,
+    "maxDifferentialSettlement_mm": null,
+    "differentialGaugeLength_mm": null,
+    "settlementLimitEvidenceRef": null,
+    "drainageAndErosionPlanRef": null,
+    "slidingRestraintRef": null,
+    "notes": "Soil capacity, stiffness and settlement limits are separate; never infer one from another."
+  },
+  "review": {
+    "engineerId": null,
+    "evidenceRef": null,
+    "acceptedSnapshotHash": null,
+    "acceptedStageId": null,
+    "acceptedLoadCaseId": null,
+    "trustedVerificationStatus": "NOT_VERIFIED"
+  },
+  "confirmed": false,
+  "constructionRelease": "NO_GO"
+}

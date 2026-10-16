@@ -1,0 +1,38 @@
+{
+  "provenance": "USER_PASTED_REPORT_NOT_INDEPENDENTLY_VERIFIED",
+  "workspace": "F:\\Project Code\\RC-FormWork-app",
+  "version": "0.7.0-preview.26",
+  "reported_focused_tests": {
+    "passed": 93,
+    "files": 10
+  },
+  "reported_full_suite": {
+    "passed": 688,
+    "failed": 5,
+    "total": 693,
+    "unhandled": 8
+  },
+  "reported_failure_attribution": "rejecnืt in tests/source-upload.test.tsx:21; must verify actual code and error traces before accepting sole-root-cause claim",
+  "protected_files": [
+    "AGENTS.md",
+    "tests/source-upload.test.tsx",
+    "existing Ringlock reference JSON"
+  ],
+  "reported_contracts": [
+    "JACK_HEAD_BASE",
+    "SUPPORT_CONTACT",
+    "STAGE_RELEASE"
+  ],
+  "reported_gate": {
+    "confirmed": false,
+    "constructionRelease": "NO_GO"
+  },
+  "local_device_read_attempt": "Desktop Commander returned Offline; actual files not read. Named preview26 source/verification files were not returned by Library searches.",
+  "not_performed": [
+    "Local app source changes",
+    "Local source hash verification",
+    "Rerun of preview26 app tests/builds",
+    "Live MCP or Firebase access",
+    "Engineering acceptance"
+  ]
+}

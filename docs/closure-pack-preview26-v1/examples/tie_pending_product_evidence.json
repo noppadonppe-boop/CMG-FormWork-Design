@@ -1,0 +1,168 @@
+{
+  "schema_version": "closure-v1",
+  "kind": "TIE_ASSEMBLY_DRAFT",
+  "origin": "SYNTHETIC_EXAMPLE",
+  "context": {
+    "projectId": "SYNTHETIC-PROJECT",
+    "revisionId": "SYN-R1",
+    "designSnapshotHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "activeStageId": "POUR-1",
+    "capturedStageId": "POUR-1",
+    "loadCaseId": "LC-1"
+  },
+  "template_id": "SEGMENTED_INNER_B",
+  "demand": {
+    "axial_kN": 24.3,
+    "basis": "WORKING",
+    "reaction_ref": "SYNTHETIC-TWO-SPAN-BENCHMARK",
+    "symmetry_and_alignment_evidence_ref": null
+  },
+  "checks": [
+    {
+      "slot": "INNER_UNIT",
+      "product_id": null,
+      "reference_record_id": "OKABE-B-W3_8",
+      "capacity_kN": null,
+      "capacity_basis": null,
+      "capacity_scope": "EQUIVALENT_AXIAL_TIE_LIMIT",
+      "evidence_ref": null,
+      "actual_engagement_mm": null,
+      "required_engagement_mm": null
+    },
+    {
+      "slot": "THREAD_END_LEFT",
+      "product_id": null,
+      "reference_record_id": null,
+      "capacity_kN": null,
+      "capacity_basis": null,
+      "capacity_scope": "EQUIVALENT_AXIAL_TIE_LIMIT",
+      "evidence_ref": null,
+      "actual_engagement_mm": null,
+      "required_engagement_mm": null
+    },
+    {
+      "slot": "THREAD_END_RIGHT",
+      "product_id": null,
+      "reference_record_id": null,
+      "capacity_kN": null,
+      "capacity_basis": null,
+      "capacity_scope": "EQUIVALENT_AXIAL_TIE_LIMIT",
+      "evidence_ref": null,
+      "actual_engagement_mm": null,
+      "required_engagement_mm": null
+    },
+    {
+      "slot": "OUTER_LEFT",
+      "product_id": null,
+      "reference_record_id": null,
+      "capacity_kN": null,
+      "capacity_basis": null,
+      "capacity_scope": "EQUIVALENT_AXIAL_TIE_LIMIT",
+      "evidence_ref": null,
+      "actual_engagement_mm": null,
+      "required_engagement_mm": null
+    },
+    {
+      "slot": "OUTER_RIGHT",
+      "product_id": null,
+      "reference_record_id": null,
+      "capacity_kN": null,
+      "capacity_basis": null,
+      "capacity_scope": "EQUIVALENT_AXIAL_TIE_LIMIT",
+      "evidence_ref": null,
+      "actual_engagement_mm": null,
+      "required_engagement_mm": null
+    },
+    {
+      "slot": "END_CONNECTION_LEFT",
+      "product_id": null,
+      "reference_record_id": null,
+      "capacity_kN": null,
+      "capacity_basis": null,
+      "capacity_scope": "EQUIVALENT_AXIAL_TIE_LIMIT",
+      "evidence_ref": null,
+      "actual_engagement_mm": null,
+      "required_engagement_mm": null
+    },
+    {
+      "slot": "END_CONNECTION_RIGHT",
+      "product_id": null,
+      "reference_record_id": null,
+      "capacity_kN": null,
+      "capacity_basis": null,
+      "capacity_scope": "EQUIVALENT_AXIAL_TIE_LIMIT",
+      "evidence_ref": null,
+      "actual_engagement_mm": null,
+      "required_engagement_mm": null
+    },
+    {
+      "slot": "NUT_LEFT",
+      "product_id": null,
+      "reference_record_id": null,
+      "capacity_kN": null,
+      "capacity_basis": null,
+      "capacity_scope": "EQUIVALENT_AXIAL_TIE_LIMIT",
+      "evidence_ref": null,
+      "actual_engagement_mm": null,
+      "required_engagement_mm": null
+    },
+    {
+      "slot": "NUT_RIGHT",
+      "product_id": null,
+      "reference_record_id": null,
+      "capacity_kN": null,
+      "capacity_basis": null,
+      "capacity_scope": "EQUIVALENT_AXIAL_TIE_LIMIT",
+      "evidence_ref": null,
+      "actual_engagement_mm": null,
+      "required_engagement_mm": null
+    },
+    {
+      "slot": "PLATE_LEFT",
+      "product_id": null,
+      "reference_record_id": null,
+      "capacity_kN": null,
+      "capacity_basis": null,
+      "capacity_scope": "EQUIVALENT_AXIAL_TIE_LIMIT",
+      "evidence_ref": null,
+      "actual_engagement_mm": null,
+      "required_engagement_mm": null
+    },
+    {
+      "slot": "PLATE_RIGHT",
+      "product_id": null,
+      "reference_record_id": null,
+      "capacity_kN": null,
+      "capacity_basis": null,
+      "capacity_scope": "EQUIVALENT_AXIAL_TIE_LIMIT",
+      "evidence_ref": null,
+      "actual_engagement_mm": null,
+      "required_engagement_mm": null
+    },
+    {
+      "slot": "WALER_LOCAL_LEFT",
+      "product_id": null,
+      "reference_record_id": null,
+      "capacity_kN": null,
+      "capacity_basis": null,
+      "capacity_scope": "EQUIVALENT_AXIAL_TIE_LIMIT",
+      "evidence_ref": null,
+      "actual_engagement_mm": null,
+      "required_engagement_mm": null
+    },
+    {
+      "slot": "WALER_LOCAL_RIGHT",
+      "product_id": null,
+      "reference_record_id": null,
+      "capacity_kN": null,
+      "capacity_basis": null,
+      "capacity_scope": "EQUIVALENT_AXIAL_TIE_LIMIT",
+      "evidence_ref": null,
+      "actual_engagement_mm": null,
+      "required_engagement_mm": null
+    }
+  ],
+  "actual_assembly_compatibility_evidence_ref": null,
+  "confirmed": false,
+  "constructionRelease": "NO_GO"
+}

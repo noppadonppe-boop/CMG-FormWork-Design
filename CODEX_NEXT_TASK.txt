@@ -1,0 +1,46 @@
+CMG FORMWORK — CONTINUE EXISTING v0.3, DO NOT RECREATE
+
+Owner authorizes continued software development and updates to the existing private cloud Site.
+Read docs/CLOUD_TRIAL.md and docs/ENGINEERING_PHASE_02.md / ENGINEERING_PHASE_03.md for the superseding cloud scope.
+Read README.md, docs/CAPABILITIES.md, docs/VALIDATION.md and the attached
+CMG_Formwork_Codex_Master_Prompt.txt version1.1 in full.
+Inspect AGENTS.md if any. Preserve existing source and unrelated projects.
+Run actual tests/builds for changed code. Required source synchronization/private Sites publication
+is authorized; do not change audience, provision Firebase production, use paid AI or issue construction documents.
+
+This is a starting implementation, not an engineering release.
+Do not convert current INCOMPLETE screens to PASS by deleting missing checks.
+Do not call this app complete merely because React builds.
+
+Highest priority:
+1. Complete independently validated pressure/member/reaction models with full calculation traces.
+   The maximum-pressure stud and point-load independent-bay waler modules are labelled screens.
+   These do not validate a physically continuous beam or real assembly.
+   Plywood gross homogeneous properties are DEMO_ONLY, not certified design properties.
+2. Implement criteria/catalog revisions and actual certified material/equipment provenance.
+3. Map every face/stud/waler/tie force using actual installed coordinates and validated support topology.
+   Paired RHS/C members need actual sharing/connection/orientation and buckling/crippling checks.
+4. Keep column external yoke/corner calculation distinct from through-ties. v0.3 adds demand-only
+   and conditional pinned-ring gross-yield screens; hardware, real joints and four-pin stability remain unverified.
+   Implement only independently validated physical configurations before enabling construction acceptance.
+5. 34mm brace type/thickness/length/end condition remains UNKNOWN; require inputs and verified method.
+6. Complete thread/nut/bearing plate/weld/bolt/splice/anchor/foundation/global stability checks.
+7. Improve Firebase to project-scoped RBAC and immutable version/hash state transitions.
+   Current baseline is personal-owner organization; member roles are not a completed team workflow.
+8. Implement exact immutable source metadata, page/revision/box evidence and confirmed-geometry snapshots.
+   Store original PDF as well as selected page images; current live AI route uses the selected page only.
+9. Complete real AI extraction validation, including numeric/bounding-box schemas, missing dimension fields,
+   unit conversion, prompt-injection controls, authorization, user-data consent and retention.
+   No live/provider test is currently proven. Never silently use default dimensions for unknowns.
+10. Implement AI explanation of preliminary catalog-bound alternatives backed by deterministic geometry placement.
+    Current proposal is deterministic and labelled as such.
+11. Add full polygon support beyond Rectangle/L with safe concave offsets, tie paths and connection capability gates.
+12. Build classical report worker with searchable fonts/formulas, stable pagination/A3 drawings and visual QA.
+    Current PDF export is browser printing of an HTML draft, not a validated professional report system.
+13. Add actual component integration/E2E tests and authenticated Functions tests, then prepare Owner manual acceptance.
+
+Report each phase using an honest requirements/capability matrix and actual command outputs.
+Preserve all existing analytical fixtures and rule-isolation tests.
+Before any construction release, require complete verified checks and qualified project review.
+Stop before Firebase production provisioning, paid-provider requests, real project data processing or engineering issue
+unless Owner explicitly authorizes those actions.

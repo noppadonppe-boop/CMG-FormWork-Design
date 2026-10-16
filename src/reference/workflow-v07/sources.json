@@ -1,0 +1,92 @@
+[
+  {
+    "id": "BASE061",
+    "title": "RC-FormWork PreIntegration v0.6.1",
+    "kind": "USER_SUPPLIED_BASELINE",
+    "location": "contracts/architecture_and_calculations.md",
+    "scope": "AI candidate, load paths, paired concrete slab-beam ownership, unchanged approval gates",
+    "url": null
+  },
+  {
+    "id": "BASE062",
+    "title": "Form Tie Design Manual v0.6.2",
+    "kind": "USER_SUPPLIED_BASELINE",
+    "location": "engineering/Form_Tie_Design_Manual.md",
+    "scope": "Inner/outer/end connections, rail bearing, assembly completeness and same-basis resistance",
+    "url": null
+  },
+  {
+    "id": "USER-20261015",
+    "title": "User-requested workflow changes, this turn",
+    "kind": "USER_REQUIREMENT",
+    "location": "Current conversation",
+    "scope": "5 element types; plywood only; paired rails; nominal timber1.5x3; ringlock and added dead/live loads",
+    "url": null
+  },
+  {
+    "id": "DOKA-CAT-2021",
+    "title": "Doka Ringlock Product Catalogue 999818302",
+    "kind": "MANUFACTURER_CATALOGUE",
+    "edition": "12/2021",
+    "checked_on": "2026-10-15",
+    "location": "PDF/printed pp10,12,14,15,18",
+    "scope": "46 selected geometry/mass rows; all 5 table pages visually checked. Not capacity tables or proof of current stock. Not latest edition assertion.",
+    "url": "https://direct.doka.com/_ext/downloads/downloadcenter/999818302_2021_12_online.pdf"
+  },
+  {
+    "id": "DOKA-BROCHURE",
+    "title": "Doka Ringlock brochure",
+    "kind": "MANUFACTURER_BROCHURE",
+    "edition": "File identifier 201119; edition not re-labelled as2026",
+    "checked_on": "2026-10-15",
+    "location": "PDF pp4–8 text",
+    "scope": "Roles of standards, ledgers, base collars, diagonals, U-heads; not shoring load capacity",
+    "url": "https://www.doka.com/web/products/system-groups/doka-working-scaffold-systems/working-scaffolds/ringlock/Ringlock-Doka-Scaffold-Brochure-201119.pdf"
+  },
+  {
+    "id": "DOKA-SHORING-WEB",
+    "title": "Doka Ringlock Shoring frames",
+    "kind": "MANUFACTURER_PRODUCT_OVERVIEW",
+    "edition": "Undated webpage checked2026-10-15",
+    "location": "Ringlock stämptornsramar",
+    "scope": "Separate framed system advertises up to60kN/leg; no configuration ratings imported; cannot apply to catalogue standards",
+    "url": "https://www.doka.com/se/system-groups/doka-load-bearing-systems/ringlock-shoring"
+  },
+  {
+    "id": "LAYHER-TG60",
+    "title": "Layher Allround Shoring TG60",
+    "kind": "MANUFACTURER_PRODUCT_OVERVIEW",
+    "edition": "Undated webpage checked2026-10-15",
+    "location": "Shoring; approval/type test paragraphs",
+    "scope": "Product-specific framed shoring, TP-11-017 configurations; not generic ringlock capacity or interchangeable parts",
+    "url": "https://www.layher.com/en-de/products/shoring"
+  },
+  {
+    "id": "TH-MR-2564",
+    "title": "กฎกระทรวงนั่งร้านและค้ำยัน พ.ศ.2564",
+    "kind": "THAI_GOVERNMENT",
+    "edition": "ราชกิจจานุเบกษา 1 มีนาคม2564",
+    "checked_on": "2026-10-15",
+    "location": "PDF pp2–3, clauses12–16 (esp13)",
+    "scope": "Engineering control, steel/other material safety requirements, support and inspections. Design basis mapping by responsible engineer; not blanket doubling of already-rated SWL.",
+    "url": "https://osh.labour.go.th/wp-content/uploads/2026/02/t-0011-2564.pdf"
+  },
+  {
+    "id": "DOKA-2025-PENDING",
+    "title": "Doka Ringlock User Information 999823702",
+    "kind": "DISCOVERY_ONLY_NOT_IMPORTED",
+    "edition": "12/2025",
+    "checked_on": "2026-10-15",
+    "location": "Search result lists124pages; direct retrieval timed out",
+    "scope": "Newer document discovered; full manual and tables NOT retrieved/verified in this task, so no values imported",
+    "url": "https://direct.doka.com/_ext/downloads/downloadcenter/999823702_2025_12_online.pdf"
+  },
+  {
+    "id": "MODEL07",
+    "title": "v0.7 model-authored specification and synthetic arithmetic",
+    "kind": "PROPOSED_IMPLEMENTATION",
+    "location": "engineering and integration in this package",
+    "scope": "Orthogonal pairing algorithm, loads, symmetric rail statics, height closure; not member capacities, official code provisions or real project verification",
+    "url": null
+  }
+]

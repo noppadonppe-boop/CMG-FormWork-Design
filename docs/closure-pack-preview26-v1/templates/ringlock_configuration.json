@@ -1,0 +1,51 @@
+{
+  "schema_version": "closure-v1",
+  "form_type": "ringlock_configuration",
+  "context": {
+    "projectId": null,
+    "revisionId": null,
+    "designSnapshotHash": null,
+    "activeStageId": null,
+    "capturedStageId": null,
+    "loadCaseId": null
+  },
+  "inputs": {
+    "manufacturer": null,
+    "system": null,
+    "generation": null,
+    "componentCodes": [],
+    "bayX_mm": null,
+    "bayY_mm": null,
+    "liftPattern_mm": [],
+    "totalInstalledHeight_mm": null,
+    "headExtension_mm": null,
+    "headEngagement_mm": null,
+    "baseExtension_mm": null,
+    "baseEngagement_mm": null,
+    "braceLayoutRef": null,
+    "headBaseDetailRef": null,
+    "connectionRulesRef": null,
+    "jointInteractionRuleRef": null,
+    "jointStiffnessRef": null,
+    "globalAnalysisRef": null,
+    "secondOrderAndImperfectionBasisRef": null,
+    "windAndLateralCasesRef": null,
+    "configurationRatingRef": null,
+    "ratingBasis": null,
+    "loadPatternsCovered": [],
+    "perNodeRating_kN": [],
+    "actualProductEvidenceRef": null,
+    "nationalBasisMappingRef": null,
+    "notes": "Either a verified complete configuration rating or engineer-reviewed complete analysis is required; not a uniform advertised kN/leg."
+  },
+  "review": {
+    "engineerId": null,
+    "evidenceRef": null,
+    "acceptedSnapshotHash": null,
+    "acceptedStageId": null,
+    "acceptedLoadCaseId": null,
+    "trustedVerificationStatus": "NOT_VERIFIED"
+  },
+  "confirmed": false,
+  "constructionRelease": "NO_GO"
+}

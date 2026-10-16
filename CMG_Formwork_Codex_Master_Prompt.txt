@@ -1,0 +1,726 @@
+วิธีใช้สำหรับคุณก้อง
+1. เปิด Codex ในโฟลเดอร์ใหม่หรือโฟลเดอร์ที่ตั้งใจใช้สำหรับแอปแบบหล่อ
+2. คัดลอกเนื้อหาทั้งหมดตั้งแต่ “CMG FORMWORK DESIGN PLATFORM” ด้านล่าง ส่งให้ Codex
+3. Prompt นี้สั่งให้สร้างโค้ดและทดสอบในเครื่องด้วย Firebase Emulator ตามลำดับ Phase 0–6
+4. ผลที่ขาดข้อมูลกำลังวัสดุ จุดต่อ ค้ำยัน หรือวิธีคำนวณ ต้องแสดงว่า “ยังตรวจไม่ครบ” และออกรายงานร่างได้
+5. ก่อนใช้แบบจริงต้องมีการตรวจรายการคำนวณและระบบแบบโดยผู้รับผิดชอบโครงการ
+6. ค้ำยันเหล็ก 34 มม. ยังไม่สมมติว่าเป็นท่อหรือเหล็กตัน ต้องเติมชนิด ความหนา ความยาว และจุดยึด
+7. Prompt หลักใช้ภาษาอังกฤษเพื่อระบุข้อกำหนดทางเทคนิคให้ชัดเจน แต่กำหนดให้แอปและรายงานใช้ภาษาไทยเป็นหลัก
+8. เก็บไฟล์นี้เป็นข้อกำหนดงาน และให้ Codex สรุปผลตาม Requirements Matrix ทุก Phase
+9. รุ่น 1.1 เพิ่มขั้นตอน: อัปโหลด PDF/ภาพสเก็ตช์ → AI อ่านแบบ → ผู้ใช้ยืนยันรูปทรงและมิติ → AI เสนอการจัดวางเบื้องต้น → เลือก/แก้ไขแบบ → คำนวณละเอียด → รายงานและแบบติดตั้ง
+10. รองรับรูปตัว L และรูปหลายเหลี่ยมเป็นข้อมูลจริง ตรวจทุกด้านและมุมเว้า ระบบที่ยังไม่มีวิธีคำนวณจุดต่อครบต้องระบุข้อจำกัดอย่างชัดเจน
+
+CMG FORMWORK DESIGN PLATFORM — CODEX MASTER IMPLEMENTATION PROMPT
+Version 1.1 | Revised 2026-10-13 | Owner: CMG Engineering & Construction
+Revision 1.1 adds PDF/sketch/image ingestion, AI geometry extraction, confirmed polygon/L-shaped geometry and preliminary layout recommendations before detailed calculations.
+Deliverable: a working Vite + React + TypeScript + Firebase application, not only a UI mockup.
+Language: Thai UI and reports by default; English engineering terms; optional Chinese component labels.
+Read this entire specification before implementation.
+
+0. OBJECTIVE AND WORKING RULES
+Act as a senior structural software engineer. Build a multi-project platform for importing drawings, interpreting and confirming concrete geometry, proposing and checking plywood-faced formwork for rectangular and supported nonrectangular footings/columns, including L-shaped sections. The platform must produce a traceable classical engineering calculation report and dimensioned assembly/installation drawings from the same confirmed model and calculation snapshot.
+Build deterministic engineering software. An LLM must not calculate authoritative design results, invent material strengths or issue engineering approvals.
+First inspect the selected workspace, existing files, package manifests, runtime versions and applicable AGENTS.md. Preserve unrelated files. Do not assume access to any previously mentioned Windows path.
+If the selected workspace is unrelated, do not modify that repository; propose a separate project directory. If it is empty, initialize a new project there.
+Complete local implementation, documentation and automated tests sequentially by phase. Do not stop merely to ask approval for ordinary reversible coding decisions. Record noncritical assumptions. Missing engineering inputs must block the affected design checks, not the whole software-development task.
+Do not deploy to production, create paid cloud resources, change billing, use real project data, expose credentials, make Git commits/pushes, or connect engineering software unless explicitly authorized.
+Use Firebase Emulator Suite with a demo project ID by default. Production connection must be an explicit, visibly separate configuration.
+Report genuine completed functionality, limitations and test evidence. A successful build is not engineering validation or permission for construction.
+
+1. USER REQUIREMENTS AND PROFESSIONAL ADDITIONS
+Required:
+- Vite + React + TypeScript frontend; Firebase Auth, Firestore, Storage and trusted Cloud Functions.
+- Multiple projects; multiple footing/column sizes and calculation revisions in each project.
+- Initial PDF/sketch/image upload, AI geometry/dimension extraction, user correction/confirmation and preliminary material/layout recommendations.
+- First-class L-shaped/orthogonal-polygon geometry with explicit per-face/corner/load-path engineering capability gates.
+- Plywood skin; Thai-market structural RHS/SHS studs; double RHS or C-channel walers/yokes.
+- Calculate/check plywood thickness, stud section/spacing, waler section/levels, through-tie capacity/spacing and column corner-clamp forces.
+- Calculate/check steel bracing, end connections, base plates, anchors and supporting slab/ground assumptions.
+- Interactive plans, elevations, sections, pressure diagrams, member sections and details.
+- Classical step-by-step engineering report: formula, definitions, units, substitution, result, source and acceptance check.
+- Professional standard template, print/PDF and revision-controlled drawing/report packages.
+
+Add:
+- Material/section/equipment catalogs with evidence, verification status and revisions.
+- Criteria and formula registry with applicability conditions.
+- Manual "Check Existing Layout" and bounded "Propose Layout" modes.
+- Erection/pour/stripping load cases; wind, platform loads, eccentricity and stability.
+- Connections, local bearing/crippling, panel splices, corners, overhangs and tie elongation.
+- Independent calculation validation and regression fixtures.
+- Review/approval/issue workflow, immutable results, audit trail, access control and project isolation.
+- Assembly schedule, approximate quantities and cut list; do not call these fabrication-ready until connection details and tolerances are verified.
+- A concise outstanding-information register per design.
+
+2. SCOPE, SYSTEM TYPES AND CAPABILITY BOUNDARIES
+Implement two distinct formwork systems:
+A. FOOTING_THROUGH_TIE:
+Fresh concrete pressure → plywood → vertical studs → double walers → bearing plates/nuts → through-ties connecting opposite faces.
+Footing base transfers concrete gravity load to the supporting foundation/ground; do not automatically apply concrete weight to side walers.
+B. COLUMN_EXTERNAL_YOKE:
+Fresh concrete pressure → plywood → vertical studs → external yokes/segmented frames → external corner clamps/connections; rectangular cases use four-sided yokes, polygon cases require their own validated topology.
+Do not treat a column external corner rod as a through-tie. Do not size it from p × tributary area or divide a face reaction by two without a validated connection model.
+A column using actual through-ties is a separate explicitly selected system, with rebar/cover/penetration checks.
+Never interchange these systems silently.
+
+Initial validated geometry must include rectangles/squares and constant-height/depth L-shaped orthogonal polygons with flat plywood faces. Other polygon families and their engineering capabilities follow section2C.
+Single-sided forms, climbing/slip forms, circular/tapered columns, inclined forms, curved geometry, top/soffit forms and complex cantilever systems require explicit separate methods. Retain identifiable unsupported source geometry as a draft and block affected engineering checks; never silently replace it with a rectangle.
+Do not create fictitious construction joints to reduce pressure. A phased pour requires the permanent-structure designer's accepted construction-joint location and an actual pour/set-time plan.
+Separate each method's capability: implemented, independently validated, evidence-complete, eligible for project use.
+A calculation method not yet validated must return UNSUPPORTED or INCOMPLETE for the required check. Do not replace it with zero force or a generic safety margin.
+
+2A. FIRST STEP: DRAWING/PDF/SKETCH IMPORT AND AI ASSISTANCE
+The user may begin by uploading a PDF drawing, scanned PDF, photograph of a dimensioned sketch, or PNG/JPEG image instead of typing dimensions.
+Provide a real Upload Drawing / AI Analysis menu within each project/case.
+Use PDF.js or an equivalent verified parser to display selected pages and extract available vector text. Combine selected page images with text for visual analysis; OCR text alone may miss dimensions and drawing relationships.
+Accept multiple relevant views/pages for the same object: plan, sections and elevations. User selects the intended object/type and source revision; do not merge unrelated footings or columns.
+Preserve the original source with immutable content hash, filename, drawing/page/revision metadata and project-scoped access. Page rotations/crops are derived artifacts with recorded transforms, not replacements for the source.
+Scans and photographs must have an editable crop/rotate/deskew workflow; display image-quality/readability warnings.
+No pixel measurement or depicted proportions become a confirmed construction dimension automatically.
+Explicit dimension labels outrank page scale or visual appearance; conflicting dimension labels still require user resolution.
+An image may provide plan dimensions without footing depth or column height; request/allow manual entry of the missing dimension.
+A perspective photograph cannot use one planar scale to recover all 3D dimensions. Preserve UNKNOWN where evidence is insufficient.
+Model extraction must locate the CONCRETE boundary, not accidentally the outer form, reinforcement cover, gridline or dimension-line rectangle.
+Distinguish dimensions describing permanent concrete from proposed formwork sizes.
+Do not execute embedded PDF actions/scripts or fetch external drawing links automatically.
+
+Import workflow:
+SOURCE_UPLOADED → AI_EXTRACTION_DRAFT → GEOMETRY_NEEDS_CONFIRMATION →
+GEOMETRY_CONFIRMED → PRELIMINARY_LAYOUT_PROPOSED → LAYOUT_SELECTED →
+DETERMINISTIC_CALCULATION → ENGINEERING_REVIEW → DOCUMENT_ISSUE.
+These are ingestion/layout events distinct from the engineering/workflow states in section14.
+Users may also enter/draw geometry manually and bypass AI while following the same geometry-validation/confirmation contract.
+AI helps interpret geometry and explain options. It cannot confirm dimensions, approve a design, certify material or write a trusted calculation.
+
+2B. DIMENSION EXTRACTION, EVIDENCE AND HUMAN CONFIRMATION
+Produce schema-validated extraction results, not free text alone.
+Each extracted dimension records:
+dimensionId, target entity/edge, dimension type, original text/value/unit,
+normalized value/unit or null, source artifact hash, page index,
+bounding box/pixel coordinate system and transforms,
+origin EXPLICIT_DIMENSION / DERIVED_CONSTRAINT / SCALE_MEASURED /
+AI_INFERRED / USER_ENTERED, extraction confidence/readability,
+conflict/unknown flags, confirmation status, confirmedBy/At and override reason.
+Confidence is a review aid, not a calibrated probability or a permission to auto-confirm.
+Infer geometry relationships tentatively; do not guess missing critical dimensions just to close the polygon.
+A derived dimension is allowed only from an explicit consistent constraint equation, with derivation shown and user confirmation. It is not a fabricated dimension.
+Keep geometry coordinates separate from dimensional constraints; solve constraints deterministically and detect inconsistency/underdetermination.
+Handle mm/cm/m, decimal separators, feet/inches when explicitly present, handwritten Thai/English labels, rotations, repeated dimensions and differing drawing revisions.
+Unknown depth/height, unresolved critical units, incompatible dimensions or ambiguous target object prevent geometry confirmation.
+Provide a split view: source page on one side, geometry overlay and dimension table on the other. Clicking an edge/dimension highlights its original evidence.
+User can edit vertices, dimensions, height/depth, axes/origin, object identity and boundary classification.
+Every override preserves old extraction data, actor, timestamp and reason.
+Allow a saveable draft when inputs are incomplete. Never convert null to zero.
+Confirm Geometry creates an immutable normalized geometry revision/hash linked to the exact sources and resolution record.
+Geometry confirmation verifies interpreted input; it is NOT engineering approval.
+Changing the source selection/revision, geometry, units or unresolved constraint invalidates current proposals/calculation freshness and creates a new revision. A completed AI job on old inputs cannot overwrite the current draft.
+
+2C. NONRECTANGULAR FOOTINGS/COLUMNS — FIRST-CLASS GEOMETRY
+Required first supported geometric families:
+- Rectangle/square.
+- L-shaped orthogonal simple polygon.
+- T-shaped/U-shaped and other orthogonal simple polygons where all engineering load paths are supported.
+- Other straight-edged simple convex/concave polygons as explicit geometry/import/rendering entities; complete engineering eligibility depends on validated edge/corner/tie methods.
+- Circular/curved outlines, internal voids, sloping/stepped heights, tapers and compound sections can be identified/retained as draft geometry, but require separately implemented analysis methods. Do not silently convert them into a rectangle or approximate them for issued design.
+
+Geometry contract:
+type FOOTING/COLUMN; local datum/axes; outer ring of vertices with IDs;
+directed edges/face IDs, edge lengths and inward/outward normals;
+convex/re-entrant corners with corner IDs/angles;
+constant footing depth or constant column extrusion height for initial supported calculations;
+optional holes/step/curve descriptors with explicit capability status;
+dimension constraints/evidence; revision/hash and units.
+Rendering a shape successfully does not mean its structural system is calculated.
+Require closed non-self-intersecting boundaries, no zero/duplicate edges, positive area,
+consistent orientation/units, stated geometric tolerances and verified dimensional closure.
+Compute area, perimeter, centroid and face normals deterministically. Use robust polygon offset/join algorithms for outside formwork, studs and walers; naive concave offsets can overlap/invert members. Reject or explicitly resolve such collisions.
+Do not automatically snap a nearly orthogonal edge to90 degrees without showing and confirming the change.
+Reject bow-tie polygons, impossible dimensions, negative arm widths, overlapping boundaries and unstable constraint solutions.
+For a polygon with unsupported holes/height transitions, do not ignore hole walls or unmodelled pressure faces; whole-system eligibility remains blocked.
+Do not approximate an L-shaped object by its bounding rectangle.
+If decomposing into analysis zones or panels, the OUTER concrete boundary remains authoritative. Internal partition lines are not formwork walls, construction joints or new load supports.
+Avoid duplicate pressure loads, duplicate corner members and overlapping MTO when two rectangular zones meet.
+
+Per-edge analysis:
+Assign every exposed side face its own local coordinates, vertical/horizontal supports, pressure, member orientation, waler chain, connections and reaction mapping.
+Hydrostatic pressure depends on local depth below the actual current free surface, not plan shape.
+Global X/Y directions alone are insufficient for a general inclined edge; use local face coordinates and transform forces correctly.
+Trace every face's pressure resultant/moment through a supported load path. No omitted concave/notch faces.
+Convex and concave corners have distinct actual connection details; pressure on notch faces must use the correct normal/sign.
+For nonconstant heights or inclined side faces, use a separately validated method; do not stretch the constant-extrusion equations.
+
+Tie routes:
+Define each through-tie by start/end face IDs, actual endpoints, sleeve envelope,
+rod path/length, load direction, end connection/waler supports and offsets.
+Check that the internal through-tie route remains within the intended concrete volume and connects compatible support faces. An external gap crossed by a route is not an internal concrete sleeve.
+For L/U shapes, do not pair faces only because their bounding-box coordinates oppose.
+Initial automatic tie generation is limited to parallel opposed support faces with perpendicular rods. Angled/non-opposing configurations require their own validated vector/joint method and cannot be silently generated as eligible designs.
+Flag missing opposed faces, a rod exiting/re-entering the footprint, inadequate concrete clearance,
+tie/tie clashes, rebar conflicts and inaccessible end nuts.
+A diagonal tie produces force components; it must not be analysed using an orthogonal axial shortcut.
+If a region needs one-sided bracing, external framing or a special corner tie arrangement, identify it and require its verified separate system model.
+For nonrectangular columns, a rectangular four-corner yoke cannot simply be stretched onto an L-shaped perimeter. Require a supported polygonal yoke/segmented-frame connection topology or certified equivalent.
+Unsupported re-entrant-corner/yoke/tie regions still allow preliminary drawings and supported component demands, but block whole-system PASS and construction issue.
+An L-shaped case must be a real geometry/UI/test fixture in this release, not a decorative drawing that silently calculates a rectangle.
+
+2D. AI PRELIMINARY LAYOUT BEFORE DETAILED CALCULATION
+After geometry confirmation, AI explains a preliminary arrangement and offers up to3 coherent candidate layouts.
+Inputs to the proposal:
+confirmed geometry, face/corner IDs, desired surface quality, concrete/pour information,
+project criteria, actual available plywood/Thai steel/rod/brace catalogs,
+assembly preference, stock/panel sizes, handling limits and installation access.
+If concrete/pour data are missing, retain a planning-only proposal with listed unknowns. Do not fabricate a design pressure.
+AI can recommend a preliminary plywood thickness from available thicknesses,
+stud section/orientation/spacing per face, double RHS/C waler section/orientation/levels,
+through-tie diameter/system and actual spacing/routes,
+column yoke/corner arrangement, panel joints, braces/anchors and access provisions.
+No model-generated material strength, equipment capacity or market price.
+Every suggested section/equipment ID must resolve to an allowed catalog revision. If no verified catalog is available, identify candidate needs rather than invent product ratings.
+Recommendations need explanation: load path, lower-pressure/higher-pressure zones,
+concave corners, panel widths/joints, available stock, assembly simplicity and access.
+AI may explain or rank candidates but geometry placement and spacing generation must be deterministic, dimensioned and reproducible.
+Run lightweight deterministic applicability/geometry screening before presenting a candidate. Any numerical engineering pre-check must show method/inputs and be labelled screening, not full system approval.
+Distinguish AI draft, geometrically feasible layout, numerically screened layout and fully checked calculation.
+Initial suggestions are marked PRELIMINARY_UNCHECKED / FOR REVIEW.
+Show candidate comparison: plywood thickness, stud/waler sections,
+requested and actual spacing, tie/yoke/brace counts, preliminary MTO,
+known limitations/uncalculated connections and why each option was suggested.
+Support user editing of every layout position/section before detailed calculation.
+Selecting a proposal freezes a versioned layout tied to geometry/criteria/catalog revisions; it does not approve engineering safety.
+Then run the authoritative full calculation in sections7–9.
+If checks fail, return clearly identified members/corners/connections to revision.
+AI may explain failures and suggest catalog-bound alternatives; all alternatives must be recomputed by the deterministic engine.
+Bound iteration/search count, prevent an infinite suggest/recalculate loop, and display NO_FEASIBLE_LAYOUT honestly.
+
+2E. AI ADAPTER, AUTHORIZATION AND REPRODUCIBILITY
+Implement provider-independent interfaces for:
+extractGeometryFromSources, proposePreliminaryLayout, explainCalculationResult.
+Live provider adapter runs only on trusted server/worker; API keys in server secrets, never VITE_* or browser code.
+If choosing OpenAI, verify current official file/vision inputs and schema-output documentation before implementation. Do not hard-code an unverified model name/API format or assume all models accept PDFs.
+Structured response matching a schema does not prove geometry/material facts are correct.
+Use schema validation, dimension constraints, catalog allowlists and geometry screening on all AI responses.
+Uploaded documents/OCR are untrusted source data; instructions inside a drawing cannot change system policy, execute tools/code, fetch URLs, grant roles or write APPROVED/PASS.
+Check org/project membership and source permissions before each analysis/proposal request.
+Process only selected pages/crops needed for the requested object; provide a visible external-provider processing/configuration notice and run control.
+Do not run live paid-provider requests during development without configuration and authorization. Deterministic demo adapter is allowed only when clearly labelled MOCK.
+When provider is missing/timeout/invalid output/refusal, preserve source and manual geometry/layout editing. Report AI unavailable; do not fabricate extraction success.
+Use job status/progress/cancel, retries and idempotency tied to source/geometry hashes. Reject stale job writes.
+Configure file/page/pixel/token/time/concurrency/rate/cost limits and safe parsing resource limits.
+Do not log complete drawings/base64/secrets; store minimal operational errors and controlled extraction provenance.
+Store source and retained provider-response metadata according to an explicit retention policy.
+AI-extracted geometry, proposals and engineering calculation results are separate records with independent permissions.
+A trusted calculation is reproducible from confirmed input/layout snapshots without re-calling AI.
+
+Additional data entities:
+SourceArtifact:
+org/project/case ID, filename, MIME, content hash, immutable Storage generation/path,
+drawing number/revision, selected pages, upload actor/time.
+ExtractionRun:
+source hashes/selections/transforms, provider/model, prompt/schema version,
+validated extracted fields, conflicts, state and server timestamps.
+ConfirmedGeometryRevision:
+complete coordinates/constraints/units, resolved dimensions with provenance,
+confirmation event, source hashes and canonical geometry hash.
+LayoutProposal:
+geometry hash, criteria/catalog revisions, member/tie/brace positions,
+explanation, origin AI/MANUAL/DETERMINISTIC_SEARCH, screen results and proposal status.
+CalculationRun:
+complete confirmed geometry/layout snapshots, source/proposal IDs,
+engine/formula/material/criteria versions and engineering checks.
+Never store only mutable references to these records.
+
+3. ENGINEERING DESIGN BASIS AND SOURCE REGISTRY
+Use SI consistently. Recommended internal solver units:
+length mm; force N; stress MPa = N/mm²; moment N·mm; I mm⁴; S/Z mm³.
+Pressure input/display kPa or kN/m² must convert explicitly: 1 kPa = 0.001 N/mm².
+Pressure engine may use m, kN and kPa internally only with typed conversion boundaries.
+Display optional kgf/cm² with 1 kgf/cm² = 0.0980665 MPa; never treat kg as force.
+Do not round intermediate values for checking; round only for report display.
+
+Standards registry:
+- Standard title, edition/reapproval, jurisdiction, exact clause/equation/table, verified source URL or user-owned reference document, retrieval date, applicability and reviewer verification.
+- Distinguish a guide, a product standard, a structural-design specification, and a project-specific criterion.
+- Proposed references: ACI PRC-347-14(21) for formwork guidance/loads/accessory safety; appropriate AISC 360 edition for applicable structural steel/HSS; appropriate AISI S100 edition for applicable thin-walled cold-formed members; APA V345/Y510 or certified manufacturer data for plywood; applicable Thai material standards/project specifications.
+- Do not claim blanket compliance with all standards or Thai regulations.
+- A web excerpt is not a complete implementation source for an entire standard.
+- Obtain authorized full references where needed. Do not fabricate clause numbers or reproduce standards wholesale.
+- Separate ASD and LRFD. Implement ASD first with one documented load/capacity basis. Hide or disable LRFD until actually implemented and validated.
+- No general 0.6Fy override can replace local/global buckling and connection checks.
+- Criteria changes create a new revision; existing calculation snapshots retain their old criteria.
+
+Formula record:
+formulaId, version, expression/LaTeX, description, variables with units,
+sourceId, exact sourceLocator, assumptions, applicability predicates,
+loadBasis, resistanceBasis, validationFixtureIds and methodVerificationStatus.
+Calculated step:
+stepId, formulaId/version, componentId, loadCaseId, inputs,
+symbolic formula, substitution, unrounded result, display result, units,
+acceptanceLimit, utilization, checkStatus, assumptions and source reference.
+Use the same step objects in UI and reports; no separate formulas in React components.
+Snapshot must embed actual normalized input/material/criteria values and provenance, not only catalog IDs. Capture engine/formula/schema versions and canonical numeric payload. Content hashes show integrity, not a professional signature.
+
+4. DESIGN CRITERIA UI
+Create a real criteria editor with immutable revisions:
+- Pressure method, concrete unit weight, placement rate, concrete temperature, slump/SCC, admixtures, cement/mix coefficients, vibration type/depth and pour direction.
+- Load cases and combinations; wind basis/input, work platform/equipment loads and erection conditions.
+- ASD safety factors by failure mode; accessory minimum ultimate-strength factors separately.
+- Plywood bending/rolling-shear/bearing criteria and stiffness basis.
+- Steel yielding, local/global buckling, shear, bearing/crippling and connection method.
+- Deflection limits per component and total face movement, out-of-plumb tolerance.
+- Material source/evidence requirements and whether project-verified data are permitted.
+- Optimization constraints: permitted stock sizes, minimum/maximum spacing, edge distances, actual support coordinates, overhangs, target utilization and tie clearance.
+- A proposal such as L/360 must be labelled project criterion, not universal code requirement.
+- No hidden defaults that can turn unknown inputs into a construction PASS.
+All numeric inputs need units, valid ranges and help. Unknown ≠ zero.
+
+5. MATERIAL, SECTION AND EQUIPMENT CATALOGS
+Evidence metadata for every record:
+manufacturer/product/standard/grade, source reference, document attachment,
+tested/design value type, wet/dry state where relevant, units,
+verifiedBy, verifiedAt, revision, validity scope and status:
+DEMO_ONLY / UNVERIFIED / PROJECT_VERIFIED / MANUFACTURER_VERIFIED.
+Demo values cannot support an issued-for-construction report.
+
+5.1 Plywood
+Store actual/minimum thickness, layer arrangement/grade, strength direction,
+wet allowable bending in both directions, rolling shear/bearing,
+effective section modulus or directly certified bending capacity,
+EI in both directions, shear stiffness or compatible shear-deformation method,
+duration/moisture adjustments and whether already included.
+MOR/test failure strength is not allowable stress.
+Do not pair APA Fb with gross homogeneous bt²/6 automatically.
+Use properties and equations from one compatible design system.
+Do not apply wet/load-duration/concrete-setting adjustments twice.
+Face-film/WBP marketing labels alone do not verify structural capacity.
+Keep reuse/condition exclusions: delamination, swelling, damaged edges/holes.
+Support discrete catalog thickness choices and checking a user-entered thickness with verified compatible properties.
+
+5.2 Thai RHS/SHS and channels
+Store actual/design wall thickness, B/H/lip/radius dimensions, material Fy/Fu/E,
+A, Ix/Iy, Sx/Sy, Zx/Zy, rx/ry, torsional properties where required,
+local slenderness, source and design-method applicability.
+Distinguish structural HSS, hot-rolled C/channel, cold-formed lipped C and unverified light commercial sections.
+"Light grade" is not a material strength designation.
+Do not classify a section by wall thickness alone or assume all cold-formed HSS must use AISI.
+Use product-specific design thickness rules; do not apply a universal 0.93t factor.
+Respect minimum thickness, corner radii and corrosion/holes/remaining section.
+For RHS ideal sharp-corner formulas, identify APPROXIMATE geometry; no issued design using unverified approximation if capacity depends on it.
+Examples for catalog demonstration only:
+STKR400: Fy 245 MPa, Fu 400 MPa; STKR490: Fy 325 MPa, Fu 490 MPa, subject to product confirmation.
+For C channels include orientation, load eccentricity, torsion, lateral restraint and web crippling at ties/supports.
+Paired members must have a declared load-sharing/connector model. Do not always double I or divide load by two.
+Geometric combination of two members does not prove composite structural action.
+
+5.3 Through-ties and corner clamps
+Certified form-tie sets: manufacturer allowable working load, ultimate-tested load,
+safety factor already applied, nominal/core/thread geometry, nut/plate compatibility and condition limits.
+Custom rod branch: material, gross/net/thread tensile area, manufacturing method,
+thread pitch/profile/engagement, nuts, welds/couplers, bearing plates and validated end connection.
+RB normally means smooth round SR24, not SD40. DB SD40 means deformed bar.
+Illustrative material entries only: SR24 Fy235/Fu385 MPa; SD40 Fy390/Fu560 MPa.
+Do not use rebar diameter as threaded stress area.
+Do not give a custom threaded rebar rod certified capacity from 0.6FyAg.
+Actual rolling/cutting/machining/welding can alter section/properties; require supporting evidence.
+Check yielding, rupture, thread stripping, connection resistance and accessory safety.
+Do not divide a manufacturer's already allowable working load by the same factor again.
+For ACI accessory checks, verified minimum form-tie factor 2.0 is relative to ultimate assembly capacity/unfactored load; higher manufacturer factors govern.
+An AISC ASD factor 1.67 and an accessory ultimate factor 2.0 are different checks, not automatic consecutive divisors.
+External column corner clamp geometry and force model must be explicitly defined and validated.
+
+5.4 "34 mm steel prop" — MUST REMAIN UNRESOLVED UNTIL IDENTIFIED
+Record the owner's initial description: steel bracing member size 34 mm.
+Do not assume solid bar, 34 mm outside-diameter tube, nominal pipe size or telescopic prop.
+Require type, OD/actual dimensions, wall thickness, grade, total/effective length,
+extension length, overlap/pin/thread details, end restraints, attachment geometry,
+manufacturer rating or verified buckling model, tension/compression capability and condition.
+Provide editable input for these fields. When unknown, bracing remains INCOMPLETE and issue is blocked.
+A gravity-only acrow prop is not automatically a tension-capable push-pull brace.
+No silent default thickness such as 2.0/2.3 mm.
+
+5.5 Connections and supports
+Plates, bolts, welds, anchors, base shoes, supporting slab/soil, work platforms:
+material grades, actual geometry, relevant ratings/design methods,
+concrete fc'/thickness/cracked-state/age, edge distance, embedment,
+soil allowable bearing where applicable, and evidence.
+Do not automatically treat lean-concrete blinding as an adequate anchor foundation.
+
+6. PRESSURE ENGINE AND LOAD CASES
+6.1 Implement a verified hydrostatic top-pour baseline:
+At each pour stage, p(z)=γc z, where z is depth below the CURRENT fresh-concrete surface.
+Pressure on not-yet-filled portions is zero; analyze all relevant stages and envelope member demand.
+Integrate actual pressure diagrams; provide exact piecewise-linear load evaluation.
+If using a conservative maximum uniform pressure on a component span, label the approximation explicitly and show the actual diagram too.
+Do not silently assume pressure vanishes after a guessed setting time.
+Reduced ACI-pressure methods require full applicable inputs and verified branch conditions.
+For SCC without qualified pressure-reduction evidence, use hydrostatic baseline.
+Bottom pumping/external vibration/expansive concrete require special validated pressure cases. An unimplemented special case is UNSUPPORTED, not automatically hydrostatic.
+Pump-from-base implementation must reflect verified surge requirements and pressure monitoring limits, not a universal guarantee that 1.25γH caps actual pump pressure.
+Keep erection wind and gravity loads distinct from internal pressure.
+Opposing-face pressure balance does not eliminate local outward panel/yoke loads.
+Permanent rebar cage is not a support or brace unless specifically designed and accepted as such.
+
+6.2 Load stages
+Erection empty form, partial fill, full fill, platforms/equipment,
+wind in +/- X/Y, stripping and panel lifting where a supported method exists.
+Temporary panel lifting requires lifting points/capacity/geometry; otherwise identify OUT OF SCOPE.
+Construction wind inputs need documented project basis; no invented Rayong wind speed.
+Pressure-only "PASS" is a component result, never a whole-system PASS.
+
+7. MEMBER ANALYSIS AND FOOTING CALCULATIONS
+Build a pure typed domain engine independent of React/Firebase. Support actual member/support coordinates, overhangs, load patches and pressure breakpoints.
+A practical initial verified analysis set:
+- Simply supported beams under uniform/linear/piecewise-linear loading.
+- Declared cantilever end segments and validated continuous-beam models as separately registered capabilities.
+- If a real layout is continuous, do not use simple-span reactions as exact multi-support reactions.
+- If using a deliberately conservative isolated-span idealization, identify which checks it bounds; verify reactions/connections separately.
+- Solve stiffness/matrix models robustly with unit-scaled tolerances, instability/singular-model detection and equilibrium checks. Never return a plausible zero for a mechanism.
+No black-box finite element method without benchmarks and method scope.
+
+Footing sequence:
+1. Internal concrete dimensions and pour cases.
+2. Pressure envelope.
+3. Plywood per direction/support arrangement: bending, rolling shear, bearing, deflection.
+4. Studs: mapped pressure tributary strip, span demands/reactions, steel resistance and deflection.
+5. Double walers: actual stud reactions at coordinates, actual tie supports, overhangs and splices.
+6. Ties: governing waler reactions from BOTH faces; one continuous tie carries axial tension, not twice the same face force.
+7. Tie extension, end connections, plates/nuts, local steel bearing/crippling.
+8. Corners, seams and panel joints.
+9. Bracing and stability/anchors/supports.
+10. Combined face movement and layout interference.
+11. Candidate comparison, schedules, drawings and report.
+
+Benchmark formulas for a simply supported UNIFORM-load beam only:
+Mmax=wL²/8; Vmax=wL/2; δmax=5wL⁴/(384EI).
+For these equations, w N/mm, L mm, E N/mm² and I mm⁴.
+Do not apply these coefficients to unequal spans, triangular load, cantilevers or moment-resisting corners.
+All mapped forces must conserve integrated pressure resultant and moment, including edge tributary regions. Do not discard last bays.
+Analyze every boundary face and its local tie system separately; rectangular X/Y systems are special cases. Tie lengths, reactions and capacities can differ. Confirm complete edge coverage for polygons, including notch faces.
+Check real geometric paths of orthogonal tie sleeves, intersections, rebar/concrete-cover conflicts and installation access. Do not hide rod collisions in drawings.
+Rebar geometry is optional project input for clash depiction; do not design permanent reinforcement or invent real bar layouts.
+
+8. COLUMN CALCULATIONS
+Implement confirmed section polygons with extrusion height and pressure stages, face plywood/studs, yoke/frame levels, panel splices, global stability and bracing. Section2C governs nonrectangular topology; apply width/depth shortcuts only to true rectangular cases.
+For external yokes, compute corner forces using:
+(a) a certified manufacturer's system layout/rating within its validity limits; OR
+(b) a validated closed-frame/joint model with actual connection geometry, eccentricities and restraint assumptions.
+Do not pretend a 2D rigid closed-frame model represents a pin/sliding/overlapping corner clamp automatically.
+For a custom system, provide a supported connection configuration with independently verified analytical benchmarks. Otherwise expose face demands and leave corner/system checks INCOMPLETE.
+Check yoke biaxial/combined demands, shear/torsion where relevant, double-member load sharing, external clamp rods, corner plates and joints.
+Support actual top/bottom edge offsets and variable yoke spacing; number of rings alone is insufficient.
+Column 1×1×8 m must have full-height stability checks with actual brace attachment levels and panel-joint stiffness.
+Evaluate out-of-plumb, brace-induced local forces, second-order effects where required by adopted method, and both lateral directions.
+Check work platform/independent access tower separately. A tower is not automatically formwork bracing.
+Upper brace connections must connect to structural members with verified capacity, not just plywood.
+No global approval of an 8 m column with only pressure/yoke checks.
+
+9. DESIGN PROPOSAL AND CHECK MODE
+AI preliminary mode: section2D produces explained candidate layouts after confirmed source geometry and before detailed checking. Preserve preliminary status and geometry/capability blockers.
+Manual mode: user selects sections/thicknesses and actual coordinates; show all demands, capacities, utilization and blockers.
+Proposal mode: enumerate finite verified catalog candidates within constraints; propose combinations of plywood thickness, stud spacing, stud section, yoke/waler section/levels and tie spacing.
+Solve coupled load/reaction dependencies after every candidate change.
+Validate whole candidates; do not optimize each part independently while leaving stale downstream forces.
+Return feasible alternatives ranked by declared objective: steel/plywood quantity, tie count, assembly simplicity; cost only from user-supplied priced catalogs.
+Never call an unverified material or incomplete connection candidate "optimal safe design".
+Show rejected candidates/reasons, governing load case, sensitivity and margin.
+Handle no feasible layout, solver limits, cancellation and input-bound validation.
+User confirmation of a candidate is not an engineering approval.
+
+10. UX AND MENU STRUCTURE
+Desktop first, responsive tablet/mobile review.
+Professional subdued navy/white engineering style, readable numbers, accessible contrast, no decorative fake gauges.
+Menus:
+Dashboard / Projects / Upload Drawing & AI Analysis / Geometry Confirmation /
+AI Preliminary Layout / Design Criteria / Material & Section Library /
+Footing Formwork / Column Formwork / Connections & Bracing /
+Drawings & Quantities / Calculation Reports / Review & Issue / Audit & Settings.
+Within project: project name/code, client/location, units, project criteria, cases, types, revisions, compare results and documents.
+Separate type definition from locations/quantities: one design type may serve multiple locations only within its approved validity envelope.
+Calculation wizard:
+Upload PDF/Sketch/Image OR Manual Geometry → AI Extraction → Confirm Geometry →
+Concrete & Pour / Materials / Criteria → AI Preliminary Layout → Select/Edit Layout →
+Connections & Bracing → Detailed Calculation → Results → Drawings → Report.
+Keep editable inputs, calculated outputs and missing information visibly distinct.
+Each result links to the underlying step/formula/source and highlights the affected component.
+Autosave drafts with conflict detection; save indicator, revision identity and recoverable errors.
+Do not show firebase collection names or implementation details in the ordinary user flow.
+No blank or fake-functional menu. Unsupported controls must explain what is missing.
+Optional component label language: English, English (中文), Thai; maintain reviewed terminology dictionary.
+
+11. GRAPHICS, DRAWINGS AND QUANTITIES
+Create exact 2D vector graphics using SVG or an equivalent deterministic drawing engine.
+Optional 3D via Three.js from the SAME model; 3D rendering is secondary to exact 2D.
+No image-generation bitmap as a precise engineering drawing.
+Required:
+- Footing polygon plan; per-face elevations as needed; sections along user-selected cut lines including L-shape notch faces.
+- Column plan/horizontal section, full-height elevation, vertical section and actual yoke/brace levels.
+- Pressure diagram, stud/waler cross-section with orientation, bending/shear/deflection diagrams where supported.
+- Plywood/stud/waler/tie/nut/plate connection detail; corner/yoke detail; panel splice; brace head/base.
+- Internal concrete dimensions distinct from overall form dimensions.
+- Numbered components, piece marks, actual coordinates, dimensions, spacing chains and schedules.
+- True 8:1 column height/width geometry in full elevation; no generated-picture proportions.
+- Correct cut lines/arrows and view references; horizontal sections must be horizontally cut geometry.
+- Tie rods through the gap of double walers with bearing plate bridging members; depict physical orientation correctly.
+- Trace model IDs so every drawing dimension can be cross-checked against calculated inputs.
+- Display actual edge bays, overhangs, tie offsets, sleeves, concave corner details and clearance issues.
+- Show imported source alongside confirmed model overlay during input review; confirmed vector geometry drives installation drawings.
+- Nonrectangular outlines, arm widths, notch dimensions and corner/edge IDs must appear in drawings/MTO.
+- Scaled print at a stated paper size; fit-to-page preview labelled NTS unless true scale verified.
+- Drawing metadata: project/case/revision/snapshot ID, units, status, drawing number and sheet number.
+Draft/unverified drawings always carry DRAFT / NOT FOR CONSTRUCTION.
+PDF/SVG export mandatory; DXF export for supported verified primitive geometry is desirable. If implemented, test units, coordinates, layers and round-trip rather than claiming CAD-ready from a renamed SVG.
+Quantities: plywood area and discrete panel schedule, studs/walers/brace lengths and counts, ties/nuts/plates/anchors. Separate reusable assembly quantities from project repetitions.
+A cut list needs explicit splice/cutting allowance assumptions. Do not call it a reinforcement BBS.
+Do not use prototype reinforcement illustration as actual permanent-structure design.
+
+12. CLASSICAL ENGINEERING REPORT
+Build a shared report-model renderer from the immutable trusted calculation snapshot.
+A4 portrait calculation pages; A3 landscape drawing appendix where selected.
+Clean black text, restrained navy headings, fine rules, consistent typography;
+embed legally usable Thai/Latin/Chinese fonts as needed, and searchable text.
+Use KaTeX or equivalent exact formula layout; no screenshots of formula text.
+Report structure:
+1 Cover: CMG/project/case, formwork type, revision/date, prepared/checked/approved fields and issue status.
+2 Contents, document control and scope/limitations.
+3 Design basis: standards with editions/clauses, units, criteria and load basis.
+4 Input summary, material/equipment certificates and explicit missing data.
+4A Source drawings/pages/revisions, dimension evidence, user-confirmed geometry and source/model hashes.
+4B AI preliminary alternatives and selected layout, limitations and adjustments after full checking; do not present AI recommendations as engineering proof.
+5 System/load-path sketches and construction/pour assumptions.
+6 Concrete pressure derivation and diagrams for governing stages.
+7 Plywood: symbolic formula → definitions → numerical substitution with units → result → check.
+8 Studs, walers/yokes: loads/reactions, properties, resistance and deflection steps.
+9 Through-ties OR external column corner system: separate correct calculation sections.
+10 Plates/nuts/bolts/welds/splices and bearing/crippling.
+11 Bracing/stability/anchors/supports and platforms.
+12 Total movements, governing cases and check summary.
+13 Selected layout, installation requirements, allowable pour conditions and stop-work criteria.
+14 Dimensioned drawings, assembly schedule, approximate MTO/cut list.
+15 References, appendices, independent validation coverage and calculation manifest.
+
+Each check shows demand, applicable resistance, utilization and PASS/FAIL/INCOMPLETE/UNSUPPORTED.
+Include ALL failed/unverified/unsupported required checks; do not omit them for a clean report.
+Report full substitution and method assumptions, not only summary ratios.
+Formula/reference numbering stable across UI and PDF.
+Headers/footers: project/code/revision, date, Page X of Y.
+Prevent split formulas, detached captions, cropped diagrams, overflowing tables and orphan headings; repeat table headers.
+Report coverage matrix maps every required design check to an actual report section.
+No fake signatures or professional license. A reviewer identity is a record, not automatic proof of engineering competence.
+An issued package requires an authorized professional's review under the project's adopted process.
+Document content hash must bind inputs/criteria/material revisions/formulas/layout/results. Keep workflow status and issued artifact hash separate so a later approval does not overwrite prior content.
+Keep draft report export available with watermarks even for incomplete/failed designs.
+Release export must be blocked when mandatory checks are incomplete/unsupported, inputs unverified, results stale, validation gate unmet or review authorization missing.
+
+PDF strategy:
+Use print-ready HTML plus reproducible automated PDF generation (e.g., tested headless-browser rendering).
+Choose a deployment-compatible report worker/runtime; do not assume a bundled desktop browser works in every Cloud Function.
+For local first release, a documented local report worker with Firebase emulator is acceptable, with the cloud runtime requirement explicit.
+Production-grade reports must be generated from trusted snapshots, stored with content hash and access controls.
+Inspect real generated PDFs by rendering pages and reviewing formula/table/graphics layout; visual regression where meaningful.
+Provide a standard CMG template configuration: title/logo optional, fonts/margins/title blocks, language and revision scheme.
+
+13. TECHNICAL ARCHITECTURE
+Prefer a maintainable workspace:
+apps/web
+functions
+packages/domain
+packages/contracts
+packages/drawings
+packages/reports
+fixtures
+docs
+
+Use stable compatible versions, strict TypeScript, Vite/React, validated forms and schemas (e.g. Zod), router, unit tests (Vitest or suitable equivalent) and browser E2E (Playwright).
+Check runtime/dependency requirements against official documentation and lock versions.
+AI/API is required for optional live drawing interpretation and preliminary explanation/proposal, with a labelled mock adapter for development. Engineering calculations must work independently of AI and remain deterministic.
+Pure domain modules: units, geometry, criteria, pressure, loads, beam/frame analysis,
+plywood, steel resistance, ties, corners, connections, braces, anchors,
+layout search, result steps, coverage, snapshot hashing.
+Additional modules: source ingestion/PDF preview, AI provider adapters, extraction schemas,
+dimension constraints, polygon validation, geometry confirmation and proposal contracts.
+Explicit capability registry with method versions. Use no executable user-supplied formula strings/eval.
+UI only gathers inputs and renders domain outputs.
+Shared schemas and engine run both browser preview and trusted server.
+Browser calculations labelled preview; server revalidates inputs, loads authoritative catalog/criteria revisions and recalculates before storing trusted results.
+Validate all submitted IDs/project scopes; never trust client utilization/checkStatus/approval or catalog verification flags.
+Server report generation reads trusted snapshot IDs, not arbitrary client HTML/URLs.
+For advanced calculations not implemented, expose missing method honestly; no silently stubbed PASS.
+
+14. FIREBASE, SECURITY AND IMMUTABLE RECORDS
+Suggested scoped data model:
+organizations/{orgId}
+organizations/{orgId}/members/{uid}
+organizations/{orgId}/projects/{projectId}
+.../projects/{projectId}/members/{uid}
+.../projects/{projectId}/formworkCases/{caseId}
+.../formworkCases/{caseId}/drafts/{draftId}
+.../formworkCases/{caseId}/sourceArtifacts/{sourceId}
+.../formworkCases/{caseId}/extractionRuns/{extractionId}
+.../formworkCases/{caseId}/geometryRevisions/{geometryRevisionId}
+.../formworkCases/{caseId}/layoutProposals/{proposalId}
+.../formworkCases/{caseId}/revisions/{revisionId}
+.../formworkCases/{caseId}/runs/{runId}
+.../formworkCases/{caseId}/reviews/{reviewId}
+.../formworkCases/{caseId}/issues/{issueId}
+.../projects/{projectId}/auditEvents/{eventId}
+organizations/{orgId}/criteriaSets/{setId}/revisions/{revisionId}
+organizations/{orgId}/materials/{materialId}/revisions/{revisionId}
+organizations/{orgId}/sections/{sectionId}/revisions/{revisionId}
+organizations/{orgId}/equipment/{equipmentId}/revisions/{revisionId}
+Separate schema-versioned artifacts in Storage by org/project/case/run/issue IDs.
+Avoid Firestore document size limits: store large step/drawing/report payloads as chunked records or controlled immutable Storage objects plus hashes, not one unlimited document.
+Index and paginate lists; do not read all projects/artifacts on app startup.
+Access:
+Org Owner/Admin manage membership/catalogs; Project Engineer edits/calculates;
+Checker reviews; authorized Approver approves/issues; Viewer read-only.
+Default deny, allowlisted editable fields, validated project membership.
+Editing own role, verified material flags, results, approval, issue status or audit records from the browser must be denied.
+Trusted Functions separately check auth, membership and role because Admin SDK bypasses Security Rules.
+Immutable snapshots and audits cannot be updated/deleted by normal clients.
+State transitions and audit events atomic/idempotent, with expected-version/input-hash checks. Reusing an idempotency key with different inputs must be rejected. A calculation completing after its draft changed cannot become the current approved run.
+Separate:
+Engineering: PASS / FAIL / INCOMPLETE / UNSUPPORTED; NOT_APPLICABLE only with recorded applicability reason
+Workflow: DRAFT / CALCULATED / CHECKED / APPROVED / ISSUED / SUPERSEDED
+Freshness: CURRENT / STALE; evidence/verification status independently.
+Workflow approval cannot override a failed/missing engineering check.
+New geometry/layout/material/criteria creates new draft/revision/run; old snapshots remain reproducible.
+Issuer action creates a bound issue record and artifacts; no overwriting old issued package.
+Checker/Approver cannot approve their own preparation by default; any approved organization exception must be explicit and audited, never enabled in demo silently.
+Revoked membership blocks access on client and Functions, including report downloads. Do not rely on public URLs or long-lived Storage download tokens for revocable access; use authenticated downloads or documented short-lived access.
+Storage validates paths/ownership/type/size, prevents public read and unauthorized overwrite.
+Do not put service account keys in Vite env. Public Firebase client config is distinct from server credentials.
+Implement Emulator tests for Auth/Firestore/Storage/Functions.
+Implement backup/export/import validation and restoration drill in emulator; do not restore into production automatically.
+Record deleted/archive/revision policy; prefer archive over deleting issued engineering records.
+Include production hardening checklist (App Check, IAM, billing, regions, retention) without enabling production during this task.
+
+15. VALIDATION, BENCHMARKS AND ACCEPTANCE
+Tests must be independent of the implementation formulas where possible, with analytical solutions, equilibrium and published/manual examples.
+Mandatory numerical benchmarks:
+F1: footing internal3×4×2.5 m, γ24 kN/m³, top-pour hydrostatic.
+pbase60 kPa; integrated force75 kN per metre of face width;
+long face300 kN, short face225 kN; resultant height0.833333 m above base.
+C1: column1×1×8 m, γ24; pbase192 kPa; hydrostatic resultant768 kN on EACH full 1 m wide face, at2.666667 m above base.
+C1 is a LOAD benchmark, not a safe complete column design.
+B1: simple beam w10 N/mm, L1000 mm, E200000 MPa, I1,000,000 mm⁴:
+Mmax1,250,000 N·mm; support reaction5000 N each; δmax0.651041667 mm.
+B2: simply supported triangular load rising from0 to w: RA=wL/6, RB=wL/3, Mmax=wL²/(9√3). Triangular deflection and other piecewise-load cases independently benchmarked.
+T1: pressure60 kPa and a uniform tributary0.60×0.60 m produce21.6 kN.
+If demonstrating 234 MPa assumed body allowable stress: Areq92.307692 mm².
+T1 remains a preliminary body-only fixture, not a certified rod assembly.
+Thread-reduced capacity failure must override a gross-bar PASS.
+An unknown34 mm brace must return INCOMPLETE, not PASS.
+
+Additional tests:
+- mm/m, kN/N, kPa/MPa and kgf conversions; prevent silent unit mixing.
+- Local/global buckling and method applicability; yielding-only screen cannot issue.
+- Plywood strong/weak direction, wet values, effective properties and double adjustment rejection.
+- Paired waler sharing, channel eccentricity, concentrated bearing/crippling.
+- Footing reaction conservation including edge bays and asymmetric ties.
+- Column corner connection model versus through-tie model: no accidental substitution.
+- Stage envelope, partial fill, hydrostatic versus verified capped-pressure distributions.
+- Singular mechanisms/invalid restraints; no NaN/Infinity becoming PASS.
+- Tight boundary tests around utilization1.0 and no rounded-result verdict changes.
+- Bracing tension/compression, rod elongation, anchor/slab failure and tower separation.
+- Changing material/criteria does not rewrite old snapshots; current draft correctly becomes stale.
+- Hash/recompute agreement browser/server and deterministic replay.
+- Two organizations/projects cannot read/write each other's drafts/reports/Storage.
+- Viewer/Engineer cannot approve; client cannot write authoritative results/audits.
+- Functions enforce permission independently of Security Rules.
+- Transaction retry/idempotency and simultaneous review/edit conflicts.
+- E2E: create two projects → footing/column case → criteria → check/proposal →
+save/reload → formula details → dimensioned drawings → draft PDF → review gate.
+- PDF Thai/Chinese font embedding, searchable text, numbered pages, formulas/tables/diagrams not clipped.
+- Same snapshot yields same numerical content/model geometry; timestamps separated from deterministic engineering hash.
+- Geometric drawing checks: dimensions equal domain inputs, no omitted last bay, proper scale and labels.
+Engineering validators must verify reference examples before enabling methods for released use.
+Software test PASS and engineer acceptance are separate gates.
+
+15A. NEW IMPORT/AI/POLYGON ACCEPTANCE TESTS
+- Readable PDF/vector, scanned PDF, rotated sketch and image fixtures; every extracted critical dimension links to page/region evidence.
+- Missing height/depth/units and ambiguous digits remain null/NEEDS_CONFIRMATION, not plausible invented values.
+- Conflicting dimensions or source revisions require resolution; image aspect ratio cannot override explicit dimensions.
+- Perspective photo calibration is not applied as a universal3D scale.
+- Self-intersecting/zero-area polygons, duplicate/zero-length edges and inconsistent dimension constraints are rejected.
+- L-shape fixture in mm: (0,0),(4000,0),(4000,2000),(2000,2000),(2000,3000),(0,3000), constant depth2500.
+  Expected area10,000,000 mm²=10 m²; perimeter14,000 mm=14 m; volume25 m³; six exposed faces and one re-entrant corner.
+  With γ24 kN/m³ hydrostatic, pbase60 kPa and scalar face resultants sum1050 kN.
+  Scalar sum is not net external force; vector equilibrium must use directed face normals.
+  Formwork vertical face area35 m² excluding base/top. Do not count internal decomposition lines as faces.
+- The same L-shaped input rendered or analysed as its4×3 bounding rectangle must fail the fixture.
+- Mirror/rotation of an L shape preserves area/perimeter and transforms force/tie geometry correctly.
+- Edge tributary loads/reactions conserve force/moment; all notch faces are checked.
+- A through-tie route exiting/re-entering an L/U footprint is rejected as an ordinary internal tie.
+- Unsupported polygon corner/yoke/tie topology produces explicit incomplete/unsupported system status, while supported face checks remain inspectable.
+- Unknown material strength or34 mm brace details cannot become verified through AI confidence.
+- AI-proposed member IDs outside project catalog, invalid units, schema violations and hallucinated capacities are rejected.
+- PDF/OCR prompt injection cannot trigger tools, external URLs, role changes or APPROVED/PASS writes.
+- Provider unavailable/timeout/refusal/invalid response preserves manual geometry/layout path and never creates trusted calculations.
+- Cross-project source/AI-job/Storage access denied; stale extraction cannot overwrite a newer geometry revision.
+- Geometry confirmation, layout selection and engineering approval are different auditable events.
+- Drawing/report/engine use the identical confirmed geometry/layout hashes.
+- Source/geometry/layout changes mark dependent proposals/current results stale and retain old immutable records.
+- Live-provider integration is not claimed tested from mock fixtures alone.
+
+16. IMPLEMENTATION PHASES AND COMPLETION REPORT
+Phase0: workspace/read-only inventory, requirements matrix, architecture, supported-method matrix, engineering-input register and implementation plan.
+Phase1: source/extraction/geometry/proposal contracts, units, validated rectangle/L-shaped polygon/constraint model, pressure/beam engine and independent benchmarks.
+Phase2: material/criteria catalogs, footing components/ties/connections, column face/yoke branch and explicit capability gates.
+Phase3: PDF/sketch/image import, source preview/AI extraction adapter, geometry confirmation and preliminary AI/manual proposals; project UI and polygon-aware drawings/details.
+Phase4: Firebase emulator/auth/RBAC, scoped source/AI jobs, confirmed geometry/proposals, trusted runs, immutable snapshots/audits and rules tests.
+Phase5: classical report templates, real PDF generation/render inspection, drawings/quantities and draft exports.
+Phase6: end-to-end regression, startup/user/developer guides, validation report and Owner manual acceptance package.
+
+Proceed in sequence, refining scope honestly. If a required engineering method lacks verified reference/joint data, complete its input/report/gating workflow and document that gap; do not invent a calculation to declare the entire engineering scope complete.
+At each phase run the relevant tests and fix failures before depending on its outputs.
+Do not claim percentage completion without mapping to the requirements matrix.
+Provide:
+- Working local web app and emulator seed data.
+- Working upload-to-geometry-to-proposal-to-calculation workflow, with AI mock/live capability status explicit.
+- At least one L-shaped imported-sketch/PDF fixture and editable geometry/layout example in addition to rectangular cases.
+- A startup note explaining AI provider setup, local MOCK status, external document processing and manual fallback without secrets.
+- README with actual installation/start commands, prerequisites and ports.
+- Windows-friendly startup guide; check installed Node/Java requirements, do not assume all Firebase emulators work without prerequisites.
+- .env.example with placeholders; no secrets.
+- Architecture, design-basis/source registry, formulas, material requirements and capabilities documents.
+- Calculation-validation report with actual test results and unvalidated methods.
+- Security tests and evidence.
+- One detailed DEMONSTRATION footing PDF/drawing package and one column PDF/drawing package; visibly show incomplete checks when evidence is missing.
+- Owner manual test checklist and known limitations.
+- Final report: files changed, exact commands executed, passed/failed checks, runtime blockers, app start instructions and what remains before real construction use.
+Do not launch or write to other real projects, deploy, approve a design, or issue a real construction package.
+
+17. REFERENCE STARTING POINTS — VERIFY BEFORE CODING NORMATIVE METHODS
+ACI formwork excerpt:
+https://www.concrete.org/Portals/0/Files/PDF/CEU-347R-14.pdf
+ACI guide catalog:
+https://www.concrete.org/store/productdetail.aspx?Format=PROTECTED_PDF&ItemID=347U14&Language=English&Units=US_AND_METRIC
+APA Plyform:
+https://www.apawood.org/engineered-wood-products/plywood-osb/concrete-plyforms/
+APA concrete forming guide:
+https://www.apawood.org/guides-tools-training/technical-document-library/technical-guides/concrete-forming-designconstruction-guide/
+AISC standards:
+https://www.aisc.org/aisc/publications/current-standards/
+AISI standards:
+https://www.buildusingsteel.org/aisi-design-standards-s100-s200-s300-s400-series/
+Structural square tubes manufacturer example:
+https://www.nscsp.nipponsteel.com/product/general_square/
+Thai rebar product evidence starting points:
+https://www.millconsteel.com/roundbar-th/
+https://www.jsgroup.in.th/th/product/12
+Firebase callable functions:
+https://firebase.google.com/docs/functions/callable
+Firebase transactions:
+https://firebase.google.com/docs/firestore/manage-data/transactions
+Firebase rules/emulator tests:
+https://firebase.google.com/docs/firestore/security/test-rules-emulator
+https://firebase.google.com/docs/rules/unit-tests
+PDF.js:
+https://mozilla.github.io/pdf.js/examples/index.html
+https://mozilla.github.io/pdf.js/api/index.html
+Optional OpenAI adapter:
+https://developers.openai.com/api/docs/guides/file-inputs
+https://developers.openai.com/api/docs/guides/structured-outputs
+
+START NOW:
+Inspect the selected workspace, create the requirements/engineering-input/capability matrices and then implement Phase0 onward within the local/emulator scope.
+Use this specification as the acceptance contract. Preserve unknowns, show traceable calculations and deliver working verified features with honest gaps.
+

@@ -1,0 +1,49 @@
+{
+  "schema_version": "closure-v1",
+  "form_type": "support_slab",
+  "context": {
+    "projectId": null,
+    "revisionId": null,
+    "designSnapshotHash": null,
+    "activeStageId": null,
+    "capturedStageId": null,
+    "loadCaseId": null
+  },
+  "inputs": {
+    "interfaceId": null,
+    "supportingSlabId": null,
+    "asBuiltDrawingRef": null,
+    "thickness_mm": null,
+    "effectiveDepthX_mm": null,
+    "effectiveDepthY_mm": null,
+    "reinforcementRef": null,
+    "openingsEdgesAndSupportsRef": null,
+    "actualContactAreaRef": null,
+    "concreteMixId": null,
+    "pourTimestamp": null,
+    "loadTimestamp": null,
+    "inSituStrength_MPa": null,
+    "strengthEvidenceRef": null,
+    "maturityCalibrationRef": null,
+    "temperatureHistoryRef": null,
+    "youngSlabStiffnessRef": null,
+    "crackingCreepBasisRef": null,
+    "punchingCriticalPerimeterRef": null,
+    "punchingRulePackRef": null,
+    "momentTransferAndGroupPunchingRef": null,
+    "flexureOneWayShearBearingChecksRef": null,
+    "multistoreyStageAnalysisRef": null,
+    "reshoringPlanRef": null,
+    "notes": "Compressive strength or calendar age alone cannot close punching, flexure, deformation or redistribution checks. Slab-on-ground is not automatically SOIL_ONLY."
+  },
+  "review": {
+    "engineerId": null,
+    "evidenceRef": null,
+    "acceptedSnapshotHash": null,
+    "acceptedStageId": null,
+    "acceptedLoadCaseId": null,
+    "trustedVerificationStatus": "NOT_VERIFIED"
+  },
+  "confirmed": false,
+  "constructionRelease": "NO_GO"
+}

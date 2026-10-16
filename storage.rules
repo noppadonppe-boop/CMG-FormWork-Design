@@ -1,0 +1,48 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function hasEmail() {
+      return request.auth != null && request.auth.token.email is string && request.auth.token.email.size() > 0;
+    }
+    function email() { return request.auth.token.email.lower(); }
+    function profilePath() { return /databases/(default)/documents/RC-FormWork-App/root/users/$(email()); }
+    function profile() { return firestore.get(profilePath()).data; }
+    function approved() {
+      return hasEmail() && firestore.exists(profilePath()) && profile().uid == request.auth.uid && profile().email == email() &&
+        profile().status == 'approved' && profile().role is list && profile().role.size() > 0 &&
+        profile().role.hasOnly(['MasterAdmin', 'SuperAdmin', 'Admin', 'Engineer', 'Staff']);
+    }
+    function projectPermission(projectId, permission) {
+      return profile().get('projectPermissions', {}) is map &&
+        projectId in profile().get('projectPermissions', {}) &&
+        profile().get('projectPermissions', {})[projectId] is list &&
+        (permission in profile().get('projectPermissions', {})[projectId] || 'manage' in profile().get('projectPermissions', {})[projectId]);
+    }
+    function canViewProject(projectId) {
+      return projectId is string && projectId.size() > 0 && approved() &&
+        (profile().role.hasAny(['MasterAdmin', 'SuperAdmin', 'Admin']) || projectPermission(projectId, 'view') ||
+         (profile().assignedProjects is list && projectId in profile().assignedProjects));
+    }
+    function canEditProject(projectId) {
+      return projectId is string && projectId.size() > 0 && approved() &&
+        (profile().role.hasAny(['MasterAdmin', 'SuperAdmin', 'Admin']) || projectPermission(projectId, 'edit') ||
+         (profile().assignedProjects is list && projectId in profile().assignedProjects));
+    }
+
+    // Both selected page images and their optional "-original" PDF use this
+    // flat path and carry their project scope in custom metadata.
+    match /RC-FormWork-App/root/uploads/{fileId} {
+      allow read: if resource.metadata is map && resource.metadata.keys().hasAll(['projectId']) && canViewProject(resource.metadata.projectId);
+      allow create: if resource == null && request.resource != null &&
+        request.resource.size > 0 && request.resource.size <= 20 * 1024 * 1024 &&
+        request.resource.contentType in ['application/pdf', 'image/png', 'image/jpeg'] &&
+        request.resource.metadata is map && request.resource.metadata.keys().hasAll(['projectId']) &&
+        canEditProject(request.resource.metadata.projectId);
+      allow update: if false;
+      allow delete: if resource.metadata is map && resource.metadata.keys().hasAll(['projectId']) &&
+        canEditProject(resource.metadata.projectId);
+    }
+
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}

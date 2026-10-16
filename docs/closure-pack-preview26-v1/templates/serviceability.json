@@ -1,0 +1,37 @@
+{
+  "schema_version": "closure-v1",
+  "form_type": "serviceability",
+  "context": {
+    "projectId": null,
+    "revisionId": null,
+    "designSnapshotHash": null,
+    "activeStageId": null,
+    "capturedStageId": null,
+    "loadCaseId": null
+  },
+  "inputs": {
+    "policyId": null,
+    "memberRole": null,
+    "governingSourceRef": null,
+    "loadSetRef": null,
+    "relativeDeflectionDenominator": null,
+    "absoluteDeflectionLimit_mm": null,
+    "maxTieOpening_mm": null,
+    "maxTotalSettlement_mm": null,
+    "maxDifferentialSettlement_mm": null,
+    "gaugeLength_mm": null,
+    "combinedDisplacementModelRef": null,
+    "creepMoistureReuseBasisRef": null,
+    "notes": "These are independent criteria; choosing a beam span ratio does not fill settlement or tie-opening limits."
+  },
+  "review": {
+    "engineerId": null,
+    "evidenceRef": null,
+    "acceptedSnapshotHash": null,
+    "acceptedStageId": null,
+    "acceptedLoadCaseId": null,
+    "trustedVerificationStatus": "NOT_VERIFIED"
+  },
+  "confirmed": false,
+  "constructionRelease": "NO_GO"
+}

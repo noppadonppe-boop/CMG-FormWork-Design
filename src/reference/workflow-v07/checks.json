@@ -1,0 +1,498 @@
+[
+  {
+    "check_id": "INPUT-01",
+    "group": "INPUT",
+    "description": "Source dimensions and plan validated",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "INPUT-02",
+    "group": "INPUT",
+    "description": "Plywood only in current release",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "INPUT-03",
+    "group": "INPUT",
+    "description": "Actual timber/steel dimensions and orientation",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "INPUT-04",
+    "group": "INPUT",
+    "description": "Materials matched by product/grade/basis",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "INPUT-05",
+    "group": "INPUT",
+    "description": "Concrete placement pressure model and load cases",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "INPUT-06",
+    "group": "INPUT",
+    "description": "Unit/direction/load ownership and no overlap",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "INPUT-07",
+    "group": "INPUT",
+    "description": "Custom evidence and preset snapshot",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "INPUT-08",
+    "group": "INPUT",
+    "description": "Approval/revision invariants",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "PAIR-01",
+    "group": "PAIR",
+    "description": "Closed simple orthogonal polygon no unsupported holes",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "PAIR-02",
+    "group": "PAIR",
+    "description": "Each external face interval covered exactly once",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "PAIR-03",
+    "group": "PAIR",
+    "description": "Opposing tie corridor inside concrete",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "PAIR-04",
+    "group": "PAIR",
+    "description": "Pair boundaries do not create physical Waler joints",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "PAIR-05",
+    "group": "PAIR",
+    "description": "Actual mirrored loads/supports/stiffness verified",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "PAIR-06",
+    "group": "PAIR",
+    "description": "Re-entrant/outside corner details checked",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "PAIR-07",
+    "group": "PAIR",
+    "description": "Tie crossing/rebar clash and forbidden zones",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "SIDE-01",
+    "group": "SIDE",
+    "description": "Plywood flexure",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "SIDE-02",
+    "group": "SIDE",
+    "description": "Plywood shear including rolling where applicable",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "SIDE-03",
+    "group": "SIDE",
+    "description": "Plywood deflection/edge support",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "SIDE-04",
+    "group": "SIDE",
+    "description": "Stud bending/shear/deflection",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "SIDE-05",
+    "group": "SIDE",
+    "description": "Stud bearing/lateral restraint/connections",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "SIDE-06",
+    "group": "SIDE",
+    "description": "Waler reactions from actual discrete loads",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "SIDE-07",
+    "group": "SIDE",
+    "description": "Paired rail load distribution and contact",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "SIDE-08",
+    "group": "SIDE",
+    "description": "Waler local/global stability",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "SIDE-09",
+    "group": "SIDE",
+    "description": "Tie assembly completeness and matching basis",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "SIDE-10",
+    "group": "SIDE",
+    "description": "End-stops/corners/anchors and installation bracing",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "SOFFIT-01",
+    "group": "SOFFIT",
+    "description": "Vertical load cases including extra dead/live",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "SOFFIT-02",
+    "group": "SOFFIT",
+    "description": "Slab-beam shared area owner and no double count",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "SOFFIT-03",
+    "group": "SOFFIT",
+    "description": "Panel span/joints/grain",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "SOFFIT-04",
+    "group": "SOFFIT",
+    "description": "Panel flexure/shear/deflection",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "SOFFIT-05",
+    "group": "SOFFIT",
+    "description": "Joist bending/shear/deflection/bearing",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "SOFFIT-06",
+    "group": "SOFFIT",
+    "description": "Bearer reactions at actual U-heads",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "SOFFIT-07",
+    "group": "SOFFIT",
+    "description": "Bearer stability/splices/local bearing",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "SOFFIT-08",
+    "group": "SOFFIT",
+    "description": "U-head fit/retention/round-tube seating",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "RINGLOCK-01",
+    "group": "RINGLOCK",
+    "description": "Manufacturer/system/component traceability",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "RINGLOCK-02",
+    "group": "RINGLOCK",
+    "description": "Configuration-specific capacity or verified analysis",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "RINGLOCK-03",
+    "group": "RINGLOCK",
+    "description": "Bay and diagonal compatibility",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "RINGLOCK-04",
+    "group": "RINGLOCK",
+    "description": "Installed height closure by datum",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "RINGLOCK-05",
+    "group": "RINGLOCK",
+    "description": "Head extension and insertion limits",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "RINGLOCK-06",
+    "group": "RINGLOCK",
+    "description": "Base extension and insertion limits",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "RINGLOCK-07",
+    "group": "RINGLOCK",
+    "description": "Top/bottom unrestrained lengths",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "RINGLOCK-08",
+    "group": "RINGLOCK",
+    "description": "Standard axial+bending/local/global buckling",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "RINGLOCK-09",
+    "group": "RINGLOCK",
+    "description": "Spigots and standard splice",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "RINGLOCK-10",
+    "group": "RINGLOCK",
+    "description": "Rosette/ledger joint interaction and stiffness",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "RINGLOCK-11",
+    "group": "RINGLOCK",
+    "description": "Diagonal tension/compression and ends",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "RINGLOCK-12",
+    "group": "RINGLOCK",
+    "description": "Bracing X/Y and necessary plan restraint",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "RINGLOCK-13",
+    "group": "RINGLOCK",
+    "description": "Stage-dependent global stability and second-order",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "RINGLOCK-14",
+    "group": "RINGLOCK",
+    "description": "Imperfections/wind/placement horizontal loads",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "RINGLOCK-15",
+    "group": "RINGLOCK",
+    "description": "Uplift/sliding/overturning/restraints",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "RINGLOCK-16",
+    "group": "RINGLOCK",
+    "description": "Footplate and sole board bending/contact",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "RINGLOCK-17",
+    "group": "RINGLOCK",
+    "description": "Soil bearing/settlement or slab early-age/punching",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "RINGLOCK-18",
+    "group": "RINGLOCK",
+    "description": "Self-weight and erection/stripping/re-shoring",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "RINGLOCK-19",
+    "group": "RINGLOCK",
+    "description": "Thai compliance mapping and inspection",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "BEAM|SLAB"
+  },
+  {
+    "check_id": "TYPICAL-01",
+    "group": "TYPICAL",
+    "description": "Actual members assigned uniquely",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "TYPICAL-02",
+    "group": "TYPICAL",
+    "description": "Geometry/material/orientation equivalence",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "TYPICAL-03",
+    "group": "TYPICAL",
+    "description": "Support height/extension/bracing applicability",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "TYPICAL-04",
+    "group": "TYPICAL",
+    "description": "Every relevant limit-state/loadcase covered",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "TYPICAL-05",
+    "group": "TYPICAL",
+    "description": "Edge/end/corner/opening/transition exceptions",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "TYPICAL-06",
+    "group": "TYPICAL",
+    "description": "Stale representative results invalidated",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "RELEASE-01",
+    "group": "RELEASE",
+    "description": "Upstream/downstream reaction force+moment equilibrium",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "RELEASE-02",
+    "group": "RELEASE",
+    "description": "Frozen report/drawing/BOM revision identical",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "RELEASE-03",
+    "group": "RELEASE",
+    "description": "All required checks populated, none missing",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  },
+  {
+    "check_id": "RELEASE-04",
+    "group": "RELEASE",
+    "description": "Independent engineering review and authorized approval",
+    "default_status": "NOT_IMPLEMENTED_ENGINEERING_CHECK",
+    "requirement_origin": "MODEL07/USER-20261015 with BASE061/BASE062",
+    "applicable_to": "ALL"
+  }
+]

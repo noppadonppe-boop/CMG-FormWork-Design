@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Unapproved manufacturer-specific component references only",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "closure-v1"
+    },
+    "sidecar_id": {},
+    "records": {
+      "type": "array",
+      "minItems": 17,
+      "maxItems": 17,
+      "items": {
+        "type": "object",
+        "required": [
+          "rating_id",
+          "source_id",
+          "kind",
+          "selector",
+          "limits",
+          "automatic_design_use",
+          "interpolation_allowed",
+          "extrapolation_allowed",
+          "rating_scope",
+          "basis_mapping_status"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "STANDARD",
+              "BRACE",
+              "JOINT"
+            ]
+          },
+          "selector": {
+            "type": "object",
+            "minProperties": 1
+          },
+          "limits": {
+            "type": "object",
+            "minProperties": 1
+          },
+          "automatic_design_use": {
+            "const": false
+          },
+          "interpolation_allowed": {
+            "const": false
+          },
+          "extrapolation_allowed": {
+            "const": false
+          },
+          "rating_scope": {
+            "const": "COMPONENT_REFERENCE_NOT_COMPLETE_SHORING_CONFIGURATION"
+          },
+          "basis_mapping_status": {
+            "const": "ENGINEER_CONFIRMATION_REQUIRED"
+          }
+        }
+      }
+    },
+    "count": {
+      "const": 17
+    },
+    "material_identity_reference": {},
+    "full_configuration_capacity": {
+      "type": "null"
+    },
+    "head_base_capacity": {
+      "type": "null"
+    },
+    "connection_stiffness": {
+      "type": "null"
+    },
+    "preserve_existing_ringlock_json": {
+      "const": true
+    },
+    "confirmed": {
+      "const": false
+    },
+    "constructionRelease": {
+      "const": "NO_GO"
+    }
+  },
+  "required": [
+    "schema_version",
+    "sidecar_id",
+    "records",
+    "count",
+    "material_identity_reference",
+    "full_configuration_capacity",
+    "head_base_capacity",
+    "connection_stiffness",
+    "preserve_existing_ringlock_json",
+    "confirmed",
+    "constructionRelease"
+  ],
+  "additionalProperties": false
+}

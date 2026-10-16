@@ -1,0 +1,419 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Unapproved tie draft only",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "closure-v1"
+    },
+    "kind": {
+      "const": "TIE_ASSEMBLY_DRAFT"
+    },
+    "origin": {
+      "enum": [
+        "SYNTHETIC_EXAMPLE",
+        "USER_DRAFT"
+      ]
+    },
+    "context": {
+      "type": "object",
+      "required": [
+        "projectId",
+        "revisionId",
+        "designSnapshotHash",
+        "activeStageId",
+        "capturedStageId",
+        "loadCaseId"
+      ],
+      "properties": {
+        "projectId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revisionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "designSnapshotHash": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        },
+        "activeStageId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capturedStageId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "loadCaseId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "template_id": {
+      "enum": [
+        "SEGMENTED_INNER_B",
+        "SEGMENTED_INNER_C",
+        "SEGMENTED_INNER_BC",
+        "SEGMENTED_INNER_D"
+      ]
+    },
+    "demand": {
+      "type": "object",
+      "properties": {
+        "axial_kN": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "basis": {
+          "enum": [
+            "WORKING",
+            "FACTORED_DESIGN",
+            null
+          ]
+        },
+        "reaction_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "symmetry_and_alignment_evidence_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "required": [
+        "axial_kN",
+        "basis",
+        "reaction_ref",
+        "symmetry_and_alignment_evidence_ref"
+      ],
+      "additionalProperties": false
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 13,
+      "maxItems": 13,
+      "items": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "enum": [
+              "INNER_UNIT",
+              "THREAD_END_LEFT",
+              "THREAD_END_RIGHT",
+              "OUTER_LEFT",
+              "OUTER_RIGHT",
+              "END_CONNECTION_LEFT",
+              "END_CONNECTION_RIGHT",
+              "NUT_LEFT",
+              "NUT_RIGHT",
+              "PLATE_LEFT",
+              "PLATE_RIGHT",
+              "WALER_LOCAL_LEFT",
+              "WALER_LOCAL_RIGHT"
+            ]
+          },
+          "product_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1
+          },
+          "reference_record_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1
+          },
+          "capacity_kN": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "exclusiveMinimum": 0
+          },
+          "capacity_basis": {
+            "enum": [
+              "ALLOWABLE",
+              "DESIGN_RESISTANCE",
+              null
+            ]
+          },
+          "capacity_scope": {
+            "const": "EQUIVALENT_AXIAL_TIE_LIMIT"
+          },
+          "evidence_ref": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1
+          },
+          "actual_engagement_mm": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "exclusiveMinimum": 0
+          },
+          "required_engagement_mm": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "slot",
+          "product_id",
+          "reference_record_id",
+          "capacity_kN",
+          "capacity_basis",
+          "capacity_scope",
+          "evidence_ref",
+          "actual_engagement_mm",
+          "required_engagement_mm"
+        ],
+        "additionalProperties": false
+      },
+      "allOf": [
+        {
+          "contains": {
+            "type": "object",
+            "properties": {
+              "slot": {
+                "const": "INNER_UNIT"
+              }
+            },
+            "required": [
+              "slot"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {
+              "slot": {
+                "const": "THREAD_END_LEFT"
+              }
+            },
+            "required": [
+              "slot"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {
+              "slot": {
+                "const": "THREAD_END_RIGHT"
+              }
+            },
+            "required": [
+              "slot"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {
+              "slot": {
+                "const": "OUTER_LEFT"
+              }
+            },
+            "required": [
+              "slot"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {
+              "slot": {
+                "const": "OUTER_RIGHT"
+              }
+            },
+            "required": [
+              "slot"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {
+              "slot": {
+                "const": "END_CONNECTION_LEFT"
+              }
+            },
+            "required": [
+              "slot"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {
+              "slot": {
+                "const": "END_CONNECTION_RIGHT"
+              }
+            },
+            "required": [
+              "slot"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {
+              "slot": {
+                "const": "NUT_LEFT"
+              }
+            },
+            "required": [
+              "slot"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {
+              "slot": {
+                "const": "NUT_RIGHT"
+              }
+            },
+            "required": [
+              "slot"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {
+              "slot": {
+                "const": "PLATE_LEFT"
+              }
+            },
+            "required": [
+              "slot"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {
+              "slot": {
+                "const": "PLATE_RIGHT"
+              }
+            },
+            "required": [
+              "slot"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {
+              "slot": {
+                "const": "WALER_LOCAL_LEFT"
+              }
+            },
+            "required": [
+              "slot"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": {
+              "slot": {
+                "const": "WALER_LOCAL_RIGHT"
+              }
+            },
+            "required": [
+              "slot"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ]
+    },
+    "actual_assembly_compatibility_evidence_ref": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "confirmed": {
+      "const": false
+    },
+    "constructionRelease": {
+      "const": "NO_GO"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "kind",
+    "origin",
+    "context",
+    "template_id",
+    "demand",
+    "checks",
+    "actual_assembly_compatibility_evidence_ref",
+    "confirmed",
+    "constructionRelease"
+  ]
+}

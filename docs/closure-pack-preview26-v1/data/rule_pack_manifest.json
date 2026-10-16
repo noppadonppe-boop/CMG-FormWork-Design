@@ -1,0 +1,134 @@
+{
+  "schema_version": "closure-v1",
+  "rules": [
+    {
+      "rule_id": "MATH-TIE-STRESS",
+      "expression": "sigma=1000*N_kN/A_t_mm2",
+      "scope": "Matched effective tensile area; axial tension only",
+      "function": "tieStress",
+      "basis": "AUTHORED_ARITHMETIC_OR_CONTRACT",
+      "engineering_review_status": "NOT_REVIEWED",
+      "automatic_engineering_release": false
+    },
+    {
+      "rule_id": "MATH-TIE-EXT",
+      "expression": "sum(1000*N*L/(E*A_stiff))",
+      "scope": "Elastic straight rod terms only, no joint slip invented",
+      "function": "rodExtension",
+      "basis": "AUTHORED_ARITHMETIC_OR_CONTRACT",
+      "engineering_review_status": "NOT_REVIEWED",
+      "automatic_engineering_release": false
+    },
+    {
+      "rule_id": "MATH-2SPAN",
+      "expression": "Rend=3wL/8,Rmid=5wL/4,MB=-wL²/8",
+      "scope": "Two equal spans, constant EI, all spans same UDL, no settlements/overhang",
+      "function": "twoSpanUdl",
+      "basis": "AUTHORED_ARITHMETIC_OR_CONTRACT",
+      "engineering_review_status": "NOT_REVIEWED",
+      "automatic_engineering_release": false
+    },
+    {
+      "rule_id": "MATH-RAIL-SPLIT",
+      "expression": "R1=N(0.5-e/s), R2=N(0.5+e/s)",
+      "scope": "Rigid bridging plate, two symmetric support lines, force eccentricity e; not built-up section capacity",
+      "function": "pairedRailForces",
+      "basis": "AUTHORED_ARITHMETIC_OR_CONTRACT",
+      "engineering_review_status": "NOT_REVIEWED",
+      "automatic_engineering_release": false
+    },
+    {
+      "rule_id": "MATH-CONTACT",
+      "expression": "q=N/A+My*x/Iy+Mx*y/Ix",
+      "scope": "Sign convention per function; rigid rectangular footprint full compression/contact, no holes, same reference plane",
+      "function": "rectangularContact",
+      "basis": "AUTHORED_ARITHMETIC_OR_CONTRACT",
+      "engineering_review_status": "NOT_REVIEWED",
+      "automatic_engineering_release": false
+    },
+    {
+      "rule_id": "MATH-PUNCHING-AVG",
+      "expression": "vavg=1000*V_kN/(b0_mm*d_mm)",
+      "scope": "Demand indicator only; b0 externally validated, no unbalanced-moment concentration or resistance",
+      "function": "punchingAverageStress",
+      "basis": "AUTHORED_ARITHMETIC_OR_CONTRACT",
+      "engineering_review_status": "NOT_REVIEWED",
+      "automatic_engineering_release": false
+    },
+    {
+      "rule_id": "MATH-SLS-LIMIT",
+      "expression": "min(L/n,delta_abs) for explicitly defined criteria",
+      "scope": "Known criterion and matching load definition; missing criterion blocks",
+      "function": "serviceabilityScreen",
+      "basis": "AUTHORED_ARITHMETIC_OR_CONTRACT",
+      "engineering_review_status": "NOT_REVIEWED",
+      "automatic_engineering_release": false
+    },
+    {
+      "rule_id": "DATA-SIGNED-TRANSFER",
+      "expression": "action+reaction=0 at same datum and frame",
+      "scope": "Six signed components, same context/datum; tolerance is numerical QA, not acceptance criterion",
+      "function": "checkSignedTransfer",
+      "basis": "AUTHORED_ARITHMETIC_OR_CONTRACT",
+      "engineering_review_status": "NOT_REVIEWED",
+      "automatic_engineering_release": false
+    },
+    {
+      "rule_id": "DATA-STAGE",
+      "expression": "context hash+project+revision+active/captured stage+load case match",
+      "scope": "Completeness/lineage only, never trusted acceptance",
+      "function": "checkStageContext",
+      "basis": "AUTHORED_ARITHMETIC_OR_CONTRACT",
+      "engineering_review_status": "NOT_REVIEWED",
+      "automatic_engineering_release": false
+    },
+    {
+      "rule_id": "DATA-TIE-062",
+      "expression": "reference payload -> canonical 13 check slots",
+      "scope": "Explicit plate aliases; no inferred capacities or synthetic approval",
+      "function": "createTieDraft",
+      "basis": "AUTHORED_ARITHMETIC_OR_CONTRACT",
+      "engineering_review_status": "NOT_REVIEWED",
+      "automatic_engineering_release": false
+    },
+    {
+      "rule_id": "DATA-RATING-EXACT",
+      "expression": "exact keyed lookup only",
+      "scope": "No interpolation, extrapolation, mixing editions or capacity->stiffness",
+      "function": "lookupRinglockReference",
+      "basis": "AUTHORED_ARITHMETIC_OR_CONTRACT",
+      "engineering_review_status": "NOT_REVIEWED",
+      "automatic_engineering_release": false
+    },
+    {
+      "rule_id": "DATA-SLOT-ALIAS",
+      "expression": "Explicit BEARING_PLATE to PLATE alias",
+      "scope": "Aliases only; check slots are not BOM counts",
+      "function": "canonicalTieSlot",
+      "basis": "AUTHORED_ARITHMETIC_OR_CONTRACT",
+      "engineering_review_status": "NOT_REVIEWED",
+      "automatic_engineering_release": false
+    },
+    {
+      "rule_id": "DATA-TIE-CHECK",
+      "expression": "Complete same-basis normalized limits -> numerical minimum",
+      "scope": "No approval; strings do not prove evidence authenticity; real analysis/review required",
+      "function": "screenTieAssembly",
+      "basis": "AUTHORED_ARITHMETIC_OR_CONTRACT",
+      "engineering_review_status": "NOT_REVIEWED",
+      "automatic_engineering_release": false
+    }
+  ],
+  "unimplemented_design_rules": [
+    "GENERAL_FRAME_3D_SECOND_ORDER",
+    "JOINT_MOMENT_ROTATION_AND_INTERACTION",
+    "JACK_EXTENSION_CAPACITY",
+    "THREAD_STRIPPING_GEOMETRY",
+    "PLATE_WEB_CRIPPLING",
+    "GEOTECHNICAL_BEARING_AND_SETTLEMENT",
+    "SLAB_PUNCHING_FLEXURE_STAGE_RESISTANCE",
+    "ENGINEER_ACCEPTANCE_SIGNATURE_VERIFICATION"
+  ],
+  "confirmed": false,
+  "constructionRelease": "NO_GO"
+}

@@ -1,0 +1,61 @@
+{
+  "schema_version": "closure-v1",
+  "source_id": "TH-SHORING-2564",
+  "scope": "SHORING / ค้ำยัน; licensed engineer must map applicable clauses to actual design and resistance basis",
+  "criteria": [
+    {
+      "clause": "13(1)",
+      "key": "steel_shoring_load_multiple",
+      "value": 2,
+      "unit": "ratio"
+    },
+    {
+      "clause": "13(1)",
+      "key": "nonsteel_shoring_load_multiple",
+      "value": 4,
+      "unit": "ratio"
+    },
+    {
+      "clause": "13(2)",
+      "key": "timber_ultimate_bending_min",
+      "value": 300,
+      "unit": "kgf/cm2",
+      "MPa_converted": 29.41995
+    },
+    {
+      "clause": "13(2)",
+      "key": "timber_safety_ratio_min",
+      "value": 4,
+      "unit": "ratio"
+    },
+    {
+      "clause": "13(3)",
+      "key": "steel_yield_point_min",
+      "value": 2400,
+      "unit": "kgf/cm2",
+      "MPa_converted": 235.3596
+    },
+    {
+      "clause": "13(3)",
+      "key": "steel_safety_ratio_min",
+      "value": 2,
+      "unit": "ratio"
+    },
+    {
+      "clause": "13(5)",
+      "key": "support_load_multiple",
+      "value": 2,
+      "unit": "ratio"
+    }
+  ],
+  "additional_requirements": [
+    "Engineer design/control under clause 13.",
+    "Connection stability and ground/building tying under clause 13(4),(6).",
+    "Inspection before and during use under clause 14."
+  ],
+  "interpretation_status": "PENDING_PROJECT_ENGINEER_MAPPING",
+  "multiply_published_allowable_capacity_again": false,
+  "note": "Do not conclude EC factors 1.1 and 1.5 automatically satisfy these ratios; do not blindly apply another factor to an already reduced permissible rating either. Require explicit resistance/workload mapping. Physical quantity conversion kgf/cm2->MPa uses 0.0980665, not a design factor.",
+  "confirmed": false,
+  "constructionRelease": "NO_GO"
+}

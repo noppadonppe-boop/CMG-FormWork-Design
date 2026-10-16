@@ -1,0 +1,892 @@
+[
+  {
+    "key": "footprint_vertices_mm",
+    "group": "geometry",
+    "unit": "mm",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Actual ordered polygon; no guessed sizes"
+  },
+  {
+    "key": "height_mm",
+    "group": "geometry",
+    "unit": "mm",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Concrete head vs support height distinct"
+  },
+  {
+    "key": "soffit_elevation_mm",
+    "group": "geometry",
+    "unit": "mm",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Concrete head vs support height distinct"
+  },
+  {
+    "key": "base_elevation_mm",
+    "group": "geometry",
+    "unit": "mm",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Concrete head vs support height distinct"
+  },
+  {
+    "key": "pair_id",
+    "group": "geometry",
+    "unit": "id",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Physical pair is not structural equivalence"
+  },
+  {
+    "key": "face_id",
+    "group": "geometry",
+    "unit": "id",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Physical pair is not structural equivalence"
+  },
+  {
+    "key": "physical_member_id",
+    "group": "geometry",
+    "unit": "id",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Physical pair is not structural equivalence"
+  },
+  {
+    "key": "analysis_group_id",
+    "group": "geometry",
+    "unit": "id",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Physical pair is not structural equivalence"
+  },
+  {
+    "key": "pair_mirror_transform",
+    "group": "geometry",
+    "unit": "reference",
+    "applies_to": "SIDE",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Explicit 3D/connection checks"
+  },
+  {
+    "key": "corner_details",
+    "group": "geometry",
+    "unit": "reference",
+    "applies_to": "SIDE",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Explicit 3D/connection checks"
+  },
+  {
+    "key": "end_closure_details",
+    "group": "geometry",
+    "unit": "reference",
+    "applies_to": "SIDE",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Explicit 3D/connection checks"
+  },
+  {
+    "key": "tie_collision_model_ref",
+    "group": "geometry",
+    "unit": "reference",
+    "applies_to": "SIDE",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Explicit 3D/connection checks"
+  },
+  {
+    "key": "plywood_product_id",
+    "group": "materials",
+    "unit": "id",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Snapshot source and grade; plywood only"
+  },
+  {
+    "key": "section_id",
+    "group": "materials",
+    "unit": "id",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Snapshot source and grade; plywood only"
+  },
+  {
+    "key": "material_id",
+    "group": "materials",
+    "unit": "id",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Snapshot source and grade; plywood only"
+  },
+  {
+    "key": "material_basis",
+    "group": "materials",
+    "unit": "id",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Snapshot source and grade; plywood only"
+  },
+  {
+    "key": "grain_axis",
+    "group": "materials",
+    "unit": "id",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Snapshot source and grade; plywood only"
+  },
+  {
+    "key": "local_axis",
+    "group": "materials",
+    "unit": "id",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Snapshot source and grade; plywood only"
+  },
+  {
+    "key": "actual_timber_b_mm",
+    "group": "materials",
+    "unit": "mm",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Nominal1.5x3in not actual measurement"
+  },
+  {
+    "key": "actual_timber_h_mm",
+    "group": "materials",
+    "unit": "mm",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Nominal1.5x3in not actual measurement"
+  },
+  {
+    "key": "plywood_thickness_mm",
+    "group": "materials",
+    "unit": "mm",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Nominal1.5x3in not actual measurement"
+  },
+  {
+    "key": "stud_spacing_mm",
+    "group": "layout",
+    "unit": "mm",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Actual supports/positions govern spans"
+  },
+  {
+    "key": "joist_spacing_mm",
+    "group": "layout",
+    "unit": "mm",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Actual supports/positions govern spans"
+  },
+  {
+    "key": "waler_level_mm",
+    "group": "layout",
+    "unit": "mm",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Actual supports/positions govern spans"
+  },
+  {
+    "key": "bearer_spacing_mm",
+    "group": "layout",
+    "unit": "mm",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Actual supports/positions govern spans"
+  },
+  {
+    "key": "tie_spacing_x_mm",
+    "group": "layout",
+    "unit": "mm",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Actual supports/positions govern spans"
+  },
+  {
+    "key": "tie_spacing_z_mm",
+    "group": "layout",
+    "unit": "mm",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Actual supports/positions govern spans"
+  },
+  {
+    "key": "tie_edge_offset_mm",
+    "group": "layout",
+    "unit": "mm",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Actual supports/positions govern spans"
+  },
+  {
+    "key": "rail_count",
+    "group": "paired_waler",
+    "unit": "count",
+    "applies_to": "SIDE",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Default2; not equivalent to composite section"
+  },
+  {
+    "key": "rail_clear_gap_mm",
+    "group": "paired_waler",
+    "unit": "mm",
+    "applies_to": "SIDE",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Contact centroid spacing differs from clear gap"
+  },
+  {
+    "key": "contact_centroid_spacing_mm",
+    "group": "paired_waler",
+    "unit": "mm",
+    "applies_to": "SIDE",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Contact centroid spacing differs from clear gap"
+  },
+  {
+    "key": "tie_eccentricity_mm",
+    "group": "paired_waler",
+    "unit": "mm",
+    "applies_to": "SIDE",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Contact centroid spacing differs from clear gap"
+  },
+  {
+    "key": "rail_splice_position_mm",
+    "group": "paired_waler",
+    "unit": "mm",
+    "applies_to": "SIDE",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Contact centroid spacing differs from clear gap"
+  },
+  {
+    "key": "rail_behavior",
+    "group": "paired_waler",
+    "unit": "id",
+    "applies_to": "SIDE",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Independent rails default; round tubes need seating"
+  },
+  {
+    "key": "plate_product_id",
+    "group": "paired_waler",
+    "unit": "id",
+    "applies_to": "SIDE",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Independent rails default; round tubes need seating"
+  },
+  {
+    "key": "saddle_retainer_id",
+    "group": "paired_waler",
+    "unit": "id",
+    "applies_to": "SIDE",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Independent rails default; round tubes need seating"
+  },
+  {
+    "key": "load_sharing_model_ref",
+    "group": "paired_waler",
+    "unit": "id",
+    "applies_to": "SIDE",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Independent rails default; round tubes need seating"
+  },
+  {
+    "key": "concrete_unit_weight_kN_m3",
+    "group": "loads",
+    "unit": "kN/m3",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Explicit density basis including steel or not"
+  },
+  {
+    "key": "additional_dead_load_kPa",
+    "group": "loads",
+    "unit": "kPa",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Vertical not automatically added to side pressure"
+  },
+  {
+    "key": "construction_live_load_kPa",
+    "group": "loads",
+    "unit": "kPa",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Vertical not automatically added to side pressure"
+  },
+  {
+    "key": "lateral_surcharge_kPa",
+    "group": "loads",
+    "unit": "kPa",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Vertical not automatically added to side pressure"
+  },
+  {
+    "key": "wind_kPa",
+    "group": "loads",
+    "unit": "kPa",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Vertical not automatically added to side pressure"
+  },
+  {
+    "key": "dead_tributary_width_mm",
+    "group": "loads",
+    "unit": "mm",
+    "applies_to": "BEAM",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Different owned loaded strips can differ"
+  },
+  {
+    "key": "live_tributary_width_mm",
+    "group": "loads",
+    "unit": "mm",
+    "applies_to": "BEAM",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Different owned loaded strips can differ"
+  },
+  {
+    "key": "concrete_tributary_width_mm",
+    "group": "loads",
+    "unit": "mm",
+    "applies_to": "BEAM",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Different owned loaded strips can differ"
+  },
+  {
+    "key": "action_id",
+    "group": "loads",
+    "unit": "id/vector",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Prevent repeated concrete/steel/formwork weight"
+  },
+  {
+    "key": "ownership_id",
+    "group": "loads",
+    "unit": "id/vector",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Prevent repeated concrete/steel/formwork weight"
+  },
+  {
+    "key": "load_case_id",
+    "group": "loads",
+    "unit": "id/vector",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Prevent repeated concrete/steel/formwork weight"
+  },
+  {
+    "key": "load_stage_id",
+    "group": "loads",
+    "unit": "id/vector",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Prevent repeated concrete/steel/formwork weight"
+  },
+  {
+    "key": "direction",
+    "group": "loads",
+    "unit": "id/vector",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Prevent repeated concrete/steel/formwork weight"
+  },
+  {
+    "key": "location",
+    "group": "loads",
+    "unit": "id/vector",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Prevent repeated concrete/steel/formwork weight"
+  },
+  {
+    "key": "self_weight_ownership",
+    "group": "loads",
+    "unit": "id/vector",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Prevent repeated concrete/steel/formwork weight"
+  },
+  {
+    "key": "manufacturer_id",
+    "group": "ringlock",
+    "unit": "id",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "No generic leg capacity"
+  },
+  {
+    "key": "system_id",
+    "group": "ringlock",
+    "unit": "id",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "No generic leg capacity"
+  },
+  {
+    "key": "configuration_id",
+    "group": "ringlock",
+    "unit": "id",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "No generic leg capacity"
+  },
+  {
+    "key": "rating_id",
+    "group": "ringlock",
+    "unit": "id",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "No generic leg capacity"
+  },
+  {
+    "key": "rating_basis",
+    "group": "ringlock",
+    "unit": "id",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "No generic leg capacity"
+  },
+  {
+    "key": "evidence_ref",
+    "group": "ringlock",
+    "unit": "id",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "No generic leg capacity"
+  },
+  {
+    "key": "bay_x_mm",
+    "group": "ringlock",
+    "unit": "mm",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Actual configuration, not catalogue nominal jack length"
+  },
+  {
+    "key": "bay_y_mm",
+    "group": "ringlock",
+    "unit": "mm",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Actual configuration, not catalogue nominal jack length"
+  },
+  {
+    "key": "lift_heights_mm",
+    "group": "ringlock",
+    "unit": "mm",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Actual configuration, not catalogue nominal jack length"
+  },
+  {
+    "key": "head_extension_mm",
+    "group": "ringlock",
+    "unit": "mm",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Actual configuration, not catalogue nominal jack length"
+  },
+  {
+    "key": "base_extension_mm",
+    "group": "ringlock",
+    "unit": "mm",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Actual configuration, not catalogue nominal jack length"
+  },
+  {
+    "key": "head_engagement_mm",
+    "group": "ringlock",
+    "unit": "mm",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Actual configuration, not catalogue nominal jack length"
+  },
+  {
+    "key": "base_engagement_mm",
+    "group": "ringlock",
+    "unit": "mm",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Actual configuration, not catalogue nominal jack length"
+  },
+  {
+    "key": "top_unrestrained_mm",
+    "group": "ringlock",
+    "unit": "mm",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Actual configuration, not catalogue nominal jack length"
+  },
+  {
+    "key": "base_unrestrained_mm",
+    "group": "ringlock",
+    "unit": "mm",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Actual configuration, not catalogue nominal jack length"
+  },
+  {
+    "key": "joint_stiffness_model_id",
+    "group": "ringlock",
+    "unit": "id",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Member/node/global analysis"
+  },
+  {
+    "key": "brace_layout_x_id",
+    "group": "ringlock",
+    "unit": "id",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Member/node/global analysis"
+  },
+  {
+    "key": "brace_layout_y_id",
+    "group": "ringlock",
+    "unit": "id",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Member/node/global analysis"
+  },
+  {
+    "key": "plan_restraint_id",
+    "group": "ringlock",
+    "unit": "id",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Member/node/global analysis"
+  },
+  {
+    "key": "top_restraint_id",
+    "group": "ringlock",
+    "unit": "id",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Member/node/global analysis"
+  },
+  {
+    "key": "base_restraint_id",
+    "group": "ringlock",
+    "unit": "id",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Member/node/global analysis"
+  },
+  {
+    "key": "standard_stack_id",
+    "group": "ringlock",
+    "unit": "id",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Member/node/global analysis"
+  },
+  {
+    "key": "leg_reactions",
+    "group": "ringlock",
+    "unit": "force+moment",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Individual, not uniform total/count"
+  },
+  {
+    "key": "u_head_reactions",
+    "group": "ringlock",
+    "unit": "force+moment",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Individual, not uniform total/count"
+  },
+  {
+    "key": "base_reactions",
+    "group": "ringlock",
+    "unit": "force+moment",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Individual, not uniform total/count"
+  },
+  {
+    "key": "sole_board_geometry",
+    "group": "support",
+    "unit": "geometry/ref",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Complete support load path"
+  },
+  {
+    "key": "support_slab_geometry",
+    "group": "support",
+    "unit": "geometry/ref",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Complete support load path"
+  },
+  {
+    "key": "soil_report_id",
+    "group": "support",
+    "unit": "geometry/ref",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Complete support load path"
+  },
+  {
+    "key": "young_slab_strength_evidence",
+    "group": "support",
+    "unit": "geometry/ref",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Complete support load path"
+  },
+  {
+    "key": "reshoring_plan_id",
+    "group": "support",
+    "unit": "geometry/ref",
+    "applies_to": "BEAM|SLAB",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Complete support load path"
+  },
+  {
+    "key": "thai_compliance_mapping_ref",
+    "group": "review",
+    "unit": "ref",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Missing/stale checks block release"
+  },
+  {
+    "key": "representative_check_id",
+    "group": "review",
+    "unit": "ref",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Missing/stale checks block release"
+  },
+  {
+    "key": "coverage_evidence_ref",
+    "group": "review",
+    "unit": "ref",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Missing/stale checks block release"
+  },
+  {
+    "key": "upstream_revision",
+    "group": "review",
+    "unit": "ref",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Missing/stale checks block release"
+  },
+  {
+    "key": "report_snapshot_hash",
+    "group": "review",
+    "unit": "ref",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Missing/stale checks block release"
+  },
+  {
+    "key": "custom_reason",
+    "group": "review",
+    "unit": "ref",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Missing/stale checks block release"
+  },
+  {
+    "key": "custom_evidence",
+    "group": "review",
+    "unit": "ref",
+    "applies_to": "ALL",
+    "required": "CONDITIONAL_BY_TOPOLOGY",
+    "custom_allowed": true,
+    "default": null,
+    "comment": "Missing/stale checks block release"
+  }
+]

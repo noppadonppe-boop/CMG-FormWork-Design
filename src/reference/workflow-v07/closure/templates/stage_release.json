@@ -1,0 +1,36 @@
+{
+  "schema_version": "closure-v1",
+  "form_type": "stage_release",
+  "context": {
+    "projectId": null,
+    "revisionId": null,
+    "designSnapshotHash": null,
+    "activeStageId": null,
+    "capturedStageId": null,
+    "loadCaseId": null
+  },
+  "inputs": {
+    "stageRecordId": null,
+    "requestedAction": null,
+    "capturedAnalysisRef": null,
+    "currentAnalysisRef": null,
+    "constructionSequenceRef": null,
+    "loadTransferRef": null,
+    "strengthAndSupportEvidenceRefs": [],
+    "serviceabilityEvidenceRef": null,
+    "engineerRulePackRefs": [],
+    "siteInspectionRef": null,
+    "manualAcceptanceRef": null,
+    "notes": "Historical captured-stage evidence remains historical. Do not rewrite its stage to the active stage to clear a stale blocker."
+  },
+  "review": {
+    "engineerId": null,
+    "evidenceRef": null,
+    "acceptedSnapshotHash": null,
+    "acceptedStageId": null,
+    "acceptedLoadCaseId": null,
+    "trustedVerificationStatus": "NOT_VERIFIED"
+  },
+  "confirmed": false,
+  "constructionRelease": "NO_GO"
+}
