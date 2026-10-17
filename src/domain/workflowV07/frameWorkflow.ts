@@ -14,19 +14,26 @@ import {pairFaces} from './geometry.js';
 import {analyzeSecondOrderFrame, validateSecondOrderDefinition, type SecondOrderDefinition} from './frameSecondOrder.js';
 import {screenFrameMemberDemands, type FrameMemberDemandScreen} from './frameDemands.js';
 import {validateResistanceEvidence, type ResistanceEvidence} from './resistanceEvidence.js';
+import {screenBraceConnections, tensionOnlyActiveSet, type BraceEndEvidence} from './braceConnections.js';
 import {screenFrameSls, validateSlsLimitEvidence, type FrameSlsScreen, type SlsLimitEvidence} from './frameSls.js';
 import {auditRinglockContract, contractSignal, type ContractAudit, type ContractCheckStatus} from './contractAudit.js';
 
 export type NullableVector = [number | null, number | null, number | null];
 export type FrameBoundaryDraft = {kind: 'UNKNOWN'} | {kind: 'FREE'} | {kind: 'FIXED'} | {kind: 'PRESCRIBED'; value: number | null};
 export const FRAME_ROLES = ['STANDARD', 'LEDGER', 'BRACE', 'HEAD_JACK', 'BASE_JACK', 'SPIGOT', 'LEDGER_JOINT', 'BRACE_JOINT', 'OTHER'] as const;
-export interface FrameNodeDraft {id: string; role: 'HEAD' | 'SIDE_SUPPORT' | 'BASE' | 'ROSETTE' | 'SPLICE' | 'OTHER' | null; pointMm: NullableVector; boundary: FrameBoundaryDraft[]; evidenceRef: string}
+export interface FrameNodeDraft {id: string; role: 'HEAD' | 'SIDE_SUPPORT' | 'BASE' | 'ROSETTE' | 'SPLICE' | 'OTHER' | null; pointMm: NullableVector; boundary: FrameBoundaryDraft[]; evidenceRef: string;
+  /** BASE nodes: reviewer evidence for anchor uplift (AXIAL_TENSION) and horizontal resultant (SHEAR_Y). */
+  anchorResistance?: ResistanceEvidence[] | null}
 export interface FrameElementDraft {
   id: string; nodeI: string; nodeJ: string; role: typeof FRAME_ROLES[number] | null; kind: FrameElement['kind'] | null;
   E_MPa: number | null; G_MPa: number | null; A_mm2: number | null; Iy_mm4: number | null; Iz_mm4: number | null; J_mm4: number | null;
   localX: NullableVector; localY: NullableVector; stiffness: (number | null)[]; evidenceRef: string;
   binding?: FrameTubeBinding | null;
   resistance?: ResistanceEvidence[] | null;
+  /** AXIAL_BAR only: drops out of the solve when it would carry compression (active-set iteration). */
+  tensionOnly?: boolean | null;
+  /** Reviewer evidence for the fixing at each end of an AXIAL_BAR brace. */
+  endResistance?: BraceEndEvidence | null;
 }
 export interface FrameActionDraft {
   id: string; nodeId: string; kind: 'SELF_WEIGHT' | 'WIND' | 'PLACEMENT' | 'OTHER' | null; ownershipId: string; evidenceRef: string;
@@ -95,8 +102,13 @@ export function validateFrameLayout(raw: unknown): asserts raw is AppliedFrameLa
   const layout = f as unknown as AppliedFrameLayout;
   uniqueIds(layout.nodes, 'frame draft nodes'); uniqueIds(layout.elements, 'frame draft elements'); uniqueIds(layout.additionalActions, 'frame draft actions');
   for (const n of layout.nodes) {
-    exact(n, ['id', 'role', 'pointMm', 'boundary', 'evidenceRef'], 'frame node draft');
+    exact(n, ['id', 'role', 'pointMm', 'boundary', 'evidenceRef'], 'frame node draft', ['anchorResistance']);
     if (![null, 'HEAD', 'SIDE_SUPPORT', 'BASE', 'ROSETTE', 'SPLICE', 'OTHER'].includes(n.role)) throw Error('Invalid node role');
+    if (n.anchorResistance != null) {
+      if (!Array.isArray(n.anchorResistance) || n.anchorResistance.length > 8) throw Error(`${n.id}: invalid anchor evidence list`);
+      n.anchorResistance.forEach(validateResistanceEvidence);
+      if (n.role !== 'BASE') throw Error(`${n.id}: anchor evidence applies to BASE nodes only`);
+    }
     tuple(n.pointMm, 3, 'node coordinates'); text(n.evidenceRef, 'node evidence');
     if (!Array.isArray(n.boundary) || n.boundary.length !== 6) throw Error('Six frame boundary entries required');
     for (const b of n.boundary) {record(b); exact(b, b.kind === 'PRESCRIBED' ? ['kind', 'value'] : ['kind'], 'boundary');
@@ -105,7 +117,16 @@ export function validateFrameLayout(raw: unknown): asserts raw is AppliedFrameLa
   }
   let bindingSize = 0;
   for (const e of layout.elements) {
-    exact(e, Object.keys(emptyFrameElement('SCHEMA')).filter(k => k !== 'binding'), 'frame member draft', ['binding', 'resistance']);
+    exact(e, Object.keys(emptyFrameElement('SCHEMA')).filter(k => k !== 'binding'), 'frame member draft', ['binding', 'resistance', 'tensionOnly', 'endResistance']);
+    if (e.tensionOnly != null && (typeof e.tensionOnly !== 'boolean' || (e.tensionOnly && e.kind !== 'AXIAL_BAR'))) throw Error(`${e.id}: tension-only applies to AXIAL_BAR members`);
+    if (e.endResistance != null) {
+      exact(e.endResistance, ['I', 'J'], 'brace end evidence');
+      if (e.kind !== 'AXIAL_BAR') throw Error(`${e.id}: end fixing evidence applies to AXIAL_BAR braces`);
+      for (const end of ['I', 'J'] as const) if (e.endResistance[end] != null) {
+        if (!Array.isArray(e.endResistance[end]) || e.endResistance[end]!.length > 8) throw Error(`${e.id}: invalid ${end} end evidence list`);
+        e.endResistance[end]!.forEach(validateResistanceEvidence);
+      }
+    }
     if (e.binding !== undefined && e.binding !== null) {validateFrameTubeBinding(e.binding); bindingSize += canonical(e.binding).length;}
     if (e.resistance !== undefined && e.resistance !== null) {
       if (!Array.isArray(e.resistance) || e.resistance.length > 32) throw Error(`${e.id}: invalid resistance evidence list`);
@@ -281,6 +302,7 @@ export function evaluateFrameLayout(model: WorkflowModel, layout: AppliedFrameLa
   let sideTransfer: ReturnType<typeof transferSideReactionsToFrame> | null = null;
   let sideCoupling: ReturnType<typeof analyzeCoupledSideSupports> | null = null;
   let stability: {lateralActionIds: string[]; horizontalForceN: FrameVector; secondOrder: boolean; status: 'LATERAL_CASE_REQUIRED' | 'SECOND_ORDER_REQUIRED' | 'SCREENED_FOR_DECLARED_LATERAL_CASE'} | null = null;
+  let slackBraces: string[] = [], braceConnections: ReturnType<typeof screenBraceConnections> | null = null;
   try {
     if (layout.revisionId !== model.revisionId || layout.inputDefinition !== sourceDefinition) throw Error('STALE_FRAME_LAYOUT_REANALYSIS_REQUIRED');
     const includesSide = ['SIDE_REACTIONS', 'SOFFIT_AND_SIDE_REACTIONS'].includes(layout.loadSource ?? '');
@@ -361,8 +383,12 @@ export function evaluateFrameLayout(model: WorkflowModel, layout: AppliedFrameLa
       actions.push(...sideCoupling.actions);
     }
     const candidateInput = frameInput(actions);
-    canonical(candidateInput); input = candidateInput;
-    analysis = analyzeLinearFrame(input); blockers.push(...analysis.blockers);
+    canonical(candidateInput);
+    // Tension-only braces: iterate until no flagged brace is in compression; the analysed input is the active set.
+    const tensionOnly = new Set(layout.elements.filter(e => e.tensionOnly && e.kind === 'AXIAL_BAR').map(e => e.id));
+    const active = tensionOnlyActiveSet(candidateInput, tensionOnly, analyzeLinearFrame);
+    input = active.input; analysis = active.analysis; slackBraces = active.slack; blockers.push(...analysis.blockers);
+    if (tensionOnly.size) blockers.push('TENSION_ONLY_BRACES_SOLVED_BY_ACTIVE_SET_LINEAR_PER_CASE_NO_PRETENSION_OR_SLACK_LENGTH');
     if (sideCoupling) {
       // The solved frame must reproduce the coupled support movement at every mapped node.
       const scale = Math.max(1e-6, ...sideCoupling.frameCompatibility.map(c => Math.abs(c.displacementMm)));
@@ -385,11 +411,13 @@ export function evaluateFrameLayout(model: WorkflowModel, layout: AppliedFrameLa
     }
     demands = screenFrameMemberDemands(analysis, secondOrder, layout.elements.map(e => ({id: e.id, role: e.role, resistance: e.resistance ?? null})), layout.actionBasis);
     blockers.push(...demands.blockers, ...demands.records.flatMap(r => r.missingInputs.map(m => `${r.memberId}:${m}`)));
+    braceConnections = screenBraceConnections({analysis, actionBasis: layout.actionBasis, elements: layout.elements, nodes: layout.nodes, slackElementIds: slackBraces});
+    blockers.push(...braceConnections.blockers);
     sls = screenFrameSls(analysis, layout.sls ?? [], layout.actionBasis);
     blockers.push(...sls.blockers, ...sls.records.flatMap(r => r.blockers.map(b => `${r.nodeId}/${r.quantity}:${b}`)));
   } catch (e) {blockers.push(`FRAME_INPUT_OR_SOLVE:${(e as Error).message}`);}
   const contractAudit = frameContractAudit(layout, analysis, secondOrder, demands, sls, blockers);
-  const result = {status: secondOrder?.status === 'FAIL' || demands?.status === 'FAIL' || sls?.status === 'FAIL' || sideCoupling?.status === 'FAIL' ? 'FAIL' as const : 'BLOCKED' as const, actionBasis: layout.actionBasis, input, analysis, secondOrder, demands, sls, sideTransfer, sideCoupling, stability, requiredChecks, contractAudit, blockers: [...new Set([...blockers, ...contractAudit.blockers])], constructionEligible: false as const, constructionRelease: 'NO_GO' as const};
+  const result = {status: secondOrder?.status === 'FAIL' || demands?.status === 'FAIL' || sls?.status === 'FAIL' || sideCoupling?.status === 'FAIL' || braceConnections?.status === 'FAIL' ? 'FAIL' as const : 'BLOCKED' as const, actionBasis: layout.actionBasis, input, analysis, secondOrder, demands, sls, sideTransfer, sideCoupling, stability, braceConnections, slackBraces, requiredChecks, contractAudit, blockers: [...new Set([...blockers, ...contractAudit.blockers])], constructionEligible: false as const, constructionRelease: 'NO_GO' as const};
   producedFrames.set(result, {revision: model.revisionId, inputs: sourceDefinition, layout: canonical(layout), output: canonical(result)});
   return result;
 }

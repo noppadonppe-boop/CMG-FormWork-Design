@@ -101,6 +101,11 @@ D4. ประสิทธิภาพ: แยก chunk, คำนวณ v0.7 น
 
 ## Phase E — ช่องว่างวิศวกรรมที่เหลือ (ต่อระบบ)
 
+สถานะ E1 (บางส่วน): ค้ำยันรับแรงดึงเท่านั้นแบบ active set ต่อกรณี, ledger จุดยึดปลายค้ำยัน (ดึง/อัดต่อปลาย) และ anchor ฐาน
+(ดึงขึ้น/แรงนอนรวมจาก reaction) เทียบหลักฐานผู้ตรวจ (`src/domain/workflowV07/braceConnections.ts`) พร้อม editor/ผล และ benchmark
+portal X-brace; แรงด้านข้างเข้าทาง frame-node actions และ second-order มีอยู่แล้ว
+ยังไม่ทำ: ไม้อัด→คร่าวเข้ากันได้, ledger แผ่นรอง/นัต/เกลียว/bolt/weld/splice, re-solve contact loss, และข้อมูลค้ำยัน 34 มม. จาก Owner
+
 E1. ร่วมทุกระบบ
 - ค้ำยัน/Shoring: องค์ประกอบ truss/brace ในเฟรม 3D ที่มีอยู่, จุดยึดจริง, แรงด้านข้าง (ลม/ความเอียง/แรงเท) เป็น frame-node actions, second-order (มีแล้ว), anchor/ฐานรองรับเป็น evidence gate
 - ไม้อัด → คร่าว ให้เข้ากันได้ (ขณะนี้รองรับแข็งทางเดียว) ตามแนวที่ทำกับคร่าว → คานรัดแล้ว

@@ -8,6 +8,8 @@ import {SideFrameMappingEditor} from './SideFrameMappingEditor';
 import type {SideEndpoint} from '../domain/workflowV07/sideLayout';
 import {emptyResistanceEvidence, RESISTANCE_QUANTITIES, type ResistanceActionBasis, type ResistanceBasis, type ResistanceEvidence, type ResistanceEvidenceStatus, type ResistanceQuantity} from '../domain/workflowV07/resistanceEvidence';
 import {emptySlsLimitEvidence, SLS_QUANTITIES, type SlsEvidenceStatus, type SlsLimitEvidence, type SlsQuantity} from '../domain/workflowV07/frameSls';
+import {entriesForCheck, resistanceEvidenceFromRegistry} from '../domain/workflowV07/registry';
+import {useRegistry} from './RegistryContext';
 
 const number = (value: string) => value.trim() === '' ? null : Number.isFinite(Number(value)) ? Number(value) : null;
 const roleNames: Record<string, string> = {STANDARD: 'เสาตั้ง Standard', LEDGER: 'Ledger', BRACE: 'ค้ำเฉียง', HEAD_JACK: 'Head jack', BASE_JACK: 'Base jack', SPIGOT: 'Spigot', LEDGER_JOINT: 'จุดต่อ Ledger', BRACE_JOINT: 'จุดต่อค้ำเฉียง', OTHER: 'อื่น ๆ ตามแบบจำลอง'};
@@ -93,6 +95,7 @@ export function FrameLayoutEditor({layout, headIds, captureEnabled, onCapture, o
         const kind = e.target.value as FrameBoundaryDraft['kind'], next: FrameBoundaryDraft = kind === 'PRESCRIBED' ? {kind, value: null} : {kind}; updateNode(i, {boundary: n.boundary.map((old, j) => j === d ? next : old)});
       }}><option value="UNKNOWN">ยังไม่ทราบ</option><option value="FREE">อิสระ</option><option value="FIXED">กำหนดอยู่กับที่ 0</option><option value="PRESCRIBED">กำหนดการเคลื่อน/หมุน</option></select>{b.kind === 'PRESCRIBED' && <input type="number" step="any" value={b.value ?? ''} onChange={e => updateNode(i, {boundary: n.boundary.map((old, j) => j === d ? {kind: 'PRESCRIBED', value: number(e.target.value)} : old)})}/>}</label>)}</div>
       <label className="field"><span>หลักฐานพิกัดและเงื่อนไขจุดเฟรม</span><input value={n.evidenceRef} onChange={e => updateNode(i, {evidenceRef: e.target.value})}/></label>
+      {n.role === 'BASE' && <ResistanceList title="หลักฐานกำลัง Anchor ฐาน (แรงดึงขึ้น = AXIAL_TENSION, แรงนอนรวม = SHEAR_Y)" quantities={['AXIAL_TENSION', 'SHEAR_Y']} value={n.anchorResistance ?? []} onChange={anchorResistance => updateNode(i, {anchorResistance})}/>}
       <button className="btn secondary" onClick={() => change({...form, nodes: form.nodes.filter((_, j) => j !== i)})}>ลบจุดเฟรม {n.id}</button>
     </details>)}
     <button className="btn secondary" disabled={form.nodes.length >= 80} onClick={() => change({...form, nodes: [...form.nodes, {id: addId('N', form.nodes.map(n => n.id)), role: null, pointMm: [null, null, null], boundary: unknownFrameBoundary(), evidenceRef: ''}]})}>เพิ่มจุดเฟรม</button>
@@ -107,6 +110,11 @@ export function FrameLayoutEditor({layout, headIds, captureEnabled, onCapture, o
       {e.kind === 'JOINT_SPRING' && <>{vector(e.localX, ['ทิศแกน local X: global X', 'ทิศแกน local X: global Y', 'ทิศแกน local X: global Z'], localX => updateElement(i, {localX}))}<div className="form-grid">{e.stiffness.map((v, d) => <label className="field" key={d}><span>{['kx · N/mm', 'ky · N/mm', 'kz · N/mm', 'krx · N·mm/rad', 'kry · N·mm/rad', 'krz · N·mm/rad'][d]}</span><input type="number" step="any" value={v ?? ''} onChange={ev => updateElement(i, {stiffness: e.stiffness.map((old, j) => j === d ? number(ev.target.value) : old)})}/></label>)}</div><p>จุดสปริงต้องซ้อนพิกัดกัน 0 คือประกาศปล่อยแกนนั้น ว่างคือยังไม่ทราบ ไม่สร้างค่าความแข็งจากกำลังรับแรง</p></>}
       {e.kind !== 'AXIAL_BAR' && vector(e.localY, ['ทิศอ้างอิง local Y: global X', 'ทิศอ้างอิง local Y: global Y', 'ทิศอ้างอิง local Y: global Z'], localY => updateElement(i, {localY}))}
       <label className="field"><span>หลักฐานสมาชิก/หน้าตัด/วัสดุ/แกน/จุดต่อ</span><input value={e.evidenceRef} onChange={ev => updateElement(i, {evidenceRef: ev.target.value})}/></label>
+      {e.kind === 'AXIAL_BAR' && <>
+        <label className="confirm"><input type="checkbox" checked={!!e.tensionOnly} onChange={ev => updateElement(i, {tensionOnly: ev.target.checked})}/>รับแรงดึงเท่านั้น (ค้ำยันเส้นเดี่ยว/สายดึง) · ตัดออกจากการวิเคราะห์เมื่อเกิดแรงอัดในกรณีนั้น</label>
+        <ResistanceList title={`หลักฐานจุดยึดปลาย I (${e.nodeI || '?'})`} quantities={['AXIAL_TENSION', 'AXIAL_COMPRESSION']} value={e.endResistance?.I ?? []} onChange={I => updateElement(i, {endResistance: {I, J: e.endResistance?.J ?? null}})}/>
+        <ResistanceList title={`หลักฐานจุดยึดปลาย J (${e.nodeJ || '?'})`} quantities={['AXIAL_TENSION', 'AXIAL_COMPRESSION']} value={e.endResistance?.J ?? []} onChange={J => updateElement(i, {endResistance: {I: e.endResistance?.I ?? null, J}})}/>
+      </>}
       <details className="frame-resistance-editor"><summary>หลักฐานกำลังสมาชิก/จุดต่อ ({e.resistance?.length ?? 0})</summary>
         <p>กรอกเฉพาะค่ากำลังที่มีเอกสารอ้างอิงและผู้ตรวจระบุครบ ระบบไม่เติมค่าจาก Catalogue, characteristic หรือผลทดสอบเอง; ค่าว่างยังเป็น INCOMPLETE และผลที่คำนวณได้ยังเป็น NO_GO</p>
         {(e.resistance ?? []).map((r, ri) => {const updateResistance = (patch: Partial<ResistanceEvidence>) => updateElement(i, {resistance: (e.resistance ?? []).map((old, j) => j === ri ? {...old, ...patch} : old)}); return <div className="form-grid frame-resistance-row" key={`${e.id}-resistance-${ri}`}>
@@ -147,4 +155,25 @@ export function FrameLayoutEditor({layout, headIds, captureEnabled, onCapture, o
     <button className="btn secondary" onClick={() => {change(definitionOf(layout)); onPendingChange(false);}}>คืนค่าเฟรมที่นำไปใช้ล่าสุด</button>
     <button className="btn secondary" onClick={() => change(emptyFrameLayout())}>เริ่มกราฟเฟรมใหม่</button>
   </fieldset>;
+}
+
+/** Compact reviewer-evidence list for brace end fixings and base anchors; may be filled from the registry. */
+function ResistanceList({title, quantities, value, onChange}: {title: string; quantities: ResistanceQuantity[]; value: ResistanceEvidence[]; onChange: (next: ResistanceEvidence[]) => void}) {
+  const {registry} = useRegistry();
+  const update = (ri: number, patch: Partial<ResistanceEvidence>) => onChange(value.map((old, j) => j === ri ? {...old, ...patch} : old));
+  return <details className="frame-resistance-editor"><summary>{title} ({value.length})</summary>
+    <p>ค่ากำลังจากเอกสารที่ผู้ตรวจระบุเท่านั้น ระบบไม่คำนวณกำลังจุดยึด/anchor จากรูปทรงหรือผลิตภัณฑ์ ช่องว่าง = INCOMPLETE</p>
+    {value.map((r, ri) => <div className="form-grid frame-resistance-row" key={ri}>
+      <label className="field"><span>ปริมาณกำลัง</span><select value={r.quantity ?? ''} onChange={ev => onChange(value.map((old, j) => j === ri ? emptyResistanceEvidence((ev.target.value || null) as ResistanceQuantity | null) : old))}><option value="">ยังไม่ระบุ</option>{quantities.map(q => <option key={q} value={q}>{resistanceNames[q]}</option>)}</select></label>
+      {r.quantity && <label className="field"><span>เติมจากคลังที่รีวิวแล้ว</span><select value="" onChange={ev => {const entry = registry.entries.find(x => x.id === ev.target.value); if (entry) onChange(value.map((old, j) => j === ri ? resistanceEvidenceFromRegistry(registry, entry, r.quantity!) : old));}}>
+        <option value="">เลือกรายการ…</option>{entriesForCheck(registry, r.quantity).map(({entry, reviewed}) => <option key={entry.id} value={entry.id}>{entry.name || entry.id} · {reviewed ? 'REVIEWED' : 'DRAFT → REFERENCE_ONLY'}</option>)}</select></label>}
+      <label className="field"><span>หน่วย / Capacity</span><span>{r.unit ?? 'UNKNOWN'} · </span><input type="number" min="0" step="any" value={r.capacity ?? ''} onChange={ev => update(ri, {capacity: number(ev.target.value)})}/></label>
+      <label className="field"><span>ฐานแรงของค่า</span><select value={r.actionBasis ?? ''} onChange={ev => update(ri, {actionBasis: (ev.target.value || null) as ResistanceActionBasis})}><option value="">ยังไม่ระบุ</option><option value="SERVICE">SERVICE</option><option value="FACTORED">FACTORED</option></select></label>
+      <label className="field"><span>ฐานกำลัง</span><select value={r.resistanceBasis ?? ''} onChange={ev => update(ri, {resistanceBasis: (ev.target.value || null) as ResistanceBasis})}><option value="">ยังไม่ระบุ</option><option value="ALLOWABLE">ALLOWABLE</option><option value="DESIGN">DESIGN</option><option value="CHARACTERISTIC">CHARACTERISTIC · ยังเทียบไม่ได้</option><option value="ULTIMATE_TEST">ULTIMATE_TEST · ยังเทียบไม่ได้</option></select></label>
+      {(['methodId', 'sourceRef', 'sourceRevision', 'evidenceRef', 'reviewRef'] as const).map(k => <label className="field" key={k}><span>{{methodId: 'Method ID', sourceRef: 'Source ref', sourceRevision: 'Source revision', evidenceRef: 'Evidence ref', reviewRef: 'Review ref'}[k]}</span><input value={r[k]} onChange={ev => update(ri, {[k]: ev.target.value})}/></label>)}
+      <label className="field"><span>สถานะหลักฐาน</span><select value={r.status} onChange={ev => update(ri, {status: ev.target.value as ResistanceEvidenceStatus})}><option value="REFERENCE_ONLY">REFERENCE_ONLY · ยังไม่ review</option><option value="ENGINEER_REVIEWED">ENGINEER_REVIEWED · ต้องมี Review ref</option></select></label>
+      <button className="btn secondary" onClick={() => onChange(value.filter((_, k) => k !== ri))}>ลบหลักฐาน {ri + 1}</button>
+    </div>)}
+    <button className="btn secondary" disabled={value.length >= 8} onClick={() => onChange([...value, emptyResistanceEvidence(null)])}>เพิ่มแถวหลักฐาน</button>
+  </details>;
 }
