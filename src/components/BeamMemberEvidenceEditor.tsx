@@ -1,5 +1,7 @@
 import type {BeamMemberEvidence, BeamMemberQuantity, BeamMemberActionBasis, BeamMemberLimitBasis} from '../domain/workflowV07/beamResistance';
 import {emptyBeamMemberEvidence} from '../domain/workflowV07/beamResistance';
+import {beamEvidenceFromRegistry, entriesForCheck} from '../domain/workflowV07/registry';
+import {useRegistry} from './RegistryContext';
 
 const labels: Record<BeamMemberQuantity, string> = {FLEXURE: 'ดัด · N·mm', SHEAR: 'เฉือน · N', DEFLECTION: 'โก่งตัว · mm'};
 const number = (value: string) => value.trim() && Number.isFinite(Number(value)) ? Number(value) : null;
@@ -7,8 +9,13 @@ const number = (value: string) => value.trim() && Number.isFinite(Number(value))
 export function BeamMemberEvidenceEditor({value, memberEvidenceRef, onChange}: {
   value: BeamMemberEvidence[]; memberEvidenceRef: string; onChange: (next: BeamMemberEvidence[]) => void;
 }) {
+  const {registry} = useRegistry();
   const update = (index: number, patch: Partial<BeamMemberEvidence>) =>
     onChange(value.map((row, i) => i === index ? {...row, ...patch} : row));
+  const fromRegistry = (index: number, quantity: BeamMemberQuantity, entryId: string) => {
+    const entry = registry.entries.find(e => e.id === entryId);
+    if (entry) onChange(value.map((row, i) => i === index ? beamEvidenceFromRegistry(registry, entry, quantity, memberEvidenceRef) : row));
+  };
   return <details className="beam-member-evidence-editor">
     <summary>หลักฐานขีดจำกัดดัด/เฉือน/โก่งตัว ({value.length})</summary>
     <p>กรอกเฉพาะ allowable/design limit ที่ตรวจแหล่งอ้างอิงและเงื่อนไขสมาชิกแล้ว ค่าคุณลักษณะหรือผลทดสอบยังเทียบตรงไม่ได้; แม้จะแสดง SCREENED ก็ยังเป็น NO_GO</p>
@@ -21,6 +28,9 @@ export function BeamMemberEvidenceEditor({value, memberEvidenceRef, onChange}: {
             const next = e.target.value as BeamMemberQuantity | '';
             onChange(value.map((old, i) => i === index ? emptyBeamMemberEvidence(next || null, memberEvidenceRef) : old));
           }}><option value="">ยังไม่ระบุ</option>{Object.entries(labels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+          {quantity && <label className="field"><span>เติมจากคลังที่รีวิวแล้ว</span><select value="" onChange={e => {if (e.target.value) fromRegistry(index, quantity, e.target.value);}}>
+            <option value="">เลือกรายการ…</option>{entriesForCheck(registry, quantity).map(({entry, reviewed}) => <option key={entry.id} value={entry.id}>{entry.name || entry.id} · {reviewed ? 'REVIEWED' : 'DRAFT → REFERENCE_ONLY'}</option>)}
+          </select></label>}
           <label className="field"><span>หน่วย / limit</span><span>{row.unit ?? 'UNKNOWN'} · </span><input type="number" min="0" step="any" value={row.limit ?? ''} onChange={e => update(index, {limit: number(e.target.value)})}/></label>
           <label className="field"><span>ฐานแรงที่วิเคราะห์</span><select value={row.actionBasis ?? ''} onChange={e => update(index, {actionBasis: (e.target.value || null) as BeamMemberActionBasis})}>
             <option value="">ยังไม่ระบุ</option><option value="SERVICE">SERVICE</option>{quantity !== 'DEFLECTION' && <option value="FACTORED">FACTORED</option>}

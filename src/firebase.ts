@@ -38,6 +38,7 @@ import {
 import {connectFunctionsEmulator, getFunctions, httpsCallable} from 'firebase/functions';
 import {connectStorageEmulator, deleteObject, getDownloadURL, getStorage, ref, uploadBytesResumable, type UploadMetadata} from 'firebase/storage';
 import {parseStoredWorkflowDraft, WORKFLOW_DRAFT_LIMIT, type StoredWorkflowDraft} from './domain/workflowV07/storage';
+import {validateRegistryEntry, validateRegistryMethod, type Registry, type RegistryEntry, type RegistryMethod} from './domain/workflowV07/registry';
 
 export const SHARED_COLLECTION = 'RC-FormWork-App';
 export const SHARED_DOCUMENT = 'root';
@@ -296,6 +297,26 @@ export async function loadWorkflowDrafts(projectId: string): Promise<Record<stri
     } catch { /* an unreadable draft is reported as missing rather than guessed */ }
   }
   return drafts;
+}
+/** Shared reviewed registry (methods and catalog entries), one document per item. */
+const registryCollection = () => collection(requireCloud().db, SHARED_COLLECTION, SHARED_DOCUMENT, 'registry');
+export async function saveRegistryItem(item: {type: 'method'; value: RegistryMethod} | {type: 'entry'; value: RegistryEntry}) {
+  const user = requireCloud().auth.currentUser; if (!user) throw Error('กรุณาเข้าสู่ระบบก่อนบันทึกคลังข้อมูล');
+  if (item.type === 'method') validateRegistryMethod(item.value); else validateRegistryEntry(item.value);
+  await setDoc(doc(registryCollection(), `${item.type}__${item.value.id}`), {type: item.type, id: item.value.id, status: item.value.review.status, itemJson: JSON.stringify(item.value), updatedBy: user.uid, updatedAt: serverTimestamp()}, {merge: false});
+}
+export async function deleteRegistryItem(type: 'method' | 'entry', id: string) {await deleteDoc(doc(registryCollection(), `${type}__${id}`));}
+export async function loadRegistry(): Promise<Registry> {
+  const snap = await getDocs(registryCollection()), registry: Registry = {methods: [], entries: []};
+  for (const item of snap.docs) {
+    const data = item.data() as Record<string, unknown>;
+    try {
+      if (typeof data.itemJson !== 'string') continue;
+      const value = JSON.parse(data.itemJson);
+      if (data.type === 'method') {validateRegistryMethod(value); registry.methods.push(value);} else if (data.type === 'entry') {validateRegistryEntry(value); registry.entries.push(value);}
+    } catch { /* an unreadable item is omitted, never repaired */ }
+  }
+  return registry;
 }
 export async function saveProject(project: SharedProject, category: MenuCategory = 'overview', caseId?: string) {
   const user = requireCloud().auth.currentUser; if (!user) throw Error('กรุณาเข้าสู่ระบบก่อนบันทึกข้อมูล');

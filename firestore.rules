@@ -85,6 +85,15 @@ service cloud.firestore {
         data.modelJson is string && data.modelJson.size() <= 900000 &&
         data.updatedBy == request.auth.uid && data.updatedAt == request.time;
     }
+    // Shared reviewed registry: approved Engineers and admins write; status mirrors the item.
+    function isReviewer() { return isAdmin() || (approved() && me().role.hasAny(['Engineer'])); }
+    function validRegistryItem(data, itemId) {
+      return data.keys().hasOnly(['type', 'id', 'status', 'itemJson', 'updatedBy', 'updatedAt']) &&
+        data.type in ['method', 'entry'] && data.id is string && data.id.size() > 0 && data.id.size() <= 120 &&
+        itemId == data.type + '__' + data.id && data.status in ['DRAFT', 'REVIEWED', 'RETIRED'] &&
+        data.itemJson is string && data.itemJson.size() <= 200000 &&
+        data.updatedBy == request.auth.uid && data.updatedAt == request.time;
+    }
     function menuCategory(category) { return category in ['overview', 'upload', 'geometry', 'criteria', 'layout', 'results', 'drawings', 'report']; }
     function clientSnapshot(data) {
       // Callable results share this collection with client menu snapshots.
@@ -151,6 +160,12 @@ service cloud.firestore {
           allow create, update: if canEditProject(projectId) && validWorkflowDraft(request.resource.data, projectId, caseId);
           allow delete: if canEditProject(projectId);
         }
+      }
+
+      match /registry/{itemId} {
+        allow read: if approved();
+        allow create, update: if isReviewer() && validRegistryItem(request.resource.data, itemId);
+        allow delete: if isAdmin();
       }
 
       match /activityLogs/{logId} {

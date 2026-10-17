@@ -35,6 +35,11 @@ A3. ลดความเสี่ยงบน production ระหว่าง�
 
 ## Phase B — ข้อมูลตั้งต้นที่รีวิวแล้ว (ให้ถึง SCREENED ได้จริง)
 
+สถานะ: B1 และโครง B2 ทำแล้ว (`src/domain/workflowV07/registry.ts`, เมนู "คลังวัสดุ/วิธีคำนวณ", Firestore `root/registry`
+พร้อม rules, ตัวเลือก "เติมจากคลัง" ในช่องหลักฐานคร่าว/คานรัด/คานรับ/ตรวจเฉพาะที่) ผู้ตรวจที่ Owner กำหนด: Noppadon P · Engineer
+รายการเริ่มต้นเป็น DRAFT จากแหล่งเผยแพร่ (APA V345, ค้ำยัน 34 มม. UNKNOWN) ยังไม่มีขีดจำกัด
+ค้างจาก Owner: ข้อมูลผลิตภัณฑ์จริงพร้อมเอกสาร เพื่อกรอกขีดจำกัดและกดรีวิว; B3 (legacy ฐานราก/เสา อ่าน catalog เดียวกัน) ยังไม่ทำ
+
 B1. Registry ของวิธีคำนวณและเกณฑ์ (criteria/method registry)
 - ตาราง method: id, ชื่อ, แหล่งอ้างอิง, revision, ขอบเขตใช้ (ช่วง, วัสดุ, ฐานแรง ALLOWABLE/DESIGN/SLS), สถานะ (DRAFT/REVIEWED/RETIRED), ผู้รีวิว, วันที่
 - ใช้ร่วมกับ evidence schema ที่มีอยู่ (`beam-member-evidence-1`, `side-local-evidence-1`, resistance evidence, SLS evidence)

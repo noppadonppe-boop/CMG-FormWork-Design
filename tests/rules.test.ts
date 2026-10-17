@@ -186,6 +186,22 @@ describe('Project scope and client saves', () => {
     await assertSucceeds(deleteDoc(doc(staffDb, path('p1', 'c1'))));
   });
 
+  it('lets approved engineers and admins write registry items while staff only read; forged identity, status and ids are rejected', async () => {
+    const item = (type: string, id: string, uid: string, patch: Record<string, unknown> = {}) => ({type, id, status: 'DRAFT', itemJson: '{}', updatedBy: uid, updatedAt: serverTimestamp(), ...patch});
+    const path = (type: string, id: string) => `${root}/registry/${type}__${id}`;
+    const engineerDb = context('engineer').firestore(), staffDb = context('staff').firestore(), adminDb = context('admin').firestore();
+    await assertSucceeds(setDoc(doc(engineerDb, path('entry', 'RHS-1')), item('entry', 'RHS-1', 'engineer')));
+    await assertSucceeds(setDoc(doc(engineerDb, path('method', 'M-1')), item('method', 'M-1', 'engineer', {status: 'REVIEWED'})));
+    await assertSucceeds(getDocs(collection(staffDb, `${root}/registry`)));
+    await assertFails(setDoc(doc(staffDb, path('entry', 'RHS-2')), item('entry', 'RHS-2', 'staff')));
+    for (const patch of [{updatedBy: 'admin'}, {updatedAt: seedTime}, {status: 'APPROVED'}, {type: 'other'}, {constructionEligible: true}, {itemJson: 5}]) {
+      await assertFails(setDoc(doc(engineerDb, path('entry', 'RHS-1')), item('entry', 'RHS-1', 'engineer', patch)));
+    }
+    await assertFails(setDoc(doc(engineerDb, path('entry', 'RHS-1')), item('entry', 'DIFFERENT', 'engineer')));
+    await assertFails(deleteDoc(doc(engineerDb, path('entry', 'RHS-1'))));
+    await assertSucceeds(deleteDoc(doc(adminDb, path('entry', 'RHS-1'))));
+  });
+
   it('requires project identity to match its path on creation and update', async () => {
     const db = context('admin').firestore();
     for (const patch of [{id: 'different'}, {projectId: 'different'}, {id: deleteField()}, {projectId: deleteField()}]) await assertFails(updateDoc(doc(db, projectPath('p1')), patch));

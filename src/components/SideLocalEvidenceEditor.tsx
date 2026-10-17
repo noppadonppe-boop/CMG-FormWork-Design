@@ -1,5 +1,7 @@
 import React from 'react';
 import {emptySideLocalEvidence, SIDE_LOCAL_CHECK_KINDS, type SideLocalCheckKind, type SideLocalEvidence} from '../domain/workflowV07/sideLocalChecks';
+import {entriesForCheck, sideLocalEvidenceFromRegistry} from '../domain/workflowV07/registry';
+import {useRegistry} from './RegistryContext';
 
 export const sideLocalKindNames: Record<SideLocalCheckKind, string> = {
   STUD_RAIL_BEARING: 'แรงกดเฉพาะที่ คร่าว↔ราง · N ต่อจุดสัมผัส',
@@ -18,7 +20,12 @@ export function SideLocalEvidenceEditor({value, memberEvidenceRef, faceId, onCha
   value: SideLocalEvidence[]; memberEvidenceRef: string; faceId: string; onChange: (next: SideLocalEvidence[]) => void;
   kinds?: readonly SideLocalCheckKind[]; coupled?: boolean;
 }) {
+  const {registry} = useRegistry();
   const update = (i: number, patch: Partial<SideLocalEvidence>) => onChange(value.map((row, j) => j === i ? {...row, ...patch} : row));
+  const fromRegistry = (i: number, kind: SideLocalCheckKind, entryId: string) => {
+    const entry = registry.entries.find(e => e.id === entryId);
+    if (entry) onChange(value.map((row, j) => j === i ? sideLocalEvidenceFromRegistry(registry, entry, kind, memberEvidenceRef) : row));
+  };
   return <details className="side-local-evidence-editor" aria-label={`หลักฐานตรวจเฉพาะที่ ${faceId}`}>
     <summary>หลักฐานตรวจเฉพาะที่ {faceId} ({value.length}/{kinds.length})</summary>
     {coupled
@@ -28,6 +35,9 @@ export function SideLocalEvidenceEditor({value, memberEvidenceRef, faceId, onCha
     {value.map((row, i) => <fieldset key={i}><legend>รายการ {i + 1}</legend><div className="form-grid">
       <label className="field"><span>ชนิดการตรวจ</span><select value={row.kind ?? ''} onChange={e => onChange(value.map((old, j) => j === i ? emptySideLocalEvidence((e.target.value || null) as SideLocalCheckKind | null, memberEvidenceRef) : old))}>
         <option value="">ยังไม่ระบุ</option>{kinds.map(k => <option key={k} value={k}>{sideLocalKindNames[k]}</option>)}</select></label>
+      {row.kind && <label className="field"><span>เติมจากคลังที่รีวิวแล้ว</span><select value="" onChange={e => {if (e.target.value) fromRegistry(i, row.kind!, e.target.value);}}>
+        <option value="">เลือกรายการ…</option>{entriesForCheck(registry, row.kind).map(({entry, reviewed}) => <option key={entry.id} value={entry.id}>{entry.name || entry.id} · {reviewed ? 'REVIEWED' : 'DRAFT → REFERENCE_ONLY'}</option>)}
+      </select></label>}
       <label className="field"><span>หน่วย / limit</span><span>{row.unit ?? 'UNKNOWN'} · </span><input type="number" min="0" step="any" value={row.limit ?? ''} onChange={e => update(i, {limit: number(e.target.value)})}/></label>
       <label className="field"><span>ฐานแรงที่วิเคราะห์</span><select value={row.actionBasis ?? ''} onChange={e => update(i, {actionBasis: (e.target.value || null) as SideLocalEvidence['actionBasis']})}><option value="">ยังไม่ระบุ</option><option value="SERVICE">SERVICE</option>{row.kind !== 'CORNER_OPENING' && <option value="FACTORED">FACTORED</option>}</select></label>
       <label className="field"><span>ฐาน limit</span><select value={row.limitBasis ?? ''} onChange={e => update(i, {limitBasis: (e.target.value || null) as SideLocalEvidence['limitBasis']})}><option value="">ยังไม่ระบุ</option>{row.kind === 'CORNER_OPENING' ? <option value="SLS_LIMIT">SLS_LIMIT</option> : <><option value="ALLOWABLE">ALLOWABLE</option><option value="DESIGN">DESIGN</option></>}</select></label>

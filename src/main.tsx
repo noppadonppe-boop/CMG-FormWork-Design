@@ -7,7 +7,7 @@ import {mockProject} from './domain/mockProject';
 import {WalerDetails} from './components/WalerDetails';
 import {AssemblyDetail} from './components/AssemblyDetail';
 import {ColumnCriteria,ColumnYokeDetails} from './components/ColumnYokeDetails';
-import {MENU_CATEGORIES,configured,usingEmulators,loadProjects,saveProject,deleteProject,saveWorkflowDraft,trustedCalculation,canProject,hasRole,type MenuCategory} from './firebase';
+import {MENU_CATEGORIES,configured,usingEmulators,loadProjects,saveProject,deleteProject,saveWorkflowDraft,loadRegistry,saveRegistryItem,deleteRegistryItem,trustedCalculation,canProject,hasRole,type MenuCategory} from './firebase';
 import {AdminPanel} from './components/AdminPanel';
 import {SourceUpload,type ResumeDrawing} from './components/SourceUpload';
 import {ModelWorkspace,type ModelRevision} from './components/ModelWorkspace';
@@ -26,6 +26,10 @@ import {AppRouter} from './AppRouter';
 import {workflowV07Enabled} from './workflowV07Flag';
 import type {ElementType} from './domain/workflowV07/common';
 import {parseStoredWorkflowDraft,type StoredWorkflowDraft} from './domain/workflowV07/storage';
+import {emptyRegistry,seedRegistry,validateRegistry,type Registry,type RegistryEntry,type RegistryMethod} from './domain/workflowV07/registry';
+import {DEFAULT_REVIEWER,RegistryProvider} from './components/RegistryContext';
+import {RegistryPanel} from './components/RegistryPanel';
+import {Library} from 'lucide-react';
 import './style.css';
 
 const WorkflowV07Panel=React.lazy(()=>import('./components/WorkflowV07Panel'));
@@ -62,6 +66,9 @@ function hydrate(raw:unknown[]):Project[]{
   return cases.length?[{id:p.id,name:p.name,code:p.code,cases,...(stock?{sectionStock:stock}:{})}]:[];
  });
 }
+const REGISTRY_KEY='cmg-formwork-registry-v1';
+// Offline registry: a stored list wins; missing/corrupt data seeds published-source DRAFT items.
+function storedRegistry():Registry{if(configured)return emptyRegistry();try{const v=JSON.parse(localStorage.getItem(REGISTRY_KEY)||'null');if(v===null)return seedRegistry();validateRegistry(v);return v;}catch{return seedRegistry();}}
 // An explicitly stored empty list stays empty (all projects deleted); missing or corrupt data seeds the demo.
 function stored():Project[]{if(configured)return [];try{const v=JSON.parse(localStorage.getItem(KEY)||'null');if(!Array.isArray(v))return initial;const result=hydrate(v);return result.length||!v.length?result:initial;}catch{return initial;}}
 const f=(n:number|null,d=2)=>n===null?'—':n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -109,6 +116,27 @@ function App(){
  const [workflowElementType,setWorkflowElementType]=useState<ElementType>((projects[0]?.cases[0]?.workflowElementType??projects[0]?.cases[0]?.input.kind??'FOOTING') as ElementType);
  const [message,setMessage]=useState(''),[sourceName,setSourceName]=useState<string|null>(null),[source,setSource]=useState<Pick<PreparedSource,'name'|'url'>|null>(null),[busy,setBusy]=useState(false),[authOpen,setAuthOpen]=useState(false),[pendingUsers,setPendingUsers]=useState(0);
  const [history,setHistory]=useState<Record<string,(ModelRevision&{input:Input})[]>>({}),[drawing,setDrawing]=useState<{projectId:string;value:ResumeDrawing}|null>(null);
+ const [registry,setRegistry]=useState<Registry>(storedRegistry);
+ useEffect(()=>{if(!configured)localStorage.setItem(REGISTRY_KEY,JSON.stringify(registry));},[registry]);
+ useEffect(()=>{
+  if(!configured||!firebaseUser||!userProfile||userProfile.status!=='approved')return;
+  let cancelled=false;
+  loadRegistry().then(r=>{if(!cancelled)setRegistry(r);}).catch(e=>{if(!cancelled)setMessage('โหลดคลังข้อมูลไม่สำเร็จ: '+(e as Error).message);});
+  return()=>{cancelled=true;};
+ },[firebaseUser?.uid,userProfile?.status]);
+ const reviewerName=userProfile?[userProfile.firstName,userProfile.lastName].filter(Boolean).join(' ')+(userProfile.position?' · '+userProfile.position:''):DEFAULT_REVIEWER;
+ const canReviewRegistry=!configured||hasRole(userProfile,'MasterAdmin')||hasRole(userProfile,'SuperAdmin')||hasRole(userProfile,'Admin')||hasRole(userProfile,'Engineer');
+ async function saveRegistry(item:{type:'method';value:RegistryMethod}|{type:'entry';value:RegistryEntry}){
+   if(configured)await saveRegistryItem(item);
+   setRegistry(r=>item.type==='method'?{...r,methods:[...r.methods.filter(m=>m.id!==item.value.id),item.value]}:{...r,entries:[...r.entries.filter(e=>e.id!==item.value.id),item.value]});
+   setMessage(`บันทึก ${item.type==='method'?'วิธีคำนวณ':'รายการ'} ${item.value.id} · สถานะ ${item.value.review.status}`);
+ }
+ async function removeRegistryItem(type:'method'|'entry',id:string){
+   if(!window.confirm(`ลบ ${id} ออกจากคลัง? หลักฐานที่อ้างถึงรายการนี้จะกลายเป็นหลักฐานค้าง`))return;
+   if(configured)await deleteRegistryItem(type,id);
+   setRegistry(r=>type==='method'?{...r,methods:r.methods.filter(m=>m.id!==id)}:{...r,entries:r.entries.filter(e=>e.id!==id)});
+ }
+ async function seedRegistryItems(){const seed=seedRegistry(Date.now());for(const m of seed.methods)await saveRegistry({type:'method',value:m});for(const e of seed.entries)await saveRegistry({type:'entry',value:e});}
  const backupPicker=useRef<HTMLInputElement>(null);
  const autoSaveLock=useRef(false),lastAutoSaved=useRef('');
  const p=projects.find(p=>p.id===projectId)||projects[0]||initial[0],c=p.cases.find(c=>c.id===caseId)||p.cases[0],x=c.input,uid=firebaseUser?.uid||'',canEditCurrentProject=canProject(userProfile,p.id,'edit');
@@ -269,7 +297,7 @@ function App(){
    if(aiDraft.shape==='L'||aiDraft.shape==='RECTANGLE')v.shape=aiDraft.shape;
    setInput(v);setTab('geometry');setMessage('ใช้มิติที่อ่านได้เป็น Draft แล้ว ช่องที่ AI ไม่ทราบยังต้องตรวจ/เติมจากต้นฉบับก่อนยืนยัน');
  }
- const baseNav=[['overview','ภาพรวม',LayoutDashboard],['designbook','Design Book',BookOpen],['upload','รับแบบและ AI',Upload],['geometry','รูปทรงและมิติ',Layers],['criteria','Design Criteria',Settings2],['layout','จัดวางเบื้องต้น',Building2],['results','รายการคำนวณ',CheckCircle2],['drawings','แปลนและรูปตัด',FolderOpen],['report','รายงาน PDF',FileText]] as const;
+ const baseNav=[['overview','ภาพรวม',LayoutDashboard],['designbook','Design Book',BookOpen],['upload','รับแบบและ AI',Upload],['geometry','รูปทรงและมิติ',Layers],['criteria','Design Criteria',Settings2],['library','คลังวัสดุ/วิธีคำนวณ',Library],['layout','จัดวางเบื้องต้น',Building2],['results','รายการคำนวณ',CheckCircle2],['drawings','แปลนและรูปตัด',FolderOpen],['report','รายงาน PDF',FileText]] as const;
  const nav=baseNav;
  const setPending=useCallback((count:number)=>setPendingUsers(count),[]);
   const r=analysis.r;
@@ -292,6 +320,7 @@ function App(){
  <div hidden={tab!=='upload'||!legacyElement}><SourceUpload key={uid+':'+p.id+':'+c.id} projectId={p.id} caseId={c.id} userId={uid} canEdit={canEditCurrentProject} saveProject={()=>{if(!canEditCurrentProject)return Promise.reject(Error('โครงการนี้เป็นสิทธิ์ดูอย่างเดียว'));return saveProject(p,'upload',c.id);}} onSourceChange={name=>{setSourceName(name);if(name)edit('confirmed',false);}} onPreviewChange={setSource} onApplyDraft={applyAI} onManual={()=>setTab('geometry')} model={analysis.r?x:undefined} onApplyChanges={applyModelChanges} onCreateCases={items=>void createCases(items)} resume={drawing?.projectId===p.id?drawing.value:null} onDrawingChange={reportDrawing} stockIds={p.sectionStock}/>
  <ModelWorkspace caseName={c.name} result={analysis.r} error={analysis.error} history={history[c.id]??[]} canEdit={canEditCurrentProject} onUndo={undoModel} onEditGeometry={()=>setTab('geometry')}/></div>
  {tab==='designbook'&&<DesignBook input={x}/>}
+ {tab==='library'&&<RegistryPanel registry={registry} reviewerName={reviewerName} canReview={canReviewRegistry} canDelete={!configured||hasRole(userProfile,'MasterAdmin')} onSave={saveRegistry} onDelete={removeRegistryItem} onSeed={seedRegistryItems}/>}
  {tab==='overview'&&legacyElement&&<><section className="hero"><div><span className="eyebrow">FROM DRAWING TO CALCULATION</span><h2>จัดวางแบบหล่อ<br/>พร้อมหลักฐานที่ตรวจสอบได้</h2><p>รับแบบ · ยืนยันมิติ · เปรียบเทียบการจัดวาง · ตรวจสมาชิก · รายงานร่าง</p><button className="btn light" onClick={()=>setTab('upload')}><Upload size={17}/>เริ่มจาก PDF / ภาพสเก็ตช์</button></div><div className="hero-diagram"><Layers size={92} strokeWidth=".7"/><span>PLYWOOD + STEEL FRAME</span></div></section>
  <div className="metrics"><div><small>CONCRETE VOLUME</small><strong>{f(r?.volume??null)}<em>m³</em></strong></div><div><small>SIDE FORMWORK AREA</small><strong>{f(r?.formArea??null)}<em>m²</em></strong></div><div><small>MAX. FRESH PRESSURE</small><strong>{f(r?.pressure??null,1)}<em>kPa</em></strong></div><div><small>ENGINEERING STATUS</small><strong className="amber">{r?.status||'INVALID'}</strong><span>ต้องตรวจส่วนที่ยังขาด</span></div></div>
  <div className="grid two"><section className="card"><div className="card-title"><h3>รูปทรงและแนวจัดวาง</h3><button className="text-btn" onClick={()=>setTab('geometry')}>แก้ไขมิติ →</button></div><Plan input={x} result={r}/></section><section className="card"><h3>ขั้นตอนของแบบนี้</h3><div className="steps">{[['01','รับแบบต้นฉบับ',sourceName||'เพิ่ม PDF/ภาพ หรือป้อนมิติด้วยตนเอง'],['02','ยืนยันรูปทรง',x.confirmed?'ยืนยันแล้ว':'ยังไม่ยืนยัน'],['03','จัดวางเบื้องต้น','เปรียบเทียบตัวเลือกจากระบบ'],['04','ตรวจรายการคำนวณ','คัดกรองสมาชิกและแสดงส่วนที่ยังขาด'],['05','รายงานและแบบติดตั้ง','ส่งออกรายงานร่างได้']].map(([n,a,b])=><div key={n}><span>{n}</span><section><b>{a}</b><p>{b}</p></section></div>)}</div><div className="warning"><AlertTriangle size={18}/><p>ต้นแบบนี้ยังไม่ครบสำหรับออกแบบก่อสร้างจริง ทุกค่าที่ใช้คัดกรองแสดงที่มาและข้อจำกัด</p></div></section></div></>}
@@ -307,7 +336,7 @@ function App(){
   {tab==='overview'&&workflowElementType!=='FOOTING'&&workflowElementType!=='COLUMN'&&!v07Enabled&&<section className="card workflow-menu-blocked"><h3>Workflow v0.7 · {ELEMENT_TYPES.find(type=>type.id===workflowElementType)?.label}</h3><p>เมนูนี้พร้อมใช้งานในโหมดร่าง แต่ Workflow v0.7 ถูกปิดไว้จนกว่าจะเปิด `VITE_WORKFLOW_V07_ENABLED=true` ในโหมดออฟไลน์หรือ emulator ตามข้อกำหนดของระบบ</p><p className="muted">ยังไม่มีการคำนวณกำลังสมาชิกจริงจากเมนูนี้ และสถานะยังเป็น NO_GO</p></section>}
   {tab!=='overview'&&tab!=='users'&&!legacyElement&&<section className="card workflow-menu-blocked"><h3>Workflow v0.7 · {ELEMENT_TYPES.find(type=>type.id===workflowElementType)?.label}</h3><p>เลือกเมนูภาพรวมเพื่อเปิดร่าง Workflow v0.7 ขององค์อาคารนี้ รายการคำนวณ legacy ไม่รองรับชนิดนี้</p></section>}
   {tab==='overview'&&v07OnProduction&&<div className="warning" role="alert"><AlertTriangle size={18}/><p>Workflow v0.7 เปิดบน Firebase production (VITE_WORKFLOW_V07_ALLOW_PRODUCTION=true) · ผลทั้งหมดเป็นร่าง DRAFT / NO_GO / NOT FOR CONSTRUCTION ห้ามใช้ก่อสร้าง</p></div>}
-  {tab==='overview'&&v07Enabled&&<React.Suspense fallback={<p>กำลังโหลด Workflow v0.7…</p>}><WorkflowV07Panel key={p.id+':'+c.id+':'+workflowElementType} input={x} caseId={c.id} initialElementType={workflowElementType} stored={c.workflowV07??null} canPersist={canEditCurrentProject} onPersist={draft=>persistWorkflowDraft(p.id,c.id,draft)}/></React.Suspense>}
+  {tab==='overview'&&v07Enabled&&<RegistryProvider value={{registry,reviewerName}}><React.Suspense fallback={<p>กำลังโหลด Workflow v0.7…</p>}><WorkflowV07Panel key={p.id+':'+c.id+':'+workflowElementType} input={x} caseId={c.id} initialElementType={workflowElementType} stored={c.workflowV07??null} canPersist={canEditCurrentProject} onPersist={draft=>persistWorkflowDraft(p.id,c.id,draft)}/></React.Suspense></RegistryProvider>}
  <footer className="app-footer"><span>CMG ENGINEERING & CONSTRUCTION</span><span>v0.3 · Column yoke screening · แยกผลคัดกรองจากการอนุมัติ</span><button onClick={()=>{if(window.confirm('คืนค่าข้อมูลสาธิตในเบราว์เซอร์? ไม่ลบข้อมูล Firebase')){setProjects(initial);setProjectId(initial[0].id);setCaseId(initial[0].cases[0].id);}}}><RotateCcw size={12}/>Reset demo</button></footer>
  </main></div>;
 }
