@@ -2,6 +2,9 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import type {Input} from '../domain';
 import {canonical, WORKFLOW_VERSION, type ElementType, type Point2} from '../domain/workflowV07/common';
 import {createStoredWorkflowDraft, restoreWorkflowDraft, type StoredWorkflowDraft} from '../domain/workflowV07/storage';
+import {emptyReviewRecord, type ReviewActor, type ReviewRecord} from '../domain/workflowV07/review';
+import {ReviewPanel} from './ReviewPanel';
+import {contentHash} from '../domain/workflowV07/snapshot';
 import {applyCoverageReview, fromLegacy, previewWorkflow, regenerateDraftLayouts, reviseDraft, type WorkflowModel} from '../domain/workflowV07/model';
 import type {SoffitLayout} from '../domain/workflowV07/soffit';
 import {stampSideLayout, type SideLayoutDefinition} from '../domain/workflowV07/sideLayout';
@@ -168,8 +171,9 @@ function restoreOrSeed(input: Input, caseId: string, initialElementType: Element
   }
   return {model: initialModel(input, caseId, initialElementType), staleEngine: false, sourceChanged: false, savedEngineVersion: null, savedAtMs: null};
 }
-export default function WorkflowV07Panel({input, caseId, initialElementType, stored = null, canPersist = true, onPersist}: {
+export default function WorkflowV07Panel({input, caseId, initialElementType, stored = null, canPersist = true, onPersist, review = null, reviewActor, onReviewChange}: {
   input: Input; caseId: string; initialElementType?: ElementType; stored?: StoredWorkflowDraft | null; canPersist?: boolean; onPersist?: (draft: StoredWorkflowDraft) => Promise<void> | void;
+  review?: ReviewRecord | null; reviewActor?: ReviewActor; onReviewChange?: (next: ReviewRecord) => Promise<void> | void;
 }) {
   const [restored, setRestored] = useState<Restored>(() => restoreOrSeed(input, caseId, initialElementType, stored));
   const [model, setModel] = useState(() => restored.model);
@@ -217,6 +221,13 @@ export default function WorkflowV07Panel({input, caseId, initialElementType, sto
     }, 700);
     return () => window.clearTimeout(timer);
   }, [draftIdentity, model, input, onPersist, canPersist]);
+  // Review binding uses the same content identity as frozen documents (SHA-256 of the authored draft).
+  const [draftHash, setDraftHash] = useState('');
+  useEffect(() => {
+    let canceled = false;
+    contentHash(model).then(h => {if (!canceled) setDraftHash(h);}).catch(() => {if (!canceled) setDraftHash('');});
+    return () => {canceled = true;};
+  }, [draftIdentity]); // model identity is fully represented by draftIdentity
   function reanalyseAll() {
     try {setModel(regenerateDraftLayouts(model, {}, {allowIncomplete: true})); setRestored(r => ({...r, staleEngine: false})); setError('');}
     catch (e) {setError((e as Error).message);}
@@ -347,6 +358,8 @@ export default function WorkflowV07Panel({input, caseId, initialElementType, sto
           : saveState.status === 'SAVED' && saveState.atMs !== null ? `บันทึกร่างแล้ว ${new Date(saveState.atMs).toLocaleString('th-TH')} · engine ${WORKFLOW_VERSION}` : 'ยังไม่มีการแก้ไขที่ต้องบันทึก'}
       {' · Revision '}{model.revisionId}
     </p>
+    {reviewActor && onReviewChange && <ReviewPanel record={review ?? emptyReviewRecord(reviewActor.projectId ?? '', caseId)} actor={reviewActor}
+      context={{contentHash: draftHash, engineVersion: WORKFLOW_VERSION, draftPending: anyPending || !!analysis.error || !draftHash}} blockers={analysis.preview?.blockers ?? [analysis.error ?? 'ANALYSIS_FAILED']} onChange={onReviewChange}/>}
     {restored.staleEngine && <div className="warning" role="alert"><p>ร่างนี้บันทึกด้วย engine {restored.savedEngineVersion} (ปัจจุบัน {WORKFLOW_VERSION}) ผลที่คำนวณไว้ทั้งหมดถือว่า stale ต้องคำนวณใหม่ก่อนใช้</p>
       <button className="btn secondary" disabled={anyPending} onClick={reanalyseAll}>คำนวณ Layout ทั้งหมดใหม่ด้วย engine ปัจจุบัน</button></div>}
     {restored.sourceChanged && <div className="warning" role="alert"><p>มิติต้นทาง (legacy) ของแบบนี้เปลี่ยนไปหลังบันทึกร่าง ร่างยังใช้รูปทรงเดิมที่บันทึกไว้ ตรวจพิกัดก่อนใช้งานต่อ</p></div>}

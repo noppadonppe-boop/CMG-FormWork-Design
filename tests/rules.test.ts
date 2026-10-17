@@ -202,6 +202,33 @@ describe('Project scope and client saves', () => {
     await assertSucceeds(deleteDoc(doc(adminDb, path('entry', 'RHS-1'))));
   });
 
+  it('enforces review transitions server-side: roles, reviewer independence, bound hash and MasterAdmin-only issue', async () => {
+    const path = `${root}/projects/p1/review/c1`;
+    const rec = (state: string, uid: string, patch: Record<string, unknown> = {}) => ({projectId: 'p1', caseId: 'c1', state, contentHash: state === 'DRAFT' ? '' : 'h1', engineVersion: state === 'DRAFT' ? '' : 'e1',
+      submittedBy: state === 'DRAFT' ? '' : 'engineer', recordJson: '{}', updatedBy: uid, updatedAt: serverTimestamp(), ...patch});
+    const engineerDb = context('engineer').firestore(), adminDb = context('admin').firestore(), masterDb = context('master').firestore(), staffDb = context('staff').firestore();
+    await env.withSecurityRulesDisabled(async a => {await updateDoc(doc(a.firestore(), profilePath('engineer')), {assignedProjects: ['p1']});});
+    await assertFails(setDoc(doc(staffDb, path), rec('SUBMITTED', 'staff', {submittedBy: 'staff'})));
+    await assertFails(setDoc(doc(engineerDb, path), rec('SUBMITTED', 'engineer', {submittedBy: 'admin'}))); // submitter must be the writer
+    await assertFails(setDoc(doc(engineerDb, path), rec('REVIEWED', 'engineer'))); // cannot skip SUBMITTED
+    await assertSucceeds(setDoc(doc(engineerDb, path), rec('SUBMITTED', 'engineer')));
+    await assertFails(setDoc(doc(engineerDb, path), rec('REVIEWED', 'engineer'))); // engineer is not a reviewer
+    await assertFails(setDoc(doc(adminDb, path), rec('REVIEWED', 'admin', {contentHash: 'h2'}))); // hash cannot change inside a cycle
+    await assertFails(setDoc(doc(adminDb, path), rec('REVIEWED', 'admin', {submittedBy: 'admin'}))); // cannot rewrite the submitter
+    await assertSucceeds(setDoc(doc(adminDb, path), rec('REVIEWED', 'admin')));
+    await assertFails(setDoc(doc(adminDb, path), rec('ISSUED_INTERNAL', 'admin'))); // cannot skip approval
+    await assertSucceeds(setDoc(doc(adminDb, path), rec('APPROVED_INTERNAL', 'admin')));
+    await assertFails(setDoc(doc(adminDb, path), rec('ISSUED_INTERNAL', 'admin'))); // issue is MasterAdmin only
+    await assertSucceeds(setDoc(doc(masterDb, path), rec('ISSUED_INTERNAL', 'master')));
+    await assertFails(setDoc(doc(staffDb, path), rec('DRAFT', 'staff')));
+    await assertSucceeds(setDoc(doc(engineerDb, path), rec('DRAFT', 'engineer'))); // explicit revise/return
+    await assertFails(setDoc(doc(engineerDb, path), rec('DRAFT', 'engineer', {constructionEligible: true})));
+    // A submitter who is also an admin still cannot review their own submission.
+    await assertSucceeds(setDoc(doc(adminDb, path), rec('SUBMITTED', 'admin', {submittedBy: 'admin'})));
+    await assertFails(setDoc(doc(adminDb, path), rec('REVIEWED', 'admin', {submittedBy: 'admin'})));
+    await assertSucceeds(setDoc(doc(masterDb, path), rec('REVIEWED', 'master', {submittedBy: 'admin'})));
+  });
+
   it('requires project identity to match its path on creation and update', async () => {
     const db = context('admin').firestore();
     for (const patch of [{id: 'different'}, {projectId: 'different'}, {id: deleteField()}, {projectId: deleteField()}]) await assertFails(updateDoc(doc(db, projectPath('p1')), patch));

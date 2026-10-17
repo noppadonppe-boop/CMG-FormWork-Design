@@ -7,7 +7,7 @@ import {mockProject} from './domain/mockProject';
 import {WalerDetails} from './components/WalerDetails';
 import {AssemblyDetail} from './components/AssemblyDetail';
 import {ColumnCriteria,ColumnYokeDetails} from './components/ColumnYokeDetails';
-import {MENU_CATEGORIES,configured,usingEmulators,loadProjects,saveProject,deleteProject,saveWorkflowDraft,loadRegistry,saveRegistryItem,deleteRegistryItem,trustedCalculation,canProject,hasRole,type MenuCategory} from './firebase';
+import {MENU_CATEGORIES,configured,usingEmulators,loadProjects,saveProject,deleteProject,saveWorkflowDraft,saveReviewRecord,loadRegistry,saveRegistryItem,deleteRegistryItem,trustedCalculation,canProject,hasRole,type MenuCategory} from './firebase';
 import {AdminPanel} from './components/AdminPanel';
 import {SourceUpload,type ResumeDrawing} from './components/SourceUpload';
 import {ModelWorkspace,type ModelRevision} from './components/ModelWorkspace';
@@ -29,11 +29,15 @@ import {parseStoredWorkflowDraft,type StoredWorkflowDraft} from './domain/workfl
 import {emptyRegistry,seedRegistry,validateRegistry,type Registry,type RegistryEntry,type RegistryMethod} from './domain/workflowV07/registry';
 import {DEFAULT_REVIEWER,RegistryProvider} from './components/RegistryContext';
 import {RegistryPanel} from './components/RegistryPanel';
+import {validateReviewRecord,type ReviewActor,type ReviewRecord,type ReviewRole} from './domain/workflowV07/review';
+import {ReviewQueue} from './components/ReviewPanel';
+import {WORKFLOW_VERSION} from './domain/workflowV07/common';
+import {ClipboardCheck} from 'lucide-react';
 import {Library} from 'lucide-react';
 import './style.css';
 
 const WorkflowV07Panel=React.lazy(()=>import('./components/WorkflowV07Panel'));
-type Case={id:string;name:string;input:Input;workflowElementType?:ElementType;titleBlock?:TitleBlock;workflowV07?:StoredWorkflowDraft};
+type Case={id:string;name:string;input:Input;workflowElementType?:ElementType;titleBlock?:TitleBlock;workflowV07?:StoredWorkflowDraft;review?:ReviewRecord};
 type Project={id:string;name:string;code:string;cases:Case[];sectionStock?:string[]};
 const ELEMENT_TYPES: {id: ElementType; label: string}[] = [
  {id:'FOOTING',label:'ฐานราก'}, {id:'COLUMN',label:'เสา'}, {id:'WALL',label:'ผนัง'}, {id:'BEAM',label:'คาน'}, {id:'SLAB',label:'พื้น'},
@@ -58,7 +62,8 @@ function hydrate(raw:unknown[]):Project[]{
     const workflowElementType = ['FOOTING','COLUMN','WALL','BEAM','SLAB'].includes(String((c as Partial<Case>).workflowElementType)) ? String((c as Partial<Case>).workflowElementType) as ElementType : undefined;
     // An unreadable v0.7 draft is dropped (reported as missing), never repaired or guessed.
     let workflowV07:StoredWorkflowDraft|undefined;try{if(c.workflowV07!=null)workflowV07=parseStoredWorkflowDraft(c.workflowV07);}catch{workflowV07=undefined;}
-    return [{id:c.id,name:c.name,input:{...defaults,...(rawInput&&typeof rawInput==='object'&&!('plywoodGrade' in rawInput)?{plywoodGrade:'CUSTOM' as const}:{}),...(rawInput&&typeof rawInput==='object'&&!('plywoodSpans' in rawInput)?{plywoodSpans:'SINGLE' as const,plywoodFaceGrain:'PARALLEL' as const}:{}),...rawInput,...(!c.input||typeof c.input!=='object'||!('walerType' in c.input)?{...extensionDefaults,confirmed:false}:!('columnModel' in c.input)?{...columnDefaults,confirmed:false}:{})},...(workflowElementType?{workflowElementType}:{}),...(parseTitleBlock((c as Partial<Case>).titleBlock)?{titleBlock:parseTitleBlock((c as Partial<Case>).titleBlock)!}:{}),...(workflowV07?{workflowV07}:{})}];
+    let review:ReviewRecord|undefined;try{if(c.review!=null){validateReviewRecord(c.review);review=c.review;}}catch{review=undefined;}
+    return [{id:c.id,name:c.name,input:{...defaults,...(rawInput&&typeof rawInput==='object'&&!('plywoodGrade' in rawInput)?{plywoodGrade:'CUSTOM' as const}:{}),...(rawInput&&typeof rawInput==='object'&&!('plywoodSpans' in rawInput)?{plywoodSpans:'SINGLE' as const,plywoodFaceGrain:'PARALLEL' as const}:{}),...rawInput,...(!c.input||typeof c.input!=='object'||!('walerType' in c.input)?{...extensionDefaults,confirmed:false}:!('columnModel' in c.input)?{...columnDefaults,confirmed:false}:{})},...(workflowElementType?{workflowElementType}:{}),...(parseTitleBlock((c as Partial<Case>).titleBlock)?{titleBlock:parseTitleBlock((c as Partial<Case>).titleBlock)!}:{}),...(workflowV07?{workflowV07}:{}),...(review?{review}:{})}];
    }
    catch{return []}
   });
@@ -203,6 +208,14 @@ function App(){
    setProjects(ps=>ps.map(q=>q.id!==projectIdForDraft?q:{...q,cases:q.cases.map(z=>z.id!==caseIdForDraft?z:{...z,workflowV07:draft})}));
    if(configured)await saveWorkflowDraft(projectIdForDraft,caseIdForDraft,draft);
  },[canEditCurrentProject]);
+ // Review actor: signed-in identity and roles; offline drafting has one editor identity with full roles,
+ // so the independence rule (reviewer ≠ submitter) still blocks a single person from completing the chain.
+ const reviewActor:ReviewActor=useMemo(()=>({uid:uid||'offline-editor',name:reviewerName,roles:(userProfile?(Array.isArray(userProfile.role)?userProfile.role:[userProfile.role]) as ReviewRole[]:configured?[]:['Engineer','Admin','MasterAdmin']),projectId:p.id}),[uid,reviewerName,userProfile,p.id]);
+ const persistReview=useCallback(async(next:ReviewRecord)=>{
+   if(configured)await saveReviewRecord(next);
+   setProjects(ps=>ps.map(q=>q.id!==next.projectId?q:{...q,cases:q.cases.map(z=>z.id!==next.caseId?z:{...z,review:next})}));
+   setMessage(`สถานะเอกสาร ${next.caseId}: ${next.state}`);
+ },[]);
  function undoModel(){const list=history[c.id];if(!list?.length)return;setInput(list[list.length-1].input);setHistory(h=>({...h,[c.id]:list.slice(0,-1)}));setMessage('ย้อนการแก้ล่าสุดแล้ว');}
  async function createCases(items:{name:string;input:Input}[]){
    if(!canEditCurrentProject||!items.length)return;
@@ -297,7 +310,7 @@ function App(){
    if(aiDraft.shape==='L'||aiDraft.shape==='RECTANGLE')v.shape=aiDraft.shape;
    setInput(v);setTab('geometry');setMessage('ใช้มิติที่อ่านได้เป็น Draft แล้ว ช่องที่ AI ไม่ทราบยังต้องตรวจ/เติมจากต้นฉบับก่อนยืนยัน');
  }
- const baseNav=[['overview','ภาพรวม',LayoutDashboard],['designbook','Design Book',BookOpen],['upload','รับแบบและ AI',Upload],['geometry','รูปทรงและมิติ',Layers],['criteria','Design Criteria',Settings2],['library','คลังวัสดุ/วิธีคำนวณ',Library],['layout','จัดวางเบื้องต้น',Building2],['results','รายการคำนวณ',CheckCircle2],['drawings','แปลนและรูปตัด',FolderOpen],['report','รายงาน PDF',FileText]] as const;
+ const baseNav=[['overview','ภาพรวม',LayoutDashboard],['designbook','Design Book',BookOpen],['upload','รับแบบและ AI',Upload],['geometry','รูปทรงและมิติ',Layers],['criteria','Design Criteria',Settings2],['library','คลังวัสดุ/วิธีคำนวณ',Library],['review','Review & Issue',ClipboardCheck],['layout','จัดวางเบื้องต้น',Building2],['results','รายการคำนวณ',CheckCircle2],['drawings','แปลนและรูปตัด',FolderOpen],['report','รายงาน PDF',FileText]] as const;
  const nav=baseNav;
  const setPending=useCallback((count:number)=>setPendingUsers(count),[]);
   const r=analysis.r;
@@ -320,6 +333,9 @@ function App(){
  <div hidden={tab!=='upload'||!legacyElement}><SourceUpload key={uid+':'+p.id+':'+c.id} projectId={p.id} caseId={c.id} userId={uid} canEdit={canEditCurrentProject} saveProject={()=>{if(!canEditCurrentProject)return Promise.reject(Error('โครงการนี้เป็นสิทธิ์ดูอย่างเดียว'));return saveProject(p,'upload',c.id);}} onSourceChange={name=>{setSourceName(name);if(name)edit('confirmed',false);}} onPreviewChange={setSource} onApplyDraft={applyAI} onManual={()=>setTab('geometry')} model={analysis.r?x:undefined} onApplyChanges={applyModelChanges} onCreateCases={items=>void createCases(items)} resume={drawing?.projectId===p.id?drawing.value:null} onDrawingChange={reportDrawing} stockIds={p.sectionStock}/>
  <ModelWorkspace caseName={c.name} result={analysis.r} error={analysis.error} history={history[c.id]??[]} canEdit={canEditCurrentProject} onUndo={undoModel} onEditGeometry={()=>setTab('geometry')}/></div>
  {tab==='designbook'&&<DesignBook input={x}/>}
+ {tab==='review'&&<ReviewQueue rows={p.cases.map(z=>({caseId:z.id,name:z.name,elementType:z.workflowElementType??z.input.kind,record:z.review??null,
+   stale:z.review&&z.review.state!=='DRAFT'?(z.workflowV07?(z.review.engineVersion!==WORKFLOW_VERSION||z.review.engineVersion!==z.workflowV07.engineVersion?true:null):null):null}))}
+   onOpen={id=>{setCaseId(id);const next=p.cases.find(z=>z.id===id);setWorkflowElementType(next?.workflowElementType??(next?.input.kind as ElementType)??'FOOTING');setTab('overview');}}/>}
  {tab==='library'&&<RegistryPanel registry={registry} reviewerName={reviewerName} canReview={canReviewRegistry} canDelete={!configured||hasRole(userProfile,'MasterAdmin')} onSave={saveRegistry} onDelete={removeRegistryItem} onSeed={seedRegistryItems}/>}
  {tab==='overview'&&legacyElement&&<><section className="hero"><div><span className="eyebrow">FROM DRAWING TO CALCULATION</span><h2>จัดวางแบบหล่อ<br/>พร้อมหลักฐานที่ตรวจสอบได้</h2><p>รับแบบ · ยืนยันมิติ · เปรียบเทียบการจัดวาง · ตรวจสมาชิก · รายงานร่าง</p><button className="btn light" onClick={()=>setTab('upload')}><Upload size={17}/>เริ่มจาก PDF / ภาพสเก็ตช์</button></div><div className="hero-diagram"><Layers size={92} strokeWidth=".7"/><span>PLYWOOD + STEEL FRAME</span></div></section>
  <div className="metrics"><div><small>CONCRETE VOLUME</small><strong>{f(r?.volume??null)}<em>m³</em></strong></div><div><small>SIDE FORMWORK AREA</small><strong>{f(r?.formArea??null)}<em>m²</em></strong></div><div><small>MAX. FRESH PRESSURE</small><strong>{f(r?.pressure??null,1)}<em>kPa</em></strong></div><div><small>ENGINEERING STATUS</small><strong className="amber">{r?.status||'INVALID'}</strong><span>ต้องตรวจส่วนที่ยังขาด</span></div></div>
@@ -336,7 +352,7 @@ function App(){
   {tab==='overview'&&workflowElementType!=='FOOTING'&&workflowElementType!=='COLUMN'&&!v07Enabled&&<section className="card workflow-menu-blocked"><h3>Workflow v0.7 · {ELEMENT_TYPES.find(type=>type.id===workflowElementType)?.label}</h3><p>เมนูนี้พร้อมใช้งานในโหมดร่าง แต่ Workflow v0.7 ถูกปิดไว้จนกว่าจะเปิด `VITE_WORKFLOW_V07_ENABLED=true` ในโหมดออฟไลน์หรือ emulator ตามข้อกำหนดของระบบ</p><p className="muted">ยังไม่มีการคำนวณกำลังสมาชิกจริงจากเมนูนี้ และสถานะยังเป็น NO_GO</p></section>}
   {tab!=='overview'&&tab!=='users'&&!legacyElement&&<section className="card workflow-menu-blocked"><h3>Workflow v0.7 · {ELEMENT_TYPES.find(type=>type.id===workflowElementType)?.label}</h3><p>เลือกเมนูภาพรวมเพื่อเปิดร่าง Workflow v0.7 ขององค์อาคารนี้ รายการคำนวณ legacy ไม่รองรับชนิดนี้</p></section>}
   {tab==='overview'&&v07OnProduction&&<div className="warning" role="alert"><AlertTriangle size={18}/><p>Workflow v0.7 เปิดบน Firebase production (VITE_WORKFLOW_V07_ALLOW_PRODUCTION=true) · ผลทั้งหมดเป็นร่าง DRAFT / NO_GO / NOT FOR CONSTRUCTION ห้ามใช้ก่อสร้าง</p></div>}
-  {tab==='overview'&&v07Enabled&&<RegistryProvider value={{registry,reviewerName}}><React.Suspense fallback={<p>กำลังโหลด Workflow v0.7…</p>}><WorkflowV07Panel key={p.id+':'+c.id+':'+workflowElementType} input={x} caseId={c.id} initialElementType={workflowElementType} stored={c.workflowV07??null} canPersist={canEditCurrentProject} onPersist={draft=>persistWorkflowDraft(p.id,c.id,draft)}/></React.Suspense></RegistryProvider>}
+  {tab==='overview'&&v07Enabled&&<RegistryProvider value={{registry,reviewerName}}><React.Suspense fallback={<p>กำลังโหลด Workflow v0.7…</p>}><WorkflowV07Panel key={p.id+':'+c.id+':'+workflowElementType} input={x} caseId={c.id} initialElementType={workflowElementType} stored={c.workflowV07??null} canPersist={canEditCurrentProject} onPersist={draft=>persistWorkflowDraft(p.id,c.id,draft)} review={c.review??null} reviewActor={reviewActor} onReviewChange={canEditCurrentProject?persistReview:undefined}/></React.Suspense></RegistryProvider>}
  <footer className="app-footer"><span>CMG ENGINEERING & CONSTRUCTION</span><span>v0.3 · Column yoke screening · แยกผลคัดกรองจากการอนุมัติ</span><button onClick={()=>{if(window.confirm('คืนค่าข้อมูลสาธิตในเบราว์เซอร์? ไม่ลบข้อมูล Firebase')){setProjects(initial);setProjectId(initial[0].id);setCaseId(initial[0].cases[0].id);}}}><RotateCcw size={12}/>Reset demo</button></footer>
  </main></div>;
 }

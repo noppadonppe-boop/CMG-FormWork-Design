@@ -59,6 +59,11 @@ B3. ผูก catalog กับ 5 ระบบ
 
 ## Phase C — กระบวนการตรวจ/อนุมัติ/ออกแบบ และ audit
 
+สถานะ: C1–C3 ทำแล้ว (`src/domain/workflowV07/review.ts`, Firestore `projects/{id}/review/{caseId}` พร้อม rules บังคับบทบาท/
+ความเป็นอิสระของผู้ตรวจ/hash ผูกรอบ, ReviewPanel ในหน้า v0.7, เมนู Review & Issue, rules tests 83 รายการ)
+บทบาทตาม default: Engineer ส่งตรวจ · Admin/MasterAdmin ตรวจและอนุมัติภายใน · MasterAdmin ออกเอกสารภายใน · ผู้ตรวจ/อนุมัติต้องไม่ใช่ผู้ส่ง
+ยังไม่มี: การบังคับใน Cloud Functions (ปัจจุบันบังคับใน Rules), รายงาน/แบบ A3 แสดงสถานะและ hash ของ review (ไปทำใน G)
+
 C1. สถานะเอกสารต่อ case: DRAFT → SUBMITTED → REVIEWED → APPROVED_FOR_INTERNAL_REVIEW → ISSUED (ยังไม่มี "FOR CONSTRUCTION" จนกว่า Owner กำหนดเกณฑ์)
 - เปลี่ยนสถานะได้เฉพาะ role ที่กำหนด บังคับทั้งใน Functions และ Rules; Viewer/Engineer อนุมัติไม่ได้
 - ISSUED ล็อก snapshot (hash) และบันทึก audit event ทุกการเปลี่ยน

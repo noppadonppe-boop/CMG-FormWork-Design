@@ -94,6 +94,31 @@ service cloud.firestore {
         data.itemJson is string && data.itemJson.size() <= 200000 &&
         data.updatedBy == request.auth.uid && data.updatedAt == request.time;
     }
+    // Review → approve → issue records. Transitions are enforced here independently of the client:
+    // only the listed roles may move a record, reviewers/approvers must differ from the submitter,
+    // and the bound draft hash cannot change inside a cycle. ISSUED_INTERNAL is not a construction release.
+    function validReviewDoc(data, projectId, caseId) {
+      return data.keys().hasOnly(['projectId', 'caseId', 'state', 'contentHash', 'engineVersion', 'submittedBy', 'recordJson', 'updatedBy', 'updatedAt']) &&
+        data.projectId == projectId && data.caseId == caseId &&
+        data.state in ['DRAFT', 'SUBMITTED', 'REVIEWED', 'APPROVED_INTERNAL', 'ISSUED_INTERNAL'] &&
+        data.contentHash is string && data.contentHash.size() <= 128 && data.engineVersion is string && data.engineVersion.size() <= 50 &&
+        data.submittedBy is string && data.recordJson is string && data.recordJson.size() <= 200000 &&
+        data.updatedBy == request.auth.uid && data.updatedAt == request.time &&
+        (data.state == 'DRAFT' ? (data.contentHash == '' && data.submittedBy == '') : (data.contentHash.size() > 0 && data.submittedBy.size() > 0));
+    }
+    function reviewTransition(fromState, prev, next) {
+      // Roles are read once; the caller already required an approved editor of the project.
+      let roles = me().role;
+      let admin = roles.hasAny(['MasterAdmin', 'SuperAdmin', 'Admin']);
+      let reviewer = admin || roles.hasAny(['Engineer']);
+      let uid = request.auth.uid;
+      let sameCycle = next.contentHash == prev.contentHash && next.submittedBy == prev.submittedBy && next.submittedBy != uid;
+      return (next.state == 'DRAFT' && reviewer) ||
+        (next.state == 'SUBMITTED' && fromState == 'DRAFT' && reviewer && next.submittedBy == uid) ||
+        (next.state == 'REVIEWED' && fromState == 'SUBMITTED' && admin && sameCycle) ||
+        (next.state == 'APPROVED_INTERNAL' && fromState == 'REVIEWED' && admin && sameCycle) ||
+        (next.state == 'ISSUED_INTERNAL' && fromState == 'APPROVED_INTERNAL' && roles.hasAny(['MasterAdmin']) && sameCycle);
+    }
     function menuCategory(category) { return category in ['overview', 'upload', 'geometry', 'criteria', 'layout', 'results', 'drawings', 'report']; }
     function clientSnapshot(data) {
       // Callable results share this collection with client menu snapshots.
@@ -159,6 +184,15 @@ service cloud.firestore {
           allow read: if canViewProject(projectId);
           allow create, update: if canEditProject(projectId) && validWorkflowDraft(request.resource.data, projectId, caseId);
           allow delete: if canEditProject(projectId);
+        }
+
+        match /review/{caseId} {
+          allow read: if canViewProject(projectId);
+          allow create: if canEditProject(projectId) && validReviewDoc(request.resource.data, projectId, caseId) &&
+            reviewTransition('DRAFT', request.resource.data, request.resource.data);
+          allow update: if canEditProject(projectId) && validReviewDoc(request.resource.data, projectId, caseId) &&
+            reviewTransition(resource.data.state, resource.data, request.resource.data);
+          allow delete: if isMasterAdmin();
         }
       }
 

@@ -39,6 +39,7 @@ import {connectFunctionsEmulator, getFunctions, httpsCallable} from 'firebase/fu
 import {connectStorageEmulator, deleteObject, getDownloadURL, getStorage, ref, uploadBytesResumable, type UploadMetadata} from 'firebase/storage';
 import {parseStoredWorkflowDraft, WORKFLOW_DRAFT_LIMIT, type StoredWorkflowDraft} from './domain/workflowV07/storage';
 import {validateRegistryEntry, validateRegistryMethod, type Registry, type RegistryEntry, type RegistryMethod} from './domain/workflowV07/registry';
+import {validateReviewRecord, type ReviewRecord} from './domain/workflowV07/review';
 
 export const SHARED_COLLECTION = 'RC-FormWork-App';
 export const SHARED_DOCUMENT = 'root';
@@ -298,6 +299,22 @@ export async function loadWorkflowDrafts(projectId: string): Promise<Record<stri
   }
   return drafts;
 }
+/** Review/approve/issue record per case; Rules enforce the role and independence gates. */
+function reviewDoc(projectId: string, caseId: string) {return doc(projectDoc(projectId), 'review', caseId);}
+export async function saveReviewRecord(recordValue: ReviewRecord) {
+  const user = requireCloud().auth.currentUser; if (!user) throw Error('กรุณาเข้าสู่ระบบก่อนเปลี่ยนสถานะเอกสาร');
+  validateReviewRecord(recordValue);
+  await setDoc(reviewDoc(recordValue.projectId, recordValue.caseId), {projectId: recordValue.projectId, caseId: recordValue.caseId, state: recordValue.state, contentHash: recordValue.contentHash,
+    engineVersion: recordValue.engineVersion, submittedBy: recordValue.submittedBy, recordJson: JSON.stringify(recordValue), updatedBy: user.uid, updatedAt: serverTimestamp()}, {merge: false});
+}
+export async function loadReviewRecords(projectId: string): Promise<Record<string, ReviewRecord>> {
+  const snap = await getDocs(collection(projectDoc(projectId), 'review')), out: Record<string, ReviewRecord> = {};
+  for (const item of snap.docs) {
+    const data = item.data() as Record<string, unknown>;
+    try {if (typeof data.recordJson === 'string') {const value = JSON.parse(data.recordJson); validateReviewRecord(value); out[value.caseId] = value;}} catch { /* unreadable record is omitted */ }
+  }
+  return out;
+}
 /** Shared reviewed registry (methods and catalog entries), one document per item. */
 const registryCollection = () => collection(requireCloud().db, SHARED_COLLECTION, SHARED_DOCUMENT, 'registry');
 export async function saveRegistryItem(item: {type: 'method'; value: RegistryMethod} | {type: 'entry'; value: RegistryEntry}) {
@@ -331,8 +348,9 @@ export async function loadProjects(profile?: UserProfile | null): Promise<Shared
   const projects = refs.flatMap(item => {if (!item.exists()) return []; const data = item.data() as Record<string, unknown>; return [{id: typeof data.id === 'string' ? data.id : item.id, name: typeof data.name === 'string' ? data.name : 'โครงการไม่มีชื่อ', code: typeof data.code === 'string' ? data.code : item.id, cases: Array.isArray(data.cases) ? data.cases : [], ...(Array.isArray(data.sectionStock) ? {sectionStock: data.sectionStock} : {})}];});
   // Attach each case's v0.7 draft; a failed draft read leaves that case without a draft.
   return Promise.all(projects.map(async p => {
-    const drafts = await loadWorkflowDrafts(p.id).catch(() => ({} as Record<string, StoredWorkflowDraft>));
-    return {...p, cases: p.cases.map(c => c && typeof c === 'object' && 'id' in c && typeof c.id === 'string' && drafts[c.id] ? {...c, workflowV07: drafts[c.id]} : c)};
+    const [drafts, reviews] = await Promise.all([loadWorkflowDrafts(p.id).catch(() => ({} as Record<string, StoredWorkflowDraft>)), loadReviewRecords(p.id).catch(() => ({} as Record<string, ReviewRecord>))]);
+    return {...p, cases: p.cases.map(c => c && typeof c === 'object' && 'id' in c && typeof c.id === 'string'
+      ? {...c, ...(drafts[c.id] ? {workflowV07: drafts[c.id]} : {}), ...(reviews[c.id] ? {review: reviews[c.id]} : {})} : c)};
   }));
 }
 export async function listUsers() {const snap = await getDocs(collection(requireCloud().db, SHARED_COLLECTION, SHARED_DOCUMENT, 'users')); return snap.docs.map(item => ({...item.data(), email: item.data().email ?? item.id} as UserProfile));}
