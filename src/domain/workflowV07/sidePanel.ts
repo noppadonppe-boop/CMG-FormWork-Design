@@ -19,7 +19,7 @@ export interface SidePanelInput {
   ][];
   sharingEvidenceByLevel?: (string | null)[];
   pressurePatches?: PressurePatch[];
-  plywoodE_MPa?: number; plywoodI_mm4?: number;
+  plywoodE_MPa?: number; plywoodI_mm4?: number; plywoodSheetJointsMm?: number[] | null;
 }
 function positions(xs: number[], length: number, label: string) {
   if (!xs.length || xs.length > 40 || xs.some(x => !Number.isFinite(x) || x < 0 || x > length) || xs.some((x, i) => i > 0 && x <= xs[i - 1])) throw Error(`Invalid actual ${label} coordinates`);
@@ -49,7 +49,7 @@ export function analyzeSidePanel(o: SidePanelInput) {
   if (o.sharingEvidenceByLevel && o.sharingEvidenceByLevel.length !== o.walerLevelsMm.length) throw Error('Every waler level requires its sharing evidence');
   if (!o.independentRailsByLevel && (typeof o.heavierRailShare !== 'number' || !Number.isFinite(o.heavierRailShare) || o.heavierRailShare < .5 || o.heavierRailShare > 1)) throw Error('Invalid rail share');
   const pressureDeck = o.pressurePatches ? analyzeSidePressureDeck({faceId: o.faceId, revision: o.revision, lengthMm: length, heightMm: H,
-    studsMm: o.studPositionsMm, E_MPa: finite(o.plywoodE_MPa, 'pressure deck plywood E'), I_mm4: finite(o.plywoodI_mm4, 'pressure deck plywood I'), patches: o.pressurePatches}) : null;
+    studsMm: o.studPositionsMm, E_MPa: finite(o.plywoodE_MPa, 'pressure deck plywood E'), I_mm4: finite(o.plywoodI_mm4, 'pressure deck plywood I'), patches: o.pressurePatches, sheetJointsMm: o.plywoodSheetJointsMm ?? null}) : null;
   const studs = o.studPositionsMm.map((x, i) => {
     const left = i === 0 ? 0 : (o.studPositionsMm[i - 1] + x) / 2;
     const right = i === o.studPositionsMm.length - 1 ? length : (x + o.studPositionsMm[i + 1]) / 2;
@@ -86,7 +86,7 @@ export function analyzeSidePanel(o: SidePanelInput) {
   return {status: 'LOAD_PREVIEW' as const, studs, walers, pressureDeck, pressureBaseKPa: pressureDeck ? pressureDeck.pressureBaseKPa : o.gammaKNm3! * head! / 1000,
     maximumPressureKPa: pressureDeck?.maximumPressureKPa ?? o.gammaKNm3! * head! / 1000, expectedForceN, expectedXMomentNmm, expectedZMomentNmm, residuals,
     blockers: [...((o.sharingEvidenceByLevel ?? [o.sharingEvidence]).some(e => !e?.trim()) ? ['UNVERIFIED_RAIL_SHARING'] : []),
-      ...(pressureDeck ? ['SIDE_ONE_WAY_SIMPLE_X_STRIPS_ON_RIGID_STUD_LINES_REQUIRE_REVIEW', 'SIDE_AFFINE_Z_ENDPOINT_ENVELOPE_NO_TWO_WAY_SHEAR_FASTENER_OR_CONTACT_APPROVAL'] : []),
+      ...(pressureDeck ? [o.plywoodSheetJointsMm == null ? 'SIDE_ONE_WAY_SIMPLE_X_STRIPS_ON_RIGID_STUD_LINES_REQUIRE_REVIEW' : 'SIDE_ONE_WAY_CONTINUOUS_SHEET_STRIPS_ON_RIGID_STUD_LINES_SHEET_JOINT_POSITIONS_AS_DECLARED', 'SIDE_AFFINE_Z_ENDPOINT_ENVELOPE_NO_TWO_WAY_SHEAR_FASTENER_OR_CONTACT_APPROVAL'] : []),
       ...(walers.some(w => w.supportDemands.some(s => s.forceN < -1e-7 || Math.abs(s.momentNmm) > 1e-6)) ? ['SUPPORT_UPLIFT_OR_MOMENT_REQUIRES_ASSEMBLY_MODEL'] : []),
       'PLYWOOD_CONNECTIONS_CORNERS_AND_OPPOSING_TIE_ASSEMBLY_REQUIRED', 'MATERIAL_RESISTANCE_RULES_AND_SYSTEM_CHECKS_REQUIRED'],
     constructionRelease: 'NO_GO' as const};

@@ -26,7 +26,7 @@ type FaceForm = {
   studResistanceEvidence: BeamMemberEvidence[]; railResistanceEvidence: BeamMemberEvidence[];
   studBinding: ElasticMemberBinding | null; railBinding: ElasticMemberBinding | null;
   plywoodBinding: PlywoodProductBinding | null;
-  thickness: string; plywoodE: string; grain: string; joints: string; plywoodEvidence: string; share: string; shareEvidence: string;
+  thickness: string; plywoodE: string; grain: string; joints: string; sheetJoints: string; plywoodEvidence: string; share: string; shareEvidence: string;
   pressure: SidePressureDefinition | null;
   plywoodResistanceEvidence: BeamMemberEvidence[]; localEvidence: SideLocalEvidence[];
 };
@@ -40,14 +40,14 @@ function faceForm(faceId: string, f?: SideFaceLayout): FaceForm {
     studResistanceEvidence: f?.stud.resistanceEvidence ?? [], railResistanceEvidence: f?.rail.resistanceEvidence ?? [],
     studBinding: f?.stud.binding ?? null, railBinding: f?.rail.binding ?? null,
     plywoodBinding: f?.plywood.binding ?? null, pressure: f?.pressure ?? null,
-    thickness: text(f?.plywood.thicknessMm), plywoodE: text(f?.plywood.effectiveE_MPa), grain: f?.plywood.grainAxis ?? '', joints: f?.plywood.jointsAtEveryStud == null ? '' : String(f.plywood.jointsAtEveryStud),
+    thickness: text(f?.plywood.thicknessMm), plywoodE: text(f?.plywood.effectiveE_MPa), grain: f?.plywood.grainAxis ?? '', joints: f?.plywood.jointsAtEveryStud == null ? '' : String(f.plywood.jointsAtEveryStud), sheetJoints: (f?.plywood.sheetJointsMm ?? []).join(', '),
     plywoodEvidence: f?.plywood.evidenceRef ?? '', share: text(f?.heavierRailShare), shareEvidence: f?.sharingEvidence ?? '',
     plywoodResistanceEvidence: f?.plywood.resistanceEvidence ?? [], localEvidence: f?.localEvidence ?? []};
 }
 const studOf = (face: FaceForm) => ({E_MPa: previewNumber(face.studE), I_mm4: previewNumber(face.studI), evidenceRef: face.studEvidence, ...(face.studBinding ? {binding: face.studBinding} : {})});
 const railOf = (face: FaceForm) => ({E_MPa: previewNumber(face.railE), I_mm4: previewNumber(face.railI), evidenceRef: face.railEvidence, ...(face.railBinding ? {binding: face.railBinding} : {})});
 const plywoodOf = (face: FaceForm) => ({thicknessMm: previewNumber(face.thickness), effectiveE_MPa: previewNumber(face.plywoodE), grainAxis: (face.grain || null) as 'ALONG_FACE' | 'VERTICAL' | null,
-  jointsAtEveryStud: face.joints === '' ? null : face.joints === 'true', evidenceRef: face.plywoodEvidence, ...(face.plywoodBinding ? {binding: face.plywoodBinding} : {})});
+  jointsAtEveryStud: face.joints === '' ? null : face.joints === 'true', ...(face.joints === 'false' ? {sheetJointsMm: list(face.sheetJoints)} : {}), evidenceRef: face.plywoodEvidence, ...(face.plywoodBinding ? {binding: face.plywoodBinding} : {})});
 const endpointValue = (p: SideTieDefinition['a']) => JSON.stringify([p.faceId, p.walerId, p.supportId]);
 function formOf(layout: AppliedSideLayout | null): Form {
   return {stage: layout?.stageId ?? '', loadCase: layout?.loadCaseId ?? '', evidence: layout?.evidenceRef ?? '', head: text(layout?.pourHeadMm), base: text(layout?.baseElevationMm), rebar: layout?.rebarClearanceEvidence ?? '',
@@ -71,7 +71,7 @@ function definitionOf(f: Form): SideLayoutDefinition {
       rail: {E_MPa: number(face.railE), I_mm4: number(face.railI), evidenceRef: face.railEvidence, ...(face.railBinding ? {binding: face.railBinding} : {}),
         ...(face.railResistanceEvidence.length ? {resistanceEvidence: face.railResistanceEvidence} : {})},
       plywood: {thicknessMm: number(face.thickness), effectiveE_MPa: number(face.plywoodE), grainAxis: (face.grain || null) as 'ALONG_FACE' | 'VERTICAL' | null,
-        jointsAtEveryStud: face.joints === '' ? null : face.joints === 'true', evidenceRef: face.plywoodEvidence, ...(face.plywoodBinding ? {binding: face.plywoodBinding} : {}),
+        jointsAtEveryStud: face.joints === '' ? null : face.joints === 'true', ...(face.joints === 'false' ? {sheetJointsMm: list(face.sheetJoints)} : {}), evidenceRef: face.plywoodEvidence, ...(face.plywoodBinding ? {binding: face.plywoodBinding} : {}),
         ...(face.plywoodResistanceEvidence.length ? {resistanceEvidence: face.plywoodResistanceEvidence} : {})},
       heavierRailShare: number(face.share), sharingEvidence: face.shareEvidence || null, ...(face.pressure ? {pressure: face.pressure} : {}),
       ...(face.localEvidence.length ? {localEvidence: face.localEvidence} : {})})),
@@ -97,7 +97,7 @@ export function SideLayoutEditor({topology, layout, onApply, onPendingChange, on
   function faceChange(i: number, patch: Partial<FaceForm>) {
     const clearStudEvidence = ['studE', 'studI', 'studEvidence', 'studBinding'].some(k => Object.hasOwn(patch, k));
     const clearRailEvidence = ['railE', 'railI', 'railEvidence', 'railBinding'].some(k => Object.hasOwn(patch, k));
-    const clearPlywoodEvidence = ['thickness', 'plywoodE', 'grain', 'joints', 'plywoodEvidence', 'plywoodBinding'].some(k => Object.hasOwn(patch, k));
+    const clearPlywoodEvidence = ['thickness', 'plywoodE', 'grain', 'joints', 'sheetJoints', 'plywoodEvidence', 'plywoodBinding'].some(k => Object.hasOwn(patch, k));
     change({...form, faces: form.faces.map((f, n) => n === i ? {...f, ...patch,
       ...(clearStudEvidence ? {studResistanceEvidence: []} : {}), ...(clearRailEvidence ? {railResistanceEvidence: []} : {}),
       ...(clearPlywoodEvidence ? {plywoodResistanceEvidence: []} : {})} : f)});
@@ -125,7 +125,8 @@ export function SideLayoutEditor({topology, layout, onApply, onPendingChange, on
         E_MPa: previewNumber(f.railE), I_mm4: previewNumber(f.railI), evidenceRef: f.railEvidence, binding: f.railBinding ?? null})}
         onChange={resistanceEvidence => faceChange(i, {railResistanceEvidence: resistanceEvidence})}/>
       <label className="field"><span>ทิศเสี้ยนหลักไม้อัด</span><select value={f.grain} onChange={e => faceChange(i, {grain: e.target.value})}><option value="">ยังไม่ทราบ</option><option value="ALONG_FACE">ตามผิว x</option><option value="VERTICAL">แนวดิ่ง z</option></select></label>
-      <label className="field"><span>รอยต่อไม้อัดบนคร่าวทุกแนว / แบบจำลองแถบช่วงเดียว</span><select value={f.joints} onChange={e => faceChange(i, {joints: e.target.value})}><option value="">ยังไม่ยืนยัน</option><option value="true">ยืนยันรอยต่อและรองรับขอบทุกช่วง</option><option value="false">แผ่นต่อเนื่อง/รูปแบบอื่น — รอแบบจำลอง</option></select></label>
+      <label className="field"><span>รอยต่อไม้อัดบนคร่าวทุกแนว / แบบจำลองแถบช่วงเดียว</span><select value={f.joints} onChange={e => faceChange(i, {joints: e.target.value})}><option value="">ยังไม่ยืนยัน</option><option value="true">ยืนยันรอยต่อและรองรับขอบทุกช่วง</option><option value="false">แผ่นต่อเนื่องบนหลายคร่าว · ระบุตำแหน่งรอยต่อแผ่น</option></select></label>
+      {f.joints === 'false' && <label className="field"><span>ตำแหน่งรอยต่อแผ่นตามแนวผิว · mm (คั่นด้วยจุลภาค ต้องอยู่บนแนวคร่าว; ว่าง = แผ่นเดียวต่อเนื่องตลอด)</span><input value={f.sheetJoints} onChange={e => faceChange(i, {sheetJoints: e.target.value})}/></label>}
       <PlywoodBindingEditor binding={f.plywoodBinding} materialSelection={selections?.material} label={`${f.faceId}:PLYWOOD`} thicknessMm={previewNumber(f.thickness)} grainRelativeDeg={f.grain === '' ? null : f.grain === 'ALONG_FACE' ? 0 : 90} onChange={binding => faceChange(i, {plywoodBinding: binding, plywoodE: ''})}/>
       <p>ขีดจำกัดไม้อัดด้านล่างเป็นค่าต่อแถบกว้าง 1000 mm (N·mm/m, N/m, mm) รวม rolling shear ตามวิธีที่ผู้ตรวจระบุ ไม่อนุมานจาก E หรือชื่อเกรด</p>
       <BeamMemberEvidenceEditor value={f.plywoodResistanceEvidence} memberEvidenceRef={sidePlywoodEvidenceReference(plywoodOf(f))}

@@ -9,7 +9,7 @@ import {resolveWalerPair, screenWalerTieFit, validateWalerPair, type Independent
 import {resolveMemberElastic, validateElasticBinding, type ElasticMemberBinding} from './elasticBinding.js';
 import {resolvePlywoodElastic, validatePlywoodBinding, type PlywoodProductBinding} from './plywood.js';
 import {actionFactor} from './caseFactors.js';
-import {compileSidePressure, pressureZones, validateSidePressure, type SidePressureDefinition} from './sidePressure.js';
+import {compileSidePressure, pressureZones, sheetSegments, validateSidePressure, type SidePressureDefinition} from './sidePressure.js';
 import {evaluateTieDossier, tieGeometryContext, validateTieDossier, type TieDossier} from './tieDossier.js';
 import {beamMemberEvidenceReference, screenBeamMemberResistance, validateBeamMemberEvidence, type BeamMemberEvidence} from './beamResistance.js';
 import {screenSideLocalChecks, sideLocalDemands, sideLocalMemberReference, validateSideLocalEvidenceList, type SideLocalEvidence} from './sideLocalChecks.js';
@@ -18,6 +18,9 @@ export interface SideStiffness {E_MPa: number | null; I_mm4: number | null; evid
 export interface SidePlywoodLayout {
   thicknessMm: number | null; effectiveE_MPa: number | null; grainAxis: 'ALONG_FACE' | 'VERTICAL' | null;
   jointsAtEveryStud: boolean | null; evidenceRef: string; binding?: PlywoodProductBinding | null;
+  /** When jointsAtEveryStud is false: declared sheet joint positions along the face (mm, each on a stud);
+   * strips are continuous over the studs between joints. An empty list is one continuous sheet. */
+  sheetJointsMm?: number[] | null;
   /** Reviewer limits per 1000 mm design strip (N·mm/m, N/m, mm); never derived from E or a grade label. */
   resistanceEvidence?: BeamMemberEvidence[] | null;
 }
@@ -31,7 +34,8 @@ export interface SideFaceLayout {
   localEvidence?: SideLocalEvidence[] | null;
 }
 export const sidePlywoodEvidenceReference = (p: SidePlywoodLayout) => beamMemberEvidenceReference('SIDE_PLYWOOD_1000MM_STRIP',
-  {thicknessMm: p.thicknessMm, effectiveE_MPa: p.effectiveE_MPa, grainAxis: p.grainAxis, jointsAtEveryStud: p.jointsAtEveryStud, evidenceRef: p.evidenceRef, binding: p.binding ?? null});
+  {thicknessMm: p.thicknessMm, effectiveE_MPa: p.effectiveE_MPa, grainAxis: p.grainAxis, jointsAtEveryStud: p.jointsAtEveryStud, evidenceRef: p.evidenceRef, binding: p.binding ?? null,
+    ...(p.jointsAtEveryStud === false ? {sheetJointsMm: p.sheetJointsMm ?? null} : {})});
 export interface SideEndpoint {faceId: string; walerId: string; supportId: string}
 export interface SideTieDefinition {
   id: string; a: SideEndpoint; b: SideEndpoint; diameterMm: number | null;
@@ -108,7 +112,11 @@ export function analyzeSideLayout(model: WorkflowModel, layout: AppliedSideLayou
     const studElastic = resolveMemberElastic(input.stud, 'STUD'), sharedRailElastic = input.walers.some(w => !w.pair) ? resolveMemberElastic(input.rail, 'WALER') : null;
     blockers.push(...studElastic.blockers.map(b => `${face.id}/STUD:${b}`), ...(sharedRailElastic?.blockers ?? []).map(b => `${face.id}/SHARED_RAIL:${b}`));
     const panel = input.plywood, t = finite(panel.thicknessMm, 'plywood thickness');
-    if (!['ALONG_FACE', 'VERTICAL'].includes(String(panel.grainAxis)) || panel.jointsAtEveryStud !== true) throw Error('BLOCKED_UNSUPPORTED: explicit plywood grain and simply spanning strips with joints on each stud required');
+    if (!['ALONG_FACE', 'VERTICAL'].includes(String(panel.grainAxis)) || panel.jointsAtEveryStud === null) throw Error('BLOCKED_UNSUPPORTED: explicit plywood grain and sheet joint arrangement (joints on each stud, or declared sheet joints) required');
+    if (panel.jointsAtEveryStud === false && !Array.isArray(panel.sheetJointsMm)) throw Error('BLOCKED_UNSUPPORTED: continuous sheets require the declared sheet joint positions (empty list = one continuous sheet)');
+    if (panel.jointsAtEveryStud === true && panel.sheetJointsMm != null) throw Error('Sheet joint positions apply only to continuous sheets');
+    const sheetJointsMm = panel.jointsAtEveryStud === false ? panel.sheetJointsMm! : null;
+    const segments = sheetSegments(input.studPositionsMm, face.lengthMm, sheetJointsMm);
     identifier(panel.evidenceRef, 'plywood product/axis/moisture evidence');
     const plywoodElastic = resolvePlywoodElastic({...panel, grainRelativeDeg: panel.grainAxis === 'ALONG_FACE' ? 0 : 90}), E = plywoodElastic.E_MPa;
     blockers.push(...plywoodElastic.blockers.map(b => `${face.id}:${b}`));
@@ -132,10 +140,15 @@ export function analyzeSideLayout(model: WorkflowModel, layout: AppliedSideLayou
         [{id: string; E_MPa: number; I_mm4: number; share: number; memberEvidenceRef: string; resistanceEvidence: BeamMemberEvidence[]},
           {id: string; E_MPa: number; I_mm4: number; share: number; memberEvidenceRef: string; resistanceEvidence: BeamMemberEvidence[]}];
     });
-    const pressurePatches = input.pressure ? compileSidePressure(model, input.pressure, face.lengthMm) : null;
-    const head = pressurePatches ? layout.pourHeadMm : finite(layout.pourHeadMm, 'explicit pour head');
-    if (!pressurePatches && head! > model.heightMm) throw Error('BLOCKED_UNSUPPORTED: pour head above the modeled full-height panel');
-    analysesUsed += input.studPositionsMm.length + 2 * walers.length + (pressurePatches ? 2 * (input.studPositionsMm.length - 1) * (pressureZones(pressurePatches, model.heightMm).length - 1) : input.studPositionsMm.length - 1);
+    const declared = input.pressure ? compileSidePressure(model, input.pressure, face.lengthMm) : null;
+    const head = declared ? layout.pourHeadMm : finite(layout.pourHeadMm, 'explicit pour head');
+    if (!declared && head! > model.heightMm) throw Error('BLOCKED_UNSUPPORTED: pour head above the modeled full-height panel');
+    // Continuous sheets need the strip-by-strip deck; the legacy hydrostatic head is expressed as the
+    // identical triangular patch so stud loads follow the declared continuity instead of tributary widths.
+    const pressurePatches = declared ?? (sheetJointsMm !== null ? [{id: `${face.id}:LEGACY-HYDROSTATIC`, kind: 'HYDROSTATIC' as const, x0Mm: 0, x1Mm: face.lengthMm, z0Mm: 0, z1Mm: head!,
+      p0KPa: finite(model.gammaKNm3, 'concrete unit weight') * actionFactor(model, 'HYDROSTATIC_SIDE') * head! / 1000, p1KPa: 0, ownershipId: 'LEGACY_HYDROSTATIC_HEAD',
+      evidenceRef: layout.evidenceRef, mappingBasisRef: 'legacy pour head and unit weight, full face width'}] : null);
+    analysesUsed += input.studPositionsMm.length + 2 * walers.length + (pressurePatches ? 2 * segments.length * (pressureZones(pressurePatches, model.heightMm).length - 1) : segments.length);
     if (analysesUsed > 400) throw Error('BLOCKED_MODEL_SIZE: complete side pressure/member analysis exceeds 400; no zones omitted');
     const result = analyzeSidePanel({faceId: face.id, revision: model.revisionId, lengthMm: face.lengthMm, heightMm: model.heightMm, pourHeadMm: head,
       gammaKNm3: pressurePatches ? null : finite(model.gammaKNm3, 'concrete unit weight') * actionFactor(model, 'HYDROSTATIC_SIDE'),
@@ -146,7 +159,7 @@ export function analyzeSideLayout(model: WorkflowModel, layout: AppliedSideLayou
         ? beamMemberEvidenceReference('SIDE_SHARED_RAIL', {E_MPa: input.rail.E_MPa, I_mm4: input.rail.I_mm4, evidenceRef: input.rail.evidenceRef, binding: input.rail.binding ?? null})
         : null,
       railResistanceEvidence: input.rail.resistanceEvidence ?? [],
-      ...(pressurePatches ? {pressurePatches, plywoodE_MPa: E, plywoodI_mm4: plywoodElastic.I_mm4} : {}),
+      ...(pressurePatches ? {pressurePatches, plywoodE_MPa: E, plywoodI_mm4: plywoodElastic.I_mm4, plywoodSheetJointsMm: sheetJointsMm} : {}),
       studPositionsMm: input.studPositionsMm, walerLevelsMm: walers.map(w => w.zMm), walerSupports: [], walerSupportsByLevel: walers.map(w => w.supports),
       studE_MPa: studElastic.E_MPa, studI_mm4: studElastic.I_mm4, railE_MPa: sharedRailElastic?.E_MPa ?? null, railI_mm4: sharedRailElastic?.I_mm4 ?? null,
       heavierRailShare: input.heavierRailShare, sharingEvidence: input.sharingEvidence,
@@ -158,19 +171,24 @@ export function analyzeSideLayout(model: WorkflowModel, layout: AppliedSideLayou
         localXMm: d.xMm, localZMm: walers[i].zMm, forceN: d.forceN, momentNmm: d.momentNmm, normal: face.normal});
     }
     // Governing hydrostatic pressure envelope per 1m vertical design strip; never fed into studs again.
-    const rawPanels = result.pressureDeck ? result.pressureDeck.panels.map(p => ({...p, stressDemandMPa: p.analysis.maxMomentNmm / plywoodElastic.S_mm3})) : input.studPositionsMm.slice(1).map((x, i) => {
-      const length = x - input.studPositionsMm[i], I = 1000 * t ** 3 / 12;
+    const rawPanels = result.pressureDeck ? result.pressureDeck.panels.map(p => ({...p, stressDemandMPa: p.analysis.maxMomentNmm / plywoodElastic.S_mm3})) : segments.map((seg, i) => {
+      const length = seg.endMm - seg.startMm, I = 1000 * t ** 3 / 12;
+      // Legacy hydrostatic path: peak-pressure envelope strip over the sheet's actual stud supports.
       const analysis = analyzeBeam({id: `${face.id}:PLY:${i + 1}`, revision: model.revisionId, lengthMm: length, E_MPa: E, I_mm4: I,
-        supports: [{id: 'A', xMm: 0}, {id: 'B', xMm: length}], points: [],
+        supports: seg.studsMm.map(x => ({id: `S${input.studPositionsMm.indexOf(x)}`, xMm: x - seg.startMm})), points: [],
         patches: [{id: 'PEAK-HYDRO-1M-STRIP', startMm: 0, endMm: length, startNPerMm: result.pressureBaseKPa!, endNPerMm: result.pressureBaseKPa!}]});
-      return {id: analysis.id, startMm: input.studPositionsMm[i], endMm: x, designStripMm: 1000 as const, analysis,
+      return {id: analysis.id, startMm: seg.startMm, endMm: seg.endMm, designStripMm: 1000 as const, analysis,
         lowerZMm: 0, upperZMm: head!, evaluationZMm: 0, sourceActionIds: ['LEGACY_HYDROSTATIC_PEAK_ENVELOPE'],
         stressDemandMPa: analysis.maxMomentNmm / (1000 * t ** 2 / 6)};
     });
     const actionBasis = model.analysisCase?.basis ?? 'SERVICE', plywoodRef = sidePlywoodEvidenceReference(panel);
     // Plywood limits are per 1000 mm strip and compared with that strip's own M/V/deflection only.
+    const spanOf = (p: {analysis: {input: {supports: {xMm: number}[]; lengthMm: number}}}) => {
+      const xs = [...new Set([0, p.analysis.input.lengthMm, ...p.analysis.input.supports.map(s => s.xMm)])].sort((a, b) => a - b);
+      return Math.max(...xs.slice(1).map((x, i) => x - xs[i]));
+    };
     const panels = rawPanels.map(p => ({...p, resistanceScreen: screenBeamMemberResistance({evidence: panel.resistanceEvidence ?? [], actionBasis,
-      memberEvidenceRef: plywoodRef, maximumUnsupportedSpanMm: p.endMm - p.startMm,
+      memberEvidenceRef: plywoodRef, maximumUnsupportedSpanMm: spanOf(p),
       demands: {FLEXURE: p.analysis.maxMomentNmm, SHEAR: p.analysis.maxShearN, DEFLECTION: p.analysis.maxDeflectionMm}})}));
     const local = screenSideLocalChecks({demands: sideLocalDemands(face.id, result.studs, result.walers, face.lengthMm), evidence: input.localEvidence ?? [],
       actionBasis, memberEvidenceRef: sideLocalMemberReference(input)});

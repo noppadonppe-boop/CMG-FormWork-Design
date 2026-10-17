@@ -70,18 +70,31 @@ export function pressureZones(patches: PressurePatch[], heightMm: number) {retur
 /** One-way, simply spanning X strips. At a fixed Z, pressure is piecewise constant in X.
  * Between Z boundaries every response is affine in Z, so both endpoint analyses bound every
  * absolute elastic demand in that zone. Their actual reactions define affine stud line loads. */
-export function analyzeSidePressureDeck(o: {faceId: string; revision: string; lengthMm: number; heightMm: number; studsMm: number[]; E_MPa: number; I_mm4: number; patches: PressurePatch[]}) {
+/** Sheet segments: declared sheet joints split the face into continuous strips; every joint must
+ * sit on a stud. Without declared joints each stud bay is its own simply supported strip. */
+export function sheetSegments(studsMm: number[], lengthMm: number, sheetJointsMm: number[] | null | undefined) {
+  if (sheetJointsMm == null) return studsMm.slice(1).map((x, i) => ({startMm: studsMm[i], endMm: x, studsMm: [studsMm[i], x]}));
+  if (!Array.isArray(sheetJointsMm) || sheetJointsMm.length > 40) throw Error('Invalid plywood sheet joint list');
+  const joints = [...new Set([0, lengthMm, ...sheetJointsMm])].sort((a, b) => a - b);
+  for (const j of sheetJointsMm) {finite(j, 'sheet joint position', true); if (!studsMm.some(x => Math.abs(x - j) < 1e-7)) throw Error(`BLOCKED_UNSUPPORTED: plywood sheet joint at ${j} mm is not on a stud; unsupported sheet edges need their own model`);}
+  return joints.slice(1).map((end, i) => {
+    const start = joints[i], inside = studsMm.filter(x => x >= start - 1e-7 && x <= end + 1e-7);
+    return {startMm: start, endMm: end, studsMm: inside};
+  });
+}
+export function analyzeSidePressureDeck(o: {faceId: string; revision: string; lengthMm: number; heightMm: number; studsMm: number[]; E_MPa: number; I_mm4: number; patches: PressurePatch[]; sheetJointsMm?: number[] | null}) {
   identifier(o.faceId, 'pressure face'); identifier(o.revision, 'pressure revision'); finite(o.lengthMm, 'pressure face length'); finite(o.heightMm, 'pressure face height');
   finite(o.E_MPa, 'plywood E'); finite(o.I_mm4, 'plywood I');
   if (!Array.isArray(o.patches) || o.patches.length > 40 || !Array.isArray(o.studsMm) || o.studsMm.length < 2 || o.studsMm.length > 40 || o.studsMm[0] !== 0 || o.studsMm.at(-1) !== o.lengthMm || o.studsMm.some((x, i) => !Number.isFinite(x) || x < 0 || x > o.lengthMm || (i > 0 && x <= o.studsMm[i - 1]))) throw Error('Actual edge-supported pressure-deck coordinates and bounded patches required');
   uniqueIds(o.patches, 'compiled pressure patches');
+  const segments = sheetSegments(o.studsMm, o.lengthMm, o.sheetJointsMm);
   for (const p of o.patches) {
     for (const k of ['x0Mm', 'x1Mm', 'z0Mm', 'z1Mm', 'p0KPa', 'p1KPa'] as const) finite(p[k], k, true);
     const explicitZeroHead = p.kind === 'HYDROSTATIC' && p.z0Mm === 0 && p.z1Mm === 0 && p.p0KPa === 0 && p.p1KPa === 0;
     if (p.x1Mm <= p.x0Mm || (!explicitZeroHead && p.z1Mm <= p.z0Mm) || p.x1Mm > o.lengthMm || p.z1Mm > o.heightMm) throw Error('Compiled pressure patch outside panel');
   }
   const zs = pressureZones(o.patches, o.heightMm);
-  if ((o.studsMm.length - 1) * (zs.length - 1) * 2 > 400) throw Error('SIDE_PRESSURE_DECK_SIZE_LIMIT: at most 400 exact endpoint analyses; no zones omitted');
+  if (segments.length * (zs.length - 1) * 2 > 400) throw Error('SIDE_PRESSURE_DECK_SIZE_LIMIT: at most 400 exact endpoint analyses; no zones omitted');
   const panels: {id: string; startMm: number; endMm: number; lowerZMm: number; upperZMm: number; evaluationZMm: number; designStripMm: 1000; sourceActionIds: string[]; analysis: ReturnType<typeof analyzeBeam>}[] = [];
   const studPatches: BeamPatch[][] = o.studsMm.map(() => []);
   const transfers: {sourceAnalysisIds: string[]; targetStudId: string; xMm: number; startZMm: number; endZMm: number; startNPerMm: number; endNPerMm: number; upstreamRevision: string}[] = [];
@@ -89,21 +102,28 @@ export function analyzeSidePressureDeck(o: {faceId: string; revision: string; le
   for (let z = 1; z < zs.length; z++) {
     const lower = zs[z - 1], upper = zs[z], active = o.patches.filter(p => p.z0Mm <= lower && p.z1Mm >= upper);
     const reactions = o.studsMm.map(() => [0, 0]);
-    for (let i = 1; i < o.studsMm.length; i++) {
-      const a = o.studsMm[i - 1], b = o.studsMm[i], src = active.filter(p => p.x0Mm < b && p.x1Mm > a), analyses: string[] = [];
+    segments.forEach((seg, s) => {
+      const a = seg.startMm, b = seg.endMm, src = active.filter(p => p.x0Mm < b && p.x1Mm > a), analyses: string[] = [];
+      const supports = seg.studsMm.map(x => ({id: `S${o.studsMm.indexOf(x)}`, xMm: x - a}));
+      const endReactions: Record<string, number>[] = [];
       for (const [end, atZ] of [lower, upper].entries()) {
-        const id = `${o.faceId}:PLY:${i}:ZONE:${z}:Z${end}`;
+        const id = `${o.faceId}:PLY:${s + 1}:ZONE:${z}:Z${end}`;
         const loads = src.map(p => ({id: p.id, startMm: Math.max(a, p.x0Mm) - a, endMm: Math.min(b, p.x1Mm) - a, startNPerMm: Math.max(0, valueAt(p, atZ)), endNPerMm: Math.max(0, valueAt(p, atZ))}));
-        const analysis = analyzeBeam({id, revision: o.revision, lengthMm: b - a, E_MPa: o.E_MPa, I_mm4: o.I_mm4, supports: [{id: 'A', xMm: 0}, {id: 'B', xMm: b - a}], points: [], patches: loads});
+        // Continuous sheet strip over every stud inside the segment (simply supported when the segment is one bay).
+        const analysis = analyzeBeam({id, revision: o.revision, lengthMm: b - a, E_MPa: o.E_MPa, I_mm4: o.I_mm4, supports, points: [], patches: loads});
         panels.push({id, startMm: a, endMm: b, lowerZMm: lower, upperZMm: upper, evaluationZMm: atZ, designStripMm: 1000, sourceActionIds: src.map(p => p.id), analysis}); analyses.push(id);
-        for (const [support, target] of [['A', i - 1], ['B', i]] as const) reactions[target][end] += -analysis.reactions.find(r => r.supportId === support)!.forceN / 1000;
+        const byStud: Record<string, number> = {};
+        for (const sup of supports) {const r = -analysis.reactions.find(q => q.supportId === sup.id)!.forceN / 1000; byStud[sup.id] = r; reactions[Number(sup.id.slice(1))][end] += r;}
+        endReactions.push(byStud);
         const xs = [...new Set([a, b, ...loads.flatMap(p => [a + p.startMm, a + p.endMm])])].sort((u, v) => u - v);
         for (let k = 1; k < xs.length; k++) maximumPressureKPa = Math.max(maximumPressureKPa, src.filter(p => p.x0Mm <= xs[k - 1] && p.x1Mm >= xs[k]).reduce((sum, p) => sum + valueAt(p, atZ), 0));
       }
-      for (const [target, support] of [[i - 1, 'A'], [i, 'B']] as const) transfers.push({sourceAnalysisIds: analyses, targetStudId: `${o.faceId}:STUD:${target + 1}`, xMm: o.studsMm[target], startZMm: lower, endZMm: upper,
-        startNPerMm: -panels[panels.length - 2].analysis.reactions.find(r => r.supportId === support)!.forceN / 1000,
-        endNPerMm: -panels[panels.length - 1].analysis.reactions.find(r => r.supportId === support)!.forceN / 1000, upstreamRevision: o.revision});
-    }
+      for (const sup of supports) {
+        const target = Number(sup.id.slice(1));
+        transfers.push({sourceAnalysisIds: analyses, targetStudId: `${o.faceId}:STUD:${target + 1}`, xMm: o.studsMm[target], startZMm: lower, endZMm: upper,
+          startNPerMm: endReactions[0][sup.id], endNPerMm: endReactions[1][sup.id], upstreamRevision: o.revision});
+      }
+    });
     for (let i = 0; i < reactions.length; i++) studPatches[i].push({id: `PRESSURE:ZONE:${z}`, startMm: lower, endMm: upper, startNPerMm: reactions[i][0], endNPerMm: reactions[i][1]});
   }
   const sourceResultants = o.patches.map(p => {
@@ -122,5 +142,5 @@ export function analyzeSidePressureDeck(o: {faceId: string; revision: string; le
   for (let i = 1; i < baseXs.length; i++) bases.push(o.patches.filter(p => p.z0Mm === 0 && p.x0Mm <= baseXs[i - 1] && p.x1Mm >= baseXs[i]).reduce((s, p) => s + p.p0KPa, 0));
   const pressureBaseKPa = bases.every(v => v === bases[0]) ? bases[0] : null;
   canonical({expectedForceN, expectedXMomentNmm, expectedZMomentNmm, pressureBaseKPa, maximumPressureKPa, residuals, studPatches});
-  return {panels, studPatches, transfers, patches: clone(o.patches), sourceResultants, expectedForceN, expectedXMomentNmm, expectedZMomentNmm, pressureBaseKPa, maximumPressureKPa, residuals, constructionRelease: 'NO_GO' as const};
+  return {panels, studPatches, transfers, segments, patches: clone(o.patches), sourceResultants, expectedForceN, expectedXMomentNmm, expectedZMomentNmm, pressureBaseKPa, maximumPressureKPa, residuals, constructionRelease: 'NO_GO' as const};
 }
