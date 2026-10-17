@@ -1,5 +1,8 @@
 # CMG Formwork Design — v0.3
 
+วัตถุประสงค์ฉบับปัจจุบัน (ระบบแบบหล่อ 5 แบบ: ฐานราก เสา คาน พื้น ผนัง) และสถานะต่อระบบอยู่ที่
+[docs/OBJECTIVES.md](docs/OBJECTIVES.md) ซึ่งใช้แทนขอบเขตฐานราก/เสาเดิมของ Master Prompt 1.1
+
 Workflow v0.7 local development preview is available behind an off-by-default feature flag.
 It includes topology/load-path primitives, reference adapters and frozen draft documents; the legacy
 v0.3 calculation API is preserved. It cannot enable against Firebase production and does not add

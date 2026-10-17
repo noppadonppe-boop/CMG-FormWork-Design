@@ -3,6 +3,7 @@ import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {expect, it} from 'vitest';
 import {FrameResults} from '../src/components/FrameResults';
+import {TIE_ROLES} from '../src/domain/workflowV07/assemblies';
 import {emptyFrameElement, frameGeometryFromSide, stampFrameLayout, type FrameActionDraft} from '../src/domain/workflowV07/frameWorkflow';
 import {previewWorkflow, regenerateDraftLayouts, type WorkflowModel} from '../src/domain/workflowV07/model';
 import {emptyCouplingCorner, emptySideCoupling, sideCouplingReference, type SideCouplingDefinition} from '../src/domain/workflowV07/sideCoupled';
@@ -12,14 +13,17 @@ import {emptyPressureSource} from '../src/domain/workflowV07/sidePressure';
 import {sideDefinition, sideFace, sideModel} from './fixtures/workflow-v07-side';
 
 // SYNTHETIC stiffness values only: not a tie product, connector rating or frame configuration.
-function coupledFixture(o: {tieE?: number; tieA?: number; I?: (i: number) => number; corners?: boolean; unbalanced?: boolean; lateral?: boolean; threeSupports?: boolean} = {}) {
-  const model = {...sideModel(), designBasisRef: 'SYNTHETIC factor sensitivity only'};
+function coupledFixture(o: {tieE?: number; tieA?: number; I?: (i: number) => number; corners?: boolean; unbalanced?: boolean; lateral?: boolean; threeSupports?: boolean; assemblyCapacityKN?: number; threeLevels?: boolean} = {}) {
+  const model: WorkflowModel = {...sideModel(), designBasisRef: 'SYNTHETIC factor sensitivity only', ...(o.assemblyCapacityKN ? {sideTopology: 'SEGMENTED_TIE' as const} : {})};
   const side = sideDefinition();
+  if (o.assemblyCapacityKN) for (const t of side.ties) t.assembly = {topology: 'SEGMENTED_INNER_OUTER', compatibilityEvidence: 'SYNTHETIC', engagementLeftMm: 30, engagementRightMm: 30, requiredEngagementLeftMm: 25, requiredEngagementRightMm: 25,
+    components: TIE_ROLES.map(role => ({role, productId: `SYNTHETIC-${role}`, sourceRef: 'SYNTHETIC', capacityKN: o.assemblyCapacityKN!, basis: 'ALLOWABLE' as const, demandFraction: 1}))};
   if (o.corners) side.faces = ['F1', 'F2', 'F3', 'F4'].map(id => sideFace(id));
   if (o.threeSupports) for (const f of side.faces.filter(f => f.faceId === 'F2' || f.faceId === 'F4')) for (const w of f.walers) w.supports = [{id: 'S1', xMm: 250}, {id: 'S2', xMm: 500}, {id: 'S3', xMm: 750}];
   // An untied, framed middle support on the tied faces restrains their common translation.
   if (o.unbalanced) for (const f of side.faces.filter(f => f.faceId === 'F1' || f.faceId === 'F3')) for (const w of f.walers) w.supports = [{id: 'S1', xMm: 250}, {id: 'S3', xMm: 500}, {id: 'S2', xMm: 750}];
   side.ties = side.ties.filter(t => t.id.startsWith('F1-'));
+  if (o.threeLevels) for (const f of side.faces.filter(f => f.faceId === 'F2' || f.faceId === 'F4')) f.walers = [120, 500, 880].map((zMm, i) => ({id: `W${i + 1}`, zMm, supports: [{id: 'S1', xMm: 250}, {id: 'S2', xMm: 750}]}));
   if (o.unbalanced) side.faces[0].pressure = {schemaVersion: '1', scope: 'REPLACE_COMPLETE_FACE_FOR_STAGE', evidenceRef: 'SYNTHETIC F1 head 600', omittedAreasEvidenceRef: 'SYNTHETIC remainder unloaded',
     sources: [{...emptyPressureSource('PARTIAL-HEAD'), kind: 'HYDROSTATIC', x0Mm: 0, x1Mm: 1000, headMm: 600, ownershipId: 'F1-CONCRETE', evidenceRef: 'SYNTHETIC'}]};
   const applied: WorkflowModel = {...model, sideLayout: stampSideLayout(model, side)};
@@ -154,4 +158,78 @@ it('renders coupled supports, tie forces, corner connectors and the stability ga
   expect(html).toContain('NO_GO');
   // Existing disclaimers mention "ไม่ใช่ PASS"; no status cell may claim PASS/APPROVED.
   expect(html).not.toMatch(/<td>[^<]*\b(PASS|APPROVED)\b/);
+});
+
+it('re-screens authored tie assemblies with the coupled tie force rather than the rigid-support demand', () => {
+  // Corner connectors lower the W1 tie force below its rigid value; the declared capacity sits between them.
+  const {coupled, side} = solve(coupledFixture({corners: true, assemblyCapacityKN: 3.4}));
+  const w1 = coupled.tieProducts.find(p => p.id.includes('-W1-'))!, tie = coupled.ties.find(t => t.id === w1.id)!;
+  expect(w1.demandKN).toBeCloseTo(tie.forceN / 1000, 9);
+  expect(side.ties.find(t => t.id === w1.id)!.demandKN!).toBeGreaterThan(3.4);
+  expect(side.ties.find(t => t.id === w1.id)!.assembly!.status).toBe('FAIL');
+  expect(w1.demandKN).toBeLessThan(3.4);
+  expect(w1.assembly!.status).toBe('BLOCKED');
+  expect(coupled.blockers).toContain('SIDE_LAYOUT_TIE_PRODUCT_SCREENS_USE_RIGID_DEMANDS_COUPLED_TIE_PRODUCT_SCREENS_GOVERN');
+
+  const low = solve(coupledFixture({corners: true, assemblyCapacityKN: 1})).coupled;
+  expect(low.tieProducts.some(p => p.status === 'FAIL')).toBe(true);
+  expect(low.status).toBe('FAIL');
+  expect(low.blockers).toContain('COUPLED_TIE_PRODUCT_SCREEN_EXCEEDED');
+});
+
+it('feeds waler and support movement back into the studs and redistributes stud loads between levels', () => {
+  // Three levels make each stud indeterminate; a soft middle level sheds load to the outer levels.
+  const stiff = solve(coupledFixture({threeLevels: true, tieE: 2e5, tieA: 1e9, I: () => 1e14})).coupled;
+  const soft = solve(coupledFixture({threeLevels: true, I: i => (Math.floor(i / 2) % 3 === 1 ? 2e5 : 1e14)})).coupled;
+  const level = (c: typeof stiff, face: string, l: number) => c.crossings.filter(x => x.faceId === face && x.level === l).reduce((s, x) => s + x.forceOnRailsN, 0);
+  expect(stiff.crossings.length).toBe(2 * 5 * 2 + 2 * 5 * 3);
+  expect([0, 1, 2].reduce((s, l) => s + level(soft, 'F2', l), 0)).toBeCloseTo([0, 1, 2].reduce((s, l) => s + level(stiff, 'F2', l), 0), 4);
+  expect(level(soft, 'F2', 1)).toBeLessThan(level(stiff, 'F2', 1) - 1);
+  expect(soft.studAnalyses.filter(a => a.faceId === 'F2').every(a => a.input.supports.some(s => (s.displacementMm ?? 0) !== 0))).toBe(true);
+  expect(soft.blockers).not.toContain('COUPLED_STUD_TO_WALER_TRANSFER_REMAINS_RIGID_SUPPORT_ONE_WAY');
+  // Paired rails now share the stud load by contact compatibility; a non-matching declared split is reported.
+  expect(soft.railShares.length).toBeGreaterThan(0);
+  expect(soft.railShares.some(r => r.maxDeviation > 1e-3)).toBe(true);
+  expect(soft.blockers.some(b => b.endsWith('RAIL_SHARE_SET_BY_STUD_CONTACT_COMPATIBILITY_NOT_DECLARED_SHARE'))).toBe(true);
+});
+
+it('uses declared rail E·A between corner points instead of a rigid rail and keeps axial force equal to k·elongation', () => {
+  const rigidF = coupledFixture({corners: true}), flexibleF = coupledFixture({corners: true});
+  flexibleF.definition.sideTransfers!.coupling!.railAxial = ['F1', 'F2', 'F3', 'F4'].flatMap(faceId => ['W1', 'W2'].map(walerId => ({faceId, walerId, EA_N: 2e5 * 50, evidenceRef: 'SYNTHETIC rail EA'})));
+  const rigid = solve(rigidF).coupled, flexible = solve(flexibleF).coupled;
+  expect(rigid.blockers.some(b => b.endsWith('RAIL_AXIAL_TREATED_RIGID_NO_DECLARED_EA'))).toBe(true);
+  expect(flexible.blockers.some(b => b.endsWith('RAIL_AXIAL_TREATED_RIGID_NO_DECLARED_EA'))).toBe(false);
+  for (const r of flexible.railAxial) {
+    expect(r.axialStiffnessNPerMm).toBeCloseTo(2e5 * 50 / 1000, 9);
+    expect(r.axialStiffnessNPerMm! * r.elongationMm).toBeCloseTo(r.axialForceN, 4);
+  }
+  expect(flexible.corners.some((c, i) => Math.abs(c.connectorForceN - rigid.corners[i].connectorForceN) > 1e-3)).toBe(true);
+  const bad = coupledFixture(); bad.definition.sideTransfers!.coupling!.railAxial = [{faceId: 'F2', walerId: 'W1', EA_N: 1e6, evidenceRef: 'x'}];
+  const frame = previewWorkflow(regenerateDraftLayouts(bad.model, {frameLayout: stampFrameLayout(bad.model, bad.definition)})).frame!;
+  expect(frame.blockers.some(b => /needs corner connectors at both rail ends/.test(b))).toBe(true);
+});
+
+it('applies tie slack, tie pretension and corner slip gaps as piecewise-linear states', () => {
+  const base = solve(coupledFixture({corners: true})).coupled;
+  const slackF = coupledFixture({corners: true}); slackF.definition.sideTransfers!.coupling!.ties.forEach(t => {t.slackMm = 0.05;});
+  const slack = solve(slackF).coupled;
+  for (const t of slack.ties) {
+    expect(t.slackMm).toBe(0.05);
+    if (!t.slack) expect(t.forceN).toBeCloseTo(t.stiffnessNPerMm * (t.elongationMm - 0.05), 6);
+  }
+  expect(slack.ties.some((t, i) => Math.abs(t.forceN - base.ties[i].forceN) > 1)).toBe(true);
+  // Pretension above the pressure demand keeps the faces clamped: the tie elongation stays below zero (compressed forms).
+  const preF = coupledFixture({corners: true}); preF.definition.sideTransfers!.coupling!.ties.forEach(t => {t.pretensionN = 20000;});
+  const pre = solve(preF).coupled;
+  for (const t of pre.ties) {expect(t.slack).toBe(false); expect(t.forceN).toBeCloseTo(20000 + t.stiffnessNPerMm * t.elongationMm, 6); expect(t.elongationMm).toBeLessThan(0);}
+  expect(pre.equilibrium.maxSupportResidualN).toBeLessThan(1e-6);
+  // A corner gap larger than the movement leaves the connector unengaged with zero force.
+  const gapF = coupledFixture({corners: true}); gapF.definition.sideTransfers!.coupling!.corners.forEach(c => {c.slipGapMm = 1000;});
+  const gap = solve(gapF).coupled;
+  expect(gap.corners.every(c => !c.engaged && c.connectorForceN === 0)).toBe(true);
+  const smallGapF = coupledFixture({corners: true}); smallGapF.definition.sideTransfers!.coupling!.corners.forEach(c => {c.slipGapMm = 0.001;});
+  const small = solve(smallGapF).coupled;
+  for (const c of small.corners.filter(c => c.engaged)) expect(c.connectorForceN).toBeCloseTo(c.stiffnessNPerMm * (c.relativeDisplacementMm - 0.001), 6);
+  const both = coupledFixture(); both.definition.sideTransfers!.coupling!.ties[0] = {...both.definition.sideTransfers!.coupling!.ties[0], pretensionN: 10, slackMm: 1};
+  expect(() => stampFrameLayout(both.model, both.definition)).toThrow(/pretensioned tie cannot also have slack/);
 });

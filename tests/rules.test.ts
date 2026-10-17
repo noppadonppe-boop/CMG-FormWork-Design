@@ -164,6 +164,28 @@ describe('Project scope and client saves', () => {
     await assertSucceeds(updateDoc(doc(staffDb, projectPath('p1')), {name: 'Editable again'}));
   });
 
+  it('scopes Workflow v0.7 drafts to project edit/view permissions and rejects authority or oversized fields', async () => {
+    const draft = (projectId: string, caseId: string, uid: string, patch: Record<string, unknown> = {}) => ({projectId, caseId, schemaVersion: 'workflow-draft-1', engineVersion: '0.7.0-test',
+      savedAtMs: 1700000000000, sourceInputHash: '{}', modelJson: '{"schemaVersion":"0.7.0"}', updatedBy: uid, updatedAt: serverTimestamp(), ...patch});
+    const path = (projectId: string, caseId: string) => `${root}/projects/${projectId}/workflow/${caseId}`;
+    const staffDb = context('staff').firestore(), engineerDb = context('engineer').firestore();
+    await assertSucceeds(setDoc(doc(staffDb, path('p1', 'c1')), draft('p1', 'c1', 'staff')));
+    await assertSucceeds(getDoc(doc(staffDb, path('p1', 'c1'))));
+    await assertSucceeds(getDocs(collection(staffDb, `${root}/projects/p1/workflow`)));
+    await assertFails(setDoc(doc(staffDb, path('p2', 'c1')), draft('p2', 'c1', 'staff')));
+    await assertFails(getDocs(collection(staffDb, `${root}/projects/p2/workflow`)));
+    for (const patch of [{projectId: 'p2'}, {caseId: 'other'}, {updatedBy: 'admin'}, {updatedAt: seedTime}, {constructionEligible: true}, {schemaVersion: 'workflow-draft-9'}, {modelJson: 42}]) {
+      await assertFails(setDoc(doc(staffDb, path('p1', 'c1')), draft('p1', 'c1', 'staff', patch)));
+    }
+    await assertFails(setDoc(doc(staffDb, path('p1', 'c1')), draft('p1', 'c1', 'staff', {modelJson: 'x'.repeat(900001)})));
+    // View-only permission reads but cannot write or delete.
+    await assertSucceeds(updateDoc(doc(context('admin').firestore(), profilePath('engineer')), {assignedProjects: [], projectPermissions: {p1: ['view']}}));
+    await assertSucceeds(getDoc(doc(engineerDb, path('p1', 'c1'))));
+    await assertFails(setDoc(doc(engineerDb, path('p1', 'c2')), draft('p1', 'c2', 'engineer')));
+    await assertFails(deleteDoc(doc(engineerDb, path('p1', 'c1'))));
+    await assertSucceeds(deleteDoc(doc(staffDb, path('p1', 'c1'))));
+  });
+
   it('requires project identity to match its path on creation and update', async () => {
     const db = context('admin').firestore();
     for (const patch of [{id: 'different'}, {projectId: 'different'}, {id: deleteField()}, {projectId: deleteField()}]) await assertFails(updateDoc(doc(db, projectPath('p1')), patch));

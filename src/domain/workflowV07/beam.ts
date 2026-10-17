@@ -163,8 +163,11 @@ export function analyzeBeam(o: BeamInput): BeamAnalysis {
   const forceResidualN = totalLoadN + reactions.reduce((s, r) => s + r.forceN, 0);
   const momentResidualNmm = loadMoment + reactions.reduce((s, r) => s + r.forceN * r.xMm + r.momentNmm, 0);
   // Prescribed movement creates self-equilibrated reactions, so scale by reaction magnitudes too.
-  const reactionScale = reactions.reduce((s, r) => s + Math.abs(r.forceN), 0), reactionMomentScale = reactions.reduce((s, r) => s + Math.abs(r.forceN * r.xMm) + Math.abs(r.momentNmm), 0);
-  if (Math.abs(forceResidualN) > Math.max(1, Math.abs(totalLoadN), reactionScale) * 1e-7 || Math.abs(momentResidualNmm) > Math.max(1, Math.abs(totalLoadN) * L, reactionMomentScale) * 1e-7) throw Error('Beam equilibrium failed');
+  // Rigid-body support movement gives ~zero reactions, so round-off is bounded by EI·δ terms.
+  const movedMm = Math.max(0, ...o.supports.map(s => Math.abs(s.displacementMm ?? 0))), shortest = Math.min(...xs.slice(1).map((x, i) => x - xs[i]));
+  const reactionScale = reactions.reduce((s, r) => s + Math.abs(r.forceN), 0) + E * I * movedMm / shortest ** 3;
+  const reactionMomentScale = reactions.reduce((s, r) => s + Math.abs(r.forceN * r.xMm) + Math.abs(r.momentNmm), 0) + E * I * movedMm / shortest ** 3 * L;
+  if (Math.abs(forceResidualN) > Math.max(1, Math.abs(totalLoadN), reactionScale) * 1e-7 || Math.abs(momentResidualNmm) > Math.max(1, Math.abs(totalLoadN) * L, reactionMomentScale) * 1e-7) throw Error(`Beam equilibrium failed (force residual ${forceResidualN} N, moment residual ${momentResidualNmm} N·mm)`);
   const supportStations = [...new Set([0, L, ...o.supports.map(s => s.xMm)])].sort((a, b) => a - b);
   const maximumUnsupportedSpanMm = Math.max(...supportStations.slice(1).map((x, i) => x - supportStations[i]));
   const resistanceScreen = screenBeamMemberResistance({evidence: o.resistanceEvidence, actionBasis: o.actionBasis,

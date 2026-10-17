@@ -1,6 +1,7 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import type {Input} from '../domain';
-import {canonical, type ElementType, type Point2} from '../domain/workflowV07/common';
+import {canonical, WORKFLOW_VERSION, type ElementType, type Point2} from '../domain/workflowV07/common';
+import {createStoredWorkflowDraft, restoreWorkflowDraft, type StoredWorkflowDraft} from '../domain/workflowV07/storage';
 import {applyCoverageReview, fromLegacy, previewWorkflow, regenerateDraftLayouts, reviseDraft, type WorkflowModel} from '../domain/workflowV07/model';
 import type {SoffitLayout} from '../domain/workflowV07/soffit';
 import {stampSideLayout, type SideLayoutDefinition} from '../domain/workflowV07/sideLayout';
@@ -160,8 +161,19 @@ export function WorkflowDocuments({view}: {view: View}) {
   </article>;
 }
 
-export default function WorkflowV07Panel({input, caseId, initialElementType}: {input: Input; caseId: string; initialElementType?: ElementType}) {
-  const [model, setModel] = useState(() => initialModel(input, caseId, initialElementType));
+type Restored = {model: WorkflowModel; staleEngine: boolean; sourceChanged: boolean; savedEngineVersion: string | null; savedAtMs: number | null};
+function restoreOrSeed(input: Input, caseId: string, initialElementType: ElementType | undefined, stored: StoredWorkflowDraft | null): Restored {
+  if (stored) {
+    try {const r = restoreWorkflowDraft(stored, input); return {...r, savedAtMs: stored.savedAtMs};} catch { /* unreadable draft: start from the legacy seed below */ }
+  }
+  return {model: initialModel(input, caseId, initialElementType), staleEngine: false, sourceChanged: false, savedEngineVersion: null, savedAtMs: null};
+}
+export default function WorkflowV07Panel({input, caseId, initialElementType, stored = null, canPersist = true, onPersist}: {
+  input: Input; caseId: string; initialElementType?: ElementType; stored?: StoredWorkflowDraft | null; canPersist?: boolean; onPersist?: (draft: StoredWorkflowDraft) => Promise<void> | void;
+}) {
+  const [restored, setRestored] = useState<Restored>(() => restoreOrSeed(input, caseId, initialElementType, stored));
+  const [model, setModel] = useState(() => restored.model);
+  const [saveState, setSaveState] = useState<{status: 'IDLE' | 'SAVING' | 'SAVED' | 'FAILED'; atMs: number | null; message: string}>({status: stored ? 'SAVED' : 'IDLE', atMs: stored?.savedAtMs ?? null, message: ''});
   const [vertices, setVertices] = useState(JSON.stringify(model.vertices.map(p => [p.x, p.y])));
   const [soffitPending, setSoffitPending] = useState(false);
   const [sidePending, setSidePending] = useState(false);
@@ -182,9 +194,33 @@ export default function WorkflowV07Panel({input, caseId, initialElementType}: {i
   const pendingSupport = useRef<SupportLayoutDefinition | null>(null);
   const [error, setError] = useState(''), [snapshot, setSnapshot] = useState<FrozenDesign | null>(null), [view, setView] = useState<View | null>(null), [busy, setBusy] = useState(false);
   const generation = useRef(0);
-  useEffect(() => {const next = initialModel(input, caseId, initialElementType); setModel(next); setVertices(JSON.stringify(next.vertices.map(p => [p.x, p.y])));}, [input, caseId, initialElementType]);
+  // Re-seed only when the case or the legacy source changes; a saved draft always wins over the seed.
+  const storedRef = useRef(stored); storedRef.current = stored;
+  useEffect(() => {
+    const next = restoreOrSeed(input, caseId, initialElementType, storedRef.current);
+    setRestored(next); setModel(next.model); setVertices(JSON.stringify(next.model.vertices.map(p => [p.x, p.y])));
+    lastPersisted.current = canonical(next.model);
+    setSaveState({status: storedRef.current ? 'SAVED' : 'IDLE', atMs: storedRef.current?.savedAtMs ?? null, message: ''});
+  }, [input, caseId, initialElementType]);
   const analysis = useMemo(() => {try {return {preview: previewWorkflow(model), error: null};} catch (e) {return {preview: null, error: (e as Error).message};}}, [model]);
   const draftIdentity = canonical(model);
+  // Persist authored changes (debounced). The seed itself is not saved until the user changes something.
+  const lastPersisted = useRef<string>(canonical(restored.model));
+  useEffect(() => {
+    if (!onPersist || !canPersist || draftIdentity === lastPersisted.current) return;
+    const timer = window.setTimeout(async () => {
+      let draft: StoredWorkflowDraft;
+      try {draft = createStoredWorkflowDraft(model, input);} catch (e) {setSaveState({status: 'FAILED', atMs: null, message: (e as Error).message}); return;}
+      setSaveState(s => ({...s, status: 'SAVING', message: ''}));
+      try {await onPersist(draft); lastPersisted.current = draftIdentity; setSaveState({status: 'SAVED', atMs: draft.savedAtMs, message: ''});}
+      catch (e) {setSaveState({status: 'FAILED', atMs: null, message: (e as Error).message});}
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [draftIdentity, model, input, onPersist, canPersist]);
+  function reanalyseAll() {
+    try {setModel(regenerateDraftLayouts(model, {}, {allowIncomplete: true})); setRestored(r => ({...r, staleEngine: false})); setError('');}
+    catch (e) {setError((e as Error).message);}
+  }
   const currentModel = useRef(model); currentModel.current = model;
   useEffect(() => {
     let canceled = false;
@@ -305,6 +341,17 @@ export default function WorkflowV07Panel({input, caseId, initialElementType}: {i
     <h2>Workflow v0.7 · ร่างตรวจข้อมูล</h2>
     <p>สำเนาสำหรับตรวจรูปทรง คู่ด้าน และโหลด · ข้อมูลที่ไม่ทราบให้เว้นว่าง · การเปลี่ยนค่าที่นี่ไม่แก้โครงการเดิม</p>
     <div className="notice">DRAFT / NO_GO · ยังรอหลักฐานสินค้าจริงและชุดกำลัง Form Tie / Ringlock ที่ตรวจครบ</div>
+    <p className="muted" role="status" aria-label="สถานะการบันทึกร่าง v0.7">
+      {!onPersist ? 'ร่างนี้ไม่ถูกบันทึก (ไม่มีปลายทางบันทึก)' : !canPersist ? 'สิทธิ์ดูอย่างเดียว · การแก้ไขไม่ถูกบันทึก'
+        : saveState.status === 'SAVING' ? 'กำลังบันทึกร่าง…' : saveState.status === 'FAILED' ? `บันทึกร่างไม่สำเร็จ: ${saveState.message}`
+          : saveState.status === 'SAVED' && saveState.atMs !== null ? `บันทึกร่างแล้ว ${new Date(saveState.atMs).toLocaleString('th-TH')} · engine ${WORKFLOW_VERSION}` : 'ยังไม่มีการแก้ไขที่ต้องบันทึก'}
+      {' · Revision '}{model.revisionId}
+    </p>
+    {restored.staleEngine && <div className="warning" role="alert"><p>ร่างนี้บันทึกด้วย engine {restored.savedEngineVersion} (ปัจจุบัน {WORKFLOW_VERSION}) ผลที่คำนวณไว้ทั้งหมดถือว่า stale ต้องคำนวณใหม่ก่อนใช้</p>
+      <button className="btn secondary" disabled={anyPending} onClick={reanalyseAll}>คำนวณ Layout ทั้งหมดใหม่ด้วย engine ปัจจุบัน</button></div>}
+    {restored.sourceChanged && <div className="warning" role="alert"><p>มิติต้นทาง (legacy) ของแบบนี้เปลี่ยนไปหลังบันทึกร่าง ร่างยังใช้รูปทรงเดิมที่บันทึกไว้ ตรวจพิกัดก่อนใช้งานต่อ</p></div>}
+    {initialElementType && model.elementType !== initialElementType && <div className="warning" role="alert"><p>ร่างที่บันทึกเป็น {model.elementType} แต่แบบนี้ถูกเลือกเป็น {initialElementType} ระบบใช้ร่างที่บันทึกไว้ก่อน</p>
+      <button className="btn secondary" disabled={anyPending} onClick={() => edit('elementType', initialElementType)}>เปลี่ยนประเภทร่างเป็น {initialElementType}</button></div>}
     <div className="grid two"><div>
       <label className="field"><span>ประเภทองค์อาคาร</span><select value={model.elementType} onChange={e => edit('elementType', e.target.value as ElementType)}>
         {(['FOOTING', 'COLUMN', 'WALL', 'BEAM', 'SLAB'] as const).map(t => <option key={t}>{t}</option>)}

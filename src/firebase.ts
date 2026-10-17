@@ -37,6 +37,7 @@ import {
 } from 'firebase/firestore';
 import {connectFunctionsEmulator, getFunctions, httpsCallable} from 'firebase/functions';
 import {connectStorageEmulator, deleteObject, getDownloadURL, getStorage, ref, uploadBytesResumable, type UploadMetadata} from 'firebase/storage';
+import {parseStoredWorkflowDraft, WORKFLOW_DRAFT_LIMIT, type StoredWorkflowDraft} from './domain/workflowV07/storage';
 
 export const SHARED_COLLECTION = 'RC-FormWork-App';
 export const SHARED_DOCUMENT = 'root';
@@ -270,16 +271,48 @@ export function logActivity(action: 'REGISTER' | 'LOGIN' | 'LOGOUT' | 'PROFILE_U
   return addDoc(collection(cloud.db, SHARED_COLLECTION, SHARED_DOCUMENT, 'activityLogs'), {action, uid: user.uid, email: user.email ?? '', ...extra, createdAt: serverTimestamp()}).catch(() => {});
 }
 
+/** Workflow v0.7 drafts live in their own subcollection (one document per case) so the project
+ * document stays small; they are stripped from the case list before it is written. */
+function workflowDraftDoc(projectId: string, caseId: string) {return doc(projectDoc(projectId), 'workflow', caseId);}
+const stripWorkflowDrafts = (cases: unknown[]) => cases.map(c => {
+  if (!c || typeof c !== 'object' || !('workflowV07' in c)) return c;
+  const {workflowV07: _draft, ...rest} = c as Record<string, unknown>; return rest;
+});
+export async function saveWorkflowDraft(projectId: string, caseId: string, draft: StoredWorkflowDraft) {
+  const user = requireCloud().auth.currentUser; if (!user) throw Error('กรุณาเข้าสู่ระบบก่อนบันทึกร่าง v0.7');
+  const modelJson = JSON.stringify(draft.model);
+  if (modelJson.length > WORKFLOW_DRAFT_LIMIT) throw Error('ร่าง v0.7 ใหญ่เกินขอบเขตการบันทึก');
+  await setDoc(workflowDraftDoc(projectId, caseId), {projectId, caseId, schemaVersion: draft.schemaVersion, engineVersion: draft.engineVersion, savedAtMs: draft.savedAtMs,
+    sourceInputHash: draft.sourceInputHash, modelJson, updatedBy: user.uid, updatedAt: serverTimestamp()}, {merge: false});
+}
+export async function deleteWorkflowDraft(projectId: string, caseId: string) {await deleteDoc(workflowDraftDoc(projectId, caseId));}
+export async function loadWorkflowDrafts(projectId: string): Promise<Record<string, StoredWorkflowDraft>> {
+  const snap = await getDocs(collection(projectDoc(projectId), 'workflow')), drafts: Record<string, StoredWorkflowDraft> = {};
+  for (const item of snap.docs) {
+    const data = item.data() as Record<string, unknown>;
+    try {
+      if (typeof data.modelJson !== 'string') continue;
+      drafts[typeof data.caseId === 'string' ? data.caseId : item.id] = parseStoredWorkflowDraft({schemaVersion: data.schemaVersion, engineVersion: data.engineVersion, savedAtMs: data.savedAtMs, sourceInputHash: data.sourceInputHash, model: JSON.parse(data.modelJson)});
+    } catch { /* an unreadable draft is reported as missing rather than guessed */ }
+  }
+  return drafts;
+}
 export async function saveProject(project: SharedProject, category: MenuCategory = 'overview', caseId?: string) {
   const user = requireCloud().auth.currentUser; if (!user) throw Error('กรุณาเข้าสู่ระบบก่อนบันทึกข้อมูล');
   await setDoc(rootDoc(), {app: SHARED_COLLECTION, schemaVersion: 2, updatedAt: serverTimestamp()}, {merge: true});
+  project = {...project, cases: stripWorkflowDrafts(project.cases)};
   const common = {...project, projectId: project.id, updatedBy: user.uid, updatedAt: serverTimestamp()}; const categoryId = caseId ? `${project.id}__${caseId}` : project.id;
   await Promise.all([setDoc(projectDoc(project.id), common, {merge: true}), setDoc(categoryDoc(category, categoryId), {...common, caseId: caseId ?? null, snapshot: project}, {merge: true})]);
 }
 export async function loadProjects(profile?: UserProfile | null): Promise<SharedProject[]> {
   const {db, auth} = requireCloud(); if (!auth.currentUser) throw Error('กรุณาเข้าสู่ระบบก่อนโหลดโครงการ');
   const refs = isAdminProfile(profile) ? (await getDocs(collection(db, SHARED_COLLECTION, SHARED_DOCUMENT, 'projects'))).docs : await Promise.all(assignedProjectIds(profile).map(id => getDoc(projectDoc(id))));
-  return refs.flatMap(item => {if (!item.exists()) return []; const data = item.data() as Record<string, unknown>; return [{id: typeof data.id === 'string' ? data.id : item.id, name: typeof data.name === 'string' ? data.name : 'โครงการไม่มีชื่อ', code: typeof data.code === 'string' ? data.code : item.id, cases: Array.isArray(data.cases) ? data.cases : [], ...(Array.isArray(data.sectionStock) ? {sectionStock: data.sectionStock} : {})}];});
+  const projects = refs.flatMap(item => {if (!item.exists()) return []; const data = item.data() as Record<string, unknown>; return [{id: typeof data.id === 'string' ? data.id : item.id, name: typeof data.name === 'string' ? data.name : 'โครงการไม่มีชื่อ', code: typeof data.code === 'string' ? data.code : item.id, cases: Array.isArray(data.cases) ? data.cases : [], ...(Array.isArray(data.sectionStock) ? {sectionStock: data.sectionStock} : {})}];});
+  // Attach each case's v0.7 draft; a failed draft read leaves that case without a draft.
+  return Promise.all(projects.map(async p => {
+    const drafts = await loadWorkflowDrafts(p.id).catch(() => ({} as Record<string, StoredWorkflowDraft>));
+    return {...p, cases: p.cases.map(c => c && typeof c === 'object' && 'id' in c && typeof c.id === 'string' && drafts[c.id] ? {...c, workflowV07: drafts[c.id]} : c)};
+  }));
 }
 export async function listUsers() {const snap = await getDocs(collection(requireCloud().db, SHARED_COLLECTION, SHARED_DOCUMENT, 'users')); return snap.docs.map(item => ({...item.data(), email: item.data().email ?? item.id} as UserProfile));}
 export function subscribeUsers(callback: (users: UserProfile[]) => void, onError?: (error: Error) => void) {return onSnapshot(collection(requireCloud().db, SHARED_COLLECTION, SHARED_DOCUMENT, 'users'), snap => callback(snap.docs.map(item => ({...item.data(), email: item.data().email ?? item.id} as UserProfile))), error => onError?.(error));}

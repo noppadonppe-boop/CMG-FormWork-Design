@@ -8,6 +8,8 @@
   ],
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "dev:v07": "node scripts/dev-v07.mjs",
+    "dev:v07:offline": "node scripts/dev-v07.mjs --offline",
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "test:rules": "firebase emulators:exec --project demo-cmg-formwork --only firestore,storage \"vitest run --config vitest.rules.config.ts\"",

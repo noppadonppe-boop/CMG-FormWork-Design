@@ -2,7 +2,7 @@ import React from 'react';
 import {emptySideFrame, sideSupportKey, type SideFrameDefinition} from '../domain/workflowV07/sideFrameTransfer';
 import type {SideEndpoint} from '../domain/workflowV07/sideLayout';
 import type {FrameNodeDraft} from '../domain/workflowV07/frameWorkflow';
-import {emptyCouplingCorner, emptyCouplingTie, emptySideCoupling, sideCouplingReference, type SideCouplingCorner, type SideCouplingDefinition, type SideCouplingTie} from '../domain/workflowV07/sideCoupled';
+import {emptyCouplingCorner, emptyCouplingRailAxial, emptyCouplingTie, emptySideCoupling, sideCouplingReference, type SideCouplingCorner, type SideCouplingDefinition, type SideCouplingRailAxial, type SideCouplingTie} from '../domain/workflowV07/sideCoupled';
 import {SIDE_COUPLED_LIMIT_KINDS} from '../domain/workflowV07/sideLocalChecks';
 import {SideLocalEvidenceEditor} from './SideLocalEvidenceEditor';
 
@@ -12,31 +12,46 @@ function CouplingEditor({value, tieIds, walers, onChange}: {value: SideCouplingD
   const change = (patch: Partial<SideCouplingDefinition>, stiffnessChanged = true) => onChange({...value, ...patch, ...(stiffnessChanged ? {limits: []} : {})});
   const updateTie = (i: number, p: Partial<SideCouplingTie>) => change({ties: value.ties.map((t, j) => j === i ? {...t, ...p} : t)});
   const updateCorner = (i: number, p: Partial<SideCouplingCorner>) => change({corners: value.corners.map((c, j) => j === i ? {...c, ...p} : c)});
+  const axial = value.railAxial ?? [];
+  const updateAxial = (i: number, p: Partial<SideCouplingRailAxial>) => change({railAxial: axial.map((r, j) => j === i ? {...r, ...p} : r)});
   const walerKey = (f: string, w: string) => `${f}/${w}`;
-  return <fieldset className="side-coupling-editor" aria-label="แบบจำลองร่วมไทร์ เฟรม และอุปกรณ์มุม"><legend>แบบจำลองร่วม · ไทร์ E·A/L + ความยืดหยุ่นเฟรม + สปริงอุปกรณ์มุม</legend>
-    <p>ทุกจุดรองรับเคลื่อนตัวร่วมกัน ไทร์รับเฉพาะแรงดึง (ถ้าหย่อนจะคำนวณใหม่) รางถือว่าไม่ยืดตามแกน และรางคู่ที่ปลายเคลื่อนไปด้วยกัน แรงจากคร่าวลงรางยังใช้ผลแบบจุดรองรับแข็ง ค่าความแข็งทั้งหมดต้องมีหลักฐานจากผู้ใช้</p>
+  return <fieldset className="side-coupling-editor" aria-label="แบบจำลองร่วมไทร์ เฟรม และอุปกรณ์มุม"><legend>แบบจำลองร่วม · คร่าว + คานรัด + ไทร์ + เฟรม + อุปกรณ์มุม</legend>
+    <p>ทุกจุดรองรับ จุดที่คร่าวพาดบนคานรัด และปลายรางที่มุมเคลื่อนตัวร่วมกัน คร่าวรับแรงจากแผ่นและกระจายตามความแข็งจริงของคานรัดและจุดรองรับ รางคู่ใช้การเคลื่อนตัวเดียวกันที่จุดพาดคร่าวและที่ปลาย แรงจากไม้อัดลงคร่าวยังใช้ผลแบบรองรับแข็ง ค่าความแข็ง ระยะหย่อน แรงดึงล่วงหน้า และช่องว่างทั้งหมดต้องมีหลักฐานจากผู้ใช้</p>
     <label className="field"><span>หลักฐานทบทวนสมมติฐานแบบจำลองร่วม</span><input value={value.assumptionsEvidenceRef} onChange={e => change({assumptionsEvidenceRef: e.target.value}, false)}/></label>
     <h4>ความแข็งไทร์ ({value.ties.length}/{tieIds.length})</h4>
     {value.ties.map((t, i) => <div className="form-grid" key={i}>
       <label className="field"><span>ไทร์</span><select value={t.tieId} onChange={e => updateTie(i, {...emptyCouplingTie(e.target.value)})}><option value="">ยังไม่เลือก</option>{t.tieId && !tieIds.includes(t.tieId) && <option value={t.tieId}>{t.tieId} · ค้าง</option>}{tieIds.map(id => <option key={id}>{id}</option>)}</select></label>
       {([['E_MPa', 'E ไทร์ · MPa'], ['A_mm2', 'A ไทร์ที่ใช้คำนวณความแข็ง · mm²'], ['effectiveLengthMm', 'ความยาวยืดได้จริง · mm (≥ ระยะเส้นทาง)']] as const).map(([k, label]) =>
         <label className="field" key={k}><span>{label}</span><input type="number" min="0" step="any" value={t[k] ?? ''} onChange={e => updateTie(i, {[k]: number(e.target.value)})}/></label>)}
-      <label className="field"><span>หลักฐาน E/A/ความยาว</span><input value={t.evidenceRef} onChange={e => updateTie(i, {evidenceRef: e.target.value})}/></label>
+      <label className="field"><span>แรงดึงล่วงหน้า · N (ว่าง = ไม่มี)</span><input type="number" min="0" step="any" value={t.pretensionN ?? ''} onChange={e => updateTie(i, {pretensionN: number(e.target.value)})}/></label>
+      <label className="field"><span>ระยะหย่อนก่อนรับแรง · mm (ว่าง = ไม่มี)</span><input type="number" min="0" step="any" value={t.slackMm ?? ''} onChange={e => updateTie(i, {slackMm: number(e.target.value)})}/></label>
+      <label className="field"><span>หลักฐาน E/A/ความยาว/แรงดึงล่วงหน้า/ระยะหย่อน</span><input value={t.evidenceRef} onChange={e => updateTie(i, {evidenceRef: e.target.value})}/></label>
       <button className="btn secondary" onClick={() => change({ties: value.ties.filter((_, j) => j !== i)})}>ลบความแข็งไทร์ {t.tieId || i + 1}</button>
     </div>)}
     <button className="btn secondary" disabled={!tieIds.some(id => !value.ties.some(t => t.tieId === id))} onClick={() => change({ties: [...value.ties, ...tieIds.filter(id => !value.ties.some(t => t.tieId === id)).map(id => emptyCouplingTie(id))]})}>เพิ่มแถวไทร์ที่ยังขาด</button>
     <h4>อุปกรณ์มุม ({value.corners.length})</h4>
-    <p>เชื่อมปลายรางสองผิวที่มุมเดียวกันและระดับเดียวกัน สปริงทำงานเท่ากันทุกทิศในแนวราบ ไม่รวมช่องว่าง การลื่น หรือการหมุนของอุปกรณ์</p>
+    <p>เชื่อมปลายรางสองผิวที่มุมเดียวกันและระดับเดียวกัน สปริงทำงานเท่ากันทุกทิศในแนวราบ ช่องว่าง (slip gap) คือระยะเคลื่อนสัมพัทธ์ที่ยังไม่รับแรง ยังไม่รวมแรงเสียดทานที่ลื่นหรือการหมุนของอุปกรณ์</p>
     {value.corners.map((c, i) => <div className="form-grid" key={i}>
       <label className="field"><span>รหัสมุม</span><input value={c.id} onChange={e => updateCorner(i, {id: e.target.value})}/></label>
       {(['A', 'B'] as const).map(side => <label className="field" key={side}><span>ผิว/คานรัด {side}</span><select value={c[`face${side}Id`] ? walerKey(c[`face${side}Id`], c[`waler${side}Id`]) : ''} onChange={e => {
         const [faceId = '', walerId = ''] = e.target.value.split('/'); updateCorner(i, {[`face${side}Id`]: faceId, [`waler${side}Id`]: walerId});
       }}><option value="">ยังไม่เลือก</option>{walers.map(w => <option key={walerKey(w.faceId, w.walerId)} value={walerKey(w.faceId, w.walerId)}>{w.faceId} / {w.walerId}</option>)}</select></label>)}
       <label className="field"><span>ความแข็งอุปกรณ์มุม · N/mm</span><input type="number" min="0" step="any" value={c.stiffnessNPerMm ?? ''} onChange={e => updateCorner(i, {stiffnessNPerMm: number(e.target.value)})}/></label>
-      <label className="field"><span>หลักฐานความแข็ง/ผลิตภัณฑ์มุม</span><input value={c.evidenceRef} onChange={e => updateCorner(i, {evidenceRef: e.target.value})}/></label>
+      <label className="field"><span>ช่องว่างก่อนรับแรง · mm (ว่าง = ไม่มี)</span><input type="number" min="0" step="any" value={c.slipGapMm ?? ''} onChange={e => updateCorner(i, {slipGapMm: number(e.target.value)})}/></label>
+      <label className="field"><span>หลักฐานความแข็ง/ช่องว่าง/ผลิตภัณฑ์มุม</span><input value={c.evidenceRef} onChange={e => updateCorner(i, {evidenceRef: e.target.value})}/></label>
       <button className="btn secondary" onClick={() => change({corners: value.corners.filter((_, j) => j !== i)})}>ลบมุม {c.id}</button>
     </div>)}
     <button className="btn secondary" disabled={value.corners.length >= 200} onClick={() => {let n = 1; while (value.corners.some(c => c.id === `C${n}`)) n++; change({corners: [...value.corners, emptyCouplingCorner(`C${n}`)]});}}>เพิ่มอุปกรณ์มุม</button>
+    <h4>ความแข็งตามแนวแกนคานรัด ({axial.length})</h4>
+    <p>ใช้เฉพาะคานรัดที่มีอุปกรณ์มุมทั้งสองปลาย E·A รวมของรางคู่ทั้งระดับ ความยาวคือความยาวผิว ถ้าไม่กรอกจะถือว่ารางไม่ยืดตามแกนและแสดงเป็น blocker</p>
+    {axial.map((r, i) => <div className="form-grid" key={i}>
+      <label className="field"><span>ผิว/คานรัด</span><select value={r.faceId ? walerKey(r.faceId, r.walerId) : ''} onChange={e => {const [faceId = '', walerId = ''] = e.target.value.split('/'); updateAxial(i, {faceId, walerId});}}>
+        <option value="">ยังไม่เลือก</option>{walers.map(w => <option key={walerKey(w.faceId, w.walerId)} value={walerKey(w.faceId, w.walerId)}>{w.faceId} / {w.walerId}</option>)}</select></label>
+      <label className="field"><span>E·A รวม · N</span><input type="number" min="0" step="any" value={r.EA_N ?? ''} onChange={e => updateAxial(i, {EA_N: number(e.target.value)})}/></label>
+      <label className="field"><span>หลักฐาน E·A ราง</span><input value={r.evidenceRef} onChange={e => updateAxial(i, {evidenceRef: e.target.value})}/></label>
+      <button className="btn secondary" onClick={() => change({railAxial: axial.filter((_, j) => j !== i)})}>ลบ E·A {r.faceId}/{r.walerId}</button>
+    </div>)}
+    <button className="btn secondary" disabled={axial.length >= 400} onClick={() => change({railAxial: [...axial, emptyCouplingRailAxial()]})}>เพิ่ม E·A คานรัด</button>
     <SideLocalEvidenceEditor faceId="แบบจำลองร่วม" coupled kinds={SIDE_COUPLED_LIMIT_KINDS} value={value.limits} memberEvidenceRef={sideCouplingReference(value)} onChange={limits => change({limits}, false)}/>
   </fieldset>;
 }

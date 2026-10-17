@@ -10,6 +10,7 @@ import {actionFactor} from './caseFactors.js';
 import {analyzeSideLayout, type SideNode} from './sideLayout.js';
 import {emptySideFrame, transferSideReactionsToFrame, validateSideFrame, type SideFrameDefinition} from './sideFrameTransfer.js';
 import {analyzeCoupledSideSupports} from './sideCoupled.js';
+import {pairFaces} from './geometry.js';
 import {analyzeSecondOrderFrame, validateSecondOrderDefinition, type SecondOrderDefinition} from './frameSecondOrder.js';
 import {screenFrameMemberDemands, type FrameMemberDemandScreen} from './frameDemands.js';
 import {validateResistanceEvidence, type ResistanceEvidence} from './resistanceEvidence.js';
@@ -354,6 +355,7 @@ export function evaluateFrameLayout(model: WorkflowModel, layout: AppliedFrameLa
       if (!side || !layout.sideTransfers.coupling || !layout.sideTransfers.separationEvidenceRef.trim()) throw Error('CURRENT_SAME_STAGE_CASE_SIDE_LAYOUT_COUPLING_DATA_AND_SEPARATION_EVIDENCE_REQUIRED');
       if (canonical([...side.nodes].sort((a, b) => a.id.localeCompare(b.id))) !== canonical([...sideNodes!].sort((a, b) => a.id.localeCompare(b.id)))) throw Error('SIDE_REACTIONS_STALE_TAMPERED_OR_INCOMPLETE');
       sideCoupling = analyzeCoupledSideSupports({side, coupling: layout.sideTransfers.coupling, actionBasis: layout.actionBasis!, frame: frameInput([...actions]),
+        layout: model.sideLayout!, topology: pairFaces(model.vertices, model.heightMm),
         mappings: layout.sideTransfers.mappings, context});
       blockers.push(...sideCoupling.blockers);
       actions.push(...sideCoupling.actions);

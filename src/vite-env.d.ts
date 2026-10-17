@@ -1,5 +1,6 @@
 interface ImportMetaEnv {
   readonly VITE_WORKFLOW_V07_ENABLED?: string;
+  readonly VITE_WORKFLOW_V07_ALLOW_PRODUCTION?: string;
   readonly VITE_FIREBASE_ENABLED?: string;
   readonly VITE_FIREBASE_USE_EMULATORS?: string;
   readonly VITE_FIREBASE_EMULATOR_AUTH_PORT?: string;

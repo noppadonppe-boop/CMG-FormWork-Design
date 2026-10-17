@@ -1,5 +1,8 @@
 # AGENTS.md
 
+## Scope
+- Owner-revised objective: five distinct formwork systems (footing through-tie, column external yoke, beam side+soffit+shoring, slab soffit+shoring, wall two-sided). See `docs/OBJECTIVES.md`; it supersedes the footing/column-only scope of `CMG_Formwork_Codex_Master_Prompt.txt` while keeping its working rules (deterministic, no invented values, INCOMPLETE/NO_GO).
+
 ## Verification
 - `npm test` (vitest), `npm run typecheck` (tsc -b), `npm run build`
 - MCP server: `npm run mcp:build` then `node scripts/test-mcp.mjs [drawing.pdf]` (pass paths with spaces directly to node, not via `npm run`, on Windows)
@@ -8,7 +11,8 @@
 - Shared, browser-safe model logic: `src/domain/scene.ts` (applyChanges, parseModelChanges, buildScene, OBJ/DXF/glTF). `src/aiElements.ts` converts AI elements to draft cases.
 - UI: `SourceUpload` (ElementPicker, resume drawing across cases), `DrawingChat` (change proposals), `ModelWorkspace` + `Model3D` (SVG 3D viewer).
 - Functions build: `npm run build --workspace functions`. Offline UI check: run vite with env `VITE_FIREBASE_ENABLED=false` (port 5199 is used by another app on this machine).
-- Workflow v0.7 (wall/beam/slab) is gated by `src/workflowV07Flag.ts`: needs `VITE_WORKFLOW_V07_ENABLED=true` AND Firebase off or emulators. Do not weaken the gate or edit `.env`; pass env vars to the process, e.g. `VITE_FIREBASE_ENABLED=false VITE_WORKFLOW_V07_ENABLED=true npx vite --host 127.0.0.1 --port 6173` (5210/5231 were unavailable on this machine).
+- Workflow v0.7 (wall/beam/slab) is gated by `src/workflowV07Flag.ts`: needs `VITE_WORKFLOW_V07_ENABLED=true` AND (Firebase off, emulators, or the explicit `VITE_WORKFLOW_V07_ALLOW_PRODUCTION=true`). The user opted in to production in the local `.env` (2 flags appended); a warning banner shows on production. Do not weaken the gate further; pass env vars to the process, e.g. `VITE_FIREBASE_ENABLED=false VITE_WORKFLOW_V07_ENABLED=true npx vite --host 127.0.0.1 --port 6173` (5210/5231 were unavailable on this machine).
+- Shortcuts: `npm run dev:v07:offline` (port 6173, Firebase off) and `npm run emulators:alt` + `npm run dev:v07` (port 6174, demo emulator credentials) via `scripts/dev-v07.mjs`. Plain `npm run dev` uses `.env` (production Firebase) and therefore keeps v0.7 disabled by design.
 - v0.7 with Firebase emulators: the default emulator ports (4000/4400/4500/8080/9099/9199) are held by another app's suite (`demo-boq-bbs`) — do not stop it. Use `npm run emulators:alt` (`firebase.emulators-alt.json`: auth 9109, firestore 8180, storage 9299, functions 5101, UI 4100), then run vite with `VITE_FIREBASE_USE_EMULATORS=true VITE_WORKFLOW_V07_ENABLED=true VITE_FIREBASE_PROJECT_ID=demo-cmg-formwork VITE_FIREBASE_API_KEY=demo-api-key VITE_FIREBASE_APP_ID=demo-app-id VITE_FIREBASE_STORAGE_BUCKET=demo-cmg-formwork.appspot.com VITE_FIREBASE_EMULATOR_AUTH_PORT=9109 VITE_FIREBASE_EMULATOR_FIRESTORE_PORT=8180 VITE_FIREBASE_EMULATOR_FUNCTIONS_PORT=5101 VITE_FIREBASE_EMULATOR_STORAGE_PORT=9299` (demo credentials so nothing reaches production; port 6174 used).
 
 ## A3 drawing set

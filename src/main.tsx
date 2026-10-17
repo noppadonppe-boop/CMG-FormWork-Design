@@ -1,12 +1,13 @@
 import React,{useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
-import {LayoutDashboard,FolderOpen,Layers,Upload,Settings2,FileText,CheckCircle2,AlertTriangle,Plus,Save,Download,ChevronRight,Building2,RotateCcw,LogIn,Users,Bell,BookOpen} from 'lucide-react';
+import {LayoutDashboard,FolderOpen,Layers,Upload,Settings2,FileText,CheckCircle2,AlertTriangle,Plus,Save,Download,ChevronRight,Building2,RotateCcw,LogIn,Users,Bell,BookOpen,Trash2} from 'lucide-react';
 import {calculate,columnDefaults,defaults,extensionDefaults,polygon,positions,segmentInside,validateInput,type Input,type Result} from './domain';
 import {parseProjectBackup} from './domain/projectBackup';
+import {mockProject} from './domain/mockProject';
 import {WalerDetails} from './components/WalerDetails';
 import {AssemblyDetail} from './components/AssemblyDetail';
 import {ColumnCriteria,ColumnYokeDetails} from './components/ColumnYokeDetails';
-import {MENU_CATEGORIES,configured,usingEmulators,loadProjects,saveProject,trustedCalculation,canProject,hasRole,type MenuCategory} from './firebase';
+import {MENU_CATEGORIES,configured,usingEmulators,loadProjects,saveProject,deleteProject,saveWorkflowDraft,trustedCalculation,canProject,hasRole,type MenuCategory} from './firebase';
 import {AdminPanel} from './components/AdminPanel';
 import {SourceUpload,type ResumeDrawing} from './components/SourceUpload';
 import {ModelWorkspace,type ModelRevision} from './components/ModelWorkspace';
@@ -24,10 +25,11 @@ import {AuthProvider, ProfileMenu, navigate, useAuth, usePathname} from './auth'
 import {AppRouter} from './AppRouter';
 import {workflowV07Enabled} from './workflowV07Flag';
 import type {ElementType} from './domain/workflowV07/common';
+import {parseStoredWorkflowDraft,type StoredWorkflowDraft} from './domain/workflowV07/storage';
 import './style.css';
 
 const WorkflowV07Panel=React.lazy(()=>import('./components/WorkflowV07Panel'));
-type Case={id:string;name:string;input:Input;workflowElementType?:ElementType;titleBlock?:TitleBlock};
+type Case={id:string;name:string;input:Input;workflowElementType?:ElementType;titleBlock?:TitleBlock;workflowV07?:StoredWorkflowDraft};
 type Project={id:string;name:string;code:string;cases:Case[];sectionStock?:string[]};
 const ELEMENT_TYPES: {id: ElementType; label: string}[] = [
  {id:'FOOTING',label:'ฐานราก'}, {id:'COLUMN',label:'เสา'}, {id:'WALL',label:'ผนัง'}, {id:'BEAM',label:'คาน'}, {id:'SLAB',label:'พื้น'},
@@ -50,7 +52,9 @@ function hydrate(raw:unknown[]):Project[]{
    try{
     const rawInput = c.input as Partial<Input>;
     const workflowElementType = ['FOOTING','COLUMN','WALL','BEAM','SLAB'].includes(String((c as Partial<Case>).workflowElementType)) ? String((c as Partial<Case>).workflowElementType) as ElementType : undefined;
-    return [{id:c.id,name:c.name,input:{...defaults,...(rawInput&&typeof rawInput==='object'&&!('plywoodGrade' in rawInput)?{plywoodGrade:'CUSTOM' as const}:{}),...(rawInput&&typeof rawInput==='object'&&!('plywoodSpans' in rawInput)?{plywoodSpans:'SINGLE' as const,plywoodFaceGrain:'PARALLEL' as const}:{}),...rawInput,...(!c.input||typeof c.input!=='object'||!('walerType' in c.input)?{...extensionDefaults,confirmed:false}:!('columnModel' in c.input)?{...columnDefaults,confirmed:false}:{})},...(workflowElementType?{workflowElementType}:{}),...(parseTitleBlock((c as Partial<Case>).titleBlock)?{titleBlock:parseTitleBlock((c as Partial<Case>).titleBlock)!}:{})}];
+    // An unreadable v0.7 draft is dropped (reported as missing), never repaired or guessed.
+    let workflowV07:StoredWorkflowDraft|undefined;try{if(c.workflowV07!=null)workflowV07=parseStoredWorkflowDraft(c.workflowV07);}catch{workflowV07=undefined;}
+    return [{id:c.id,name:c.name,input:{...defaults,...(rawInput&&typeof rawInput==='object'&&!('plywoodGrade' in rawInput)?{plywoodGrade:'CUSTOM' as const}:{}),...(rawInput&&typeof rawInput==='object'&&!('plywoodSpans' in rawInput)?{plywoodSpans:'SINGLE' as const,plywoodFaceGrain:'PARALLEL' as const}:{}),...rawInput,...(!c.input||typeof c.input!=='object'||!('walerType' in c.input)?{...extensionDefaults,confirmed:false}:!('columnModel' in c.input)?{...columnDefaults,confirmed:false}:{})},...(workflowElementType?{workflowElementType}:{}),...(parseTitleBlock((c as Partial<Case>).titleBlock)?{titleBlock:parseTitleBlock((c as Partial<Case>).titleBlock)!}:{}),...(workflowV07?{workflowV07}:{})}];
    }
    catch{return []}
   });
@@ -58,7 +62,8 @@ function hydrate(raw:unknown[]):Project[]{
   return cases.length?[{id:p.id,name:p.name,code:p.code,cases,...(stock?{sectionStock:stock}:{})}]:[];
  });
 }
-function stored():Project[]{if(configured)return [];try{const v=JSON.parse(localStorage.getItem(KEY)||'null');const result=Array.isArray(v)?hydrate(v):[];return result.length?result:initial;}catch{return initial;}}
+// An explicitly stored empty list stays empty (all projects deleted); missing or corrupt data seeds the demo.
+function stored():Project[]{if(configured)return [];try{const v=JSON.parse(localStorage.getItem(KEY)||'null');if(!Array.isArray(v))return initial;const result=hydrate(v);return result.length||!v.length?result:initial;}catch{return initial;}}
 const f=(n:number|null,d=2)=>n===null?'—':n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
 function Plan({input,result,large=false}:{input:Input;result:Result|null;large?:boolean}){
  let ps;try{validateInput(input);ps=polygon(input);}catch{return <p>ตรวจมิติและระยะให้ถูกต้องก่อนแสดงภาพ</p>;}
@@ -113,7 +118,8 @@ function App(){
  useEffect(()=>{if(!configured)localStorage.setItem(KEY,JSON.stringify(projects));},[projects]);
  useEffect(()=>{
   if(!configured||!firebaseUser||!userProfile||userProfile.status!=='approved'||!projects.length||!canEditCurrentProject)return;
-  const snapshot=JSON.stringify(p);
+  // v0.7 drafts are saved by their own path; they must not trigger a project rewrite.
+  const snapshot=JSON.stringify({...p,cases:p.cases.map(({workflowV07:_d,...z})=>z)});
   if(!lastAutoSaved.current){lastAutoSaved.current=snapshot;return;}
   if(snapshot===lastAutoSaved.current)return;
   const timer=window.setTimeout(async()=>{
@@ -163,6 +169,12 @@ function App(){
  function applyOptimized(next:Input,note:string){setHistory(h=>({...h,[c.id]:[...(h[c.id]??[]),{input:x,note,at:Date.now()}].slice(-50)}));setInput(next);setMessage(note+" · คำนวณซ้ำแล้ว ตรวจรายการคำนวณต่อ");}
  const titleBlock=c.titleBlock??defaultTitleBlock(userProfile?.firstName||"");
  function setTitleBlock(tb:TitleBlock){setProjects(ps=>ps.map(q=>q.id!==p.id?q:{...q,cases:q.cases.map(z=>z.id!==c.id?z:{...z,titleBlock:tb})}));}
+ // v0.7 drafts: the case keeps the authored draft; Firebase stores it per case outside the project document.
+ const persistWorkflowDraft=useCallback(async(projectIdForDraft:string,caseIdForDraft:string,draft:StoredWorkflowDraft)=>{
+   if(!canEditCurrentProject)throw Error('โครงการนี้เป็นสิทธิ์ดูอย่างเดียว ไม่บันทึกร่าง v0.7');
+   setProjects(ps=>ps.map(q=>q.id!==projectIdForDraft?q:{...q,cases:q.cases.map(z=>z.id!==caseIdForDraft?z:{...z,workflowV07:draft})}));
+   if(configured)await saveWorkflowDraft(projectIdForDraft,caseIdForDraft,draft);
+ },[canEditCurrentProject]);
  function undoModel(){const list=history[c.id];if(!list?.length)return;setInput(list[list.length-1].input);setHistory(h=>({...h,[c.id]:list.slice(0,-1)}));setMessage('ย้อนการแก้ล่าสุดแล้ว');}
  async function createCases(items:{name:string;input:Input}[]){
    if(!canEditCurrentProject||!items.length)return;
@@ -185,6 +197,35 @@ function App(){
    try{await saveProject(z,'overview',z.cases[0].id);setMessage('สร้างโครงการและบันทึกไป Firebase แล้ว · หมวด overview');}
    catch(e){setMessage('สร้างโครงการแล้ว แต่บันทึก Firebase ไม่สำเร็จ: '+(e as Error).message);}
    finally{setBusy(false);}
+ }
+ // Offline drafts have no roles; in Firebase only MasterAdmin may create or delete projects (server-enforced).
+ const canManageProjects=!configured||hasRole(userProfile,'MasterAdmin');
+ async function addMockProject(){
+   if(!canManageProjects)return;
+   const z:Project=mockProject('CMG-DEMO-'+String(projects.length+1).padStart(3,'0'));
+   setProjects(v=>[...v,z]);setProjectId(z.id);setCaseId(z.cases[0].id);setWorkflowElementType(z.cases[0].workflowElementType??'FOOTING');setTab('overview');
+   const done='สร้างโครงการตัวอย่างแล้ว · ฐานราก เสา ผนัง คาน พื้น อย่างละ 2 แบบ (มิติสมมติ ยังไม่ยืนยัน)';
+   if(!configured){setMessage(done+' · โหมดออฟไลน์');return;}
+   setBusy(true);
+   try{await saveProject(z,'overview',z.cases[0].id);setMessage(done+' · บันทึกไป Firebase แล้ว');}
+   catch(e){setMessage(done+' แต่บันทึก Firebase ไม่สำเร็จ: '+(e as Error).message);}
+   finally{setBusy(false);}
+ }
+ async function removeProject(){
+   if(!canManageProjects||!projects.some(q=>q.id===p.id))return;
+   if(!window.confirm(`ลบโครงการ "${p.name}" (${p.code}) พร้อม Design Case ทั้งหมด ${p.cases.length} รายการ${configured?' รวมข้อมูลและไฟล์ใน Firebase':''}?\nการลบย้อนกลับไม่ได้ ควรสำรองโครงการก่อน`))return;
+   if(configured){
+     setBusy(true);
+     try{await deleteProject(p.id);}
+     catch(e){setMessage('ลบโครงการไม่สำเร็จ: '+(e as Error).message);return;}
+     finally{setBusy(false);}
+   }
+   const rest=projects.filter(q=>q.id!==p.id);
+   lastAutoSaved.current='';
+   setProjects(rest);setProjectId(rest[0]?.id||'');setCaseId(rest[0]?.cases[0]?.id||'');setSourceName(null);
+   setHistory(h=>Object.fromEntries(Object.entries(h).filter(([id])=>!p.cases.some(z=>z.id===id))));
+   if(drawing?.projectId===p.id)setDrawing(null);
+   setMessage(`ลบโครงการ ${p.name} แล้ว`+(rest.length?'':' · ไม่มีโครงการเหลือ กดเพิ่มโครงการหรือสร้างโครงการตัวอย่าง'));
  }
  function exportProject(){
    const blob=new Blob([JSON.stringify({schemaVersion:3,app:'CMG Formwork cloud trial',project:p},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
@@ -232,11 +273,12 @@ function App(){
  const nav=baseNav;
  const setPending=useCallback((count:number)=>setPendingUsers(count),[]);
   const r=analysis.r;
-   const v07Enabled=workflowV07Enabled(import.meta.env.VITE_WORKFLOW_V07_ENABLED,configured,usingEmulators);
+   const v07Enabled=workflowV07Enabled(import.meta.env.VITE_WORKFLOW_V07_ENABLED,configured,usingEmulators,import.meta.env.VITE_WORKFLOW_V07_ALLOW_PRODUCTION);
+   const v07OnProduction=v07Enabled&&configured&&!usingEmulators;
    const legacyElement=workflowElementType==='FOOTING'||workflowElementType==='COLUMN';
   const save=async()=>{try{if(configured){if(!canEditCurrentProject){setMessage('โครงการนี้เป็นสิทธิ์ดูอย่างเดียว ไม่สามารถบันทึกหรือแก้ไขข้อมูลได้');return;}const category=MENU_CATEGORIES.includes(tab as MenuCategory)?tab as MenuCategory:'overview';await saveProject(p,category,c.id);lastAutoSaved.current=JSON.stringify(p);setMessage('บันทึกข้อมูลไป Firebase แล้ว · หมวด '+category);}else setMessage('บันทึกร่างในเบราว์เซอร์แล้ว · ยังไม่ใช่ฐานข้อมูล Firebase');}catch(e){setMessage((e as Error).message);}};
  return <div className="shell">
- <aside><div className="logo"><div>CMG</div><span>FORMWORK<br/><b>DESIGN WORKSPACE</b></span></div>{userProfile&&<div className="sidebar-profile-card">{userProfile.photoURL?<img src={userProfile.photoURL} alt=""/>:<span>{userProfile.firstName?.[0]??userProfile.email[0]?.toUpperCase()}</span>}<div><b>{userProfile.firstName||userProfile.email}</b><small>{userProfile.role.join(' · ')}</small></div></div>}<div className="project-label">PROJECT WORKSPACE</div><select className="project-select" value={p.id} onChange={e=>{setProjectId(e.target.value);setCaseId(projects.find(p=>p.id===e.target.value)!.cases[0].id);setSourceName(null);}}>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>{hasRole(userProfile,'MasterAdmin')&&<button className="new-project" onClick={()=>void addProject()}><Plus size={15}/> เพิ่มโครงการ</button>}
+ <aside><div className="logo"><div>CMG</div><span>FORMWORK<br/><b>DESIGN WORKSPACE</b></span></div>{userProfile&&<div className="sidebar-profile-card">{userProfile.photoURL?<img src={userProfile.photoURL} alt=""/>:<span>{userProfile.firstName?.[0]??userProfile.email[0]?.toUpperCase()}</span>}<div><b>{userProfile.firstName||userProfile.email}</b><small>{userProfile.role.join(' · ')}</small></div></div>}<div className="project-label">PROJECT WORKSPACE</div><select className="project-select" value={p.id} onChange={e=>{setProjectId(e.target.value);setCaseId(projects.find(p=>p.id===e.target.value)!.cases[0].id);setSourceName(null);}}>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>{canManageProjects&&<><button className="new-project" onClick={()=>void addProject()}><Plus size={15}/> เพิ่มโครงการ</button><button className="new-project" disabled={busy} onClick={()=>void addMockProject()}><Layers size={15}/> สร้างโครงการตัวอย่าง</button>{projects.length>0&&<button className="new-project danger" disabled={busy} onClick={()=>void removeProject()} title={`ลบ ${p.name}`}><Trash2 size={15}/> ลบโครงการนี้</button>}</>}
  <nav>{nav.map(([key,label,Icon])=><button className={tab===key?'active':''} key={key} onClick={()=>{setTab(key);if(currentPath==='/admin')navigate('/dashboard')}}><Icon size={18}/>{label}</button>)}</nav>
  {hasRole(userProfile,'MasterAdmin')&&<button className={`admin-sidebar-link ${tab==='users'?'active':''}`} onClick={()=>{setTab('users');navigate('/admin')}}><Users size={16}/> จัดการ User {pendingUsers>0&&<span className="notification-badge"><Bell size={11}/>{pendingUsers}</span>}</button>}
  <div className="sidebar-bottom"><div><span className="status-dot"/><span>{configured&&!usingEmulators?'FIREBASE PRODUCTION':'PRIVATE CLOUD TRIAL'}</span></div><small>v0.1 · Engineering screening</small><button onClick={()=>setAuthOpen(!authOpen)}><LogIn size={15}/>{uid?'บัญชี '+uid.slice(0,8):'สถานะระบบและข้อมูล'}</button></div></aside>
@@ -245,7 +287,7 @@ function App(){
  {message&&<div className="toast" role="status">{message}<button onClick={()=>setMessage('')}>×</button></div>}
   {authOpen&&<section className="card auth"><h3>Firebase Authentication</h3><p>{configured?'Persistent Session เปิดใช้งานด้วย browserLocalPersistence และข้อมูลอยู่ที่ RC-FormWork-App / root':'ยังไม่เปิดใช้งาน Firebase ข้อมูลจะอยู่เฉพาะเบราว์เซอร์นี้'}</p>{configured&&<p className="muted">ผู้ใช้ปัจจุบัน: {userProfile?.email||busy?'กำลังเชื่อมต่อ…':'ยังไม่ได้เชื่อมต่อ'} · {userProfile?.role.join(', ')}</p>}</section>}
   {tab==='users'&&<AdminPanel onPendingCount={setPending}/>} 
-  {tab!=='users'&&(!projects.length&&configured?<section className="card empty-state"><Users size={42}/><h2>ยังไม่มีโครงการที่เข้าถึงได้</h2><p>{hasRole(userProfile,'MasterAdmin')?'สร้างโครงการแรกจากเมนูด้านซ้าย แล้วกำหนดผู้ใช้งานและโครงการได้จากหน้าจัดการผู้ใช้งาน':'ติดต่อ MasterAdmin เพื่อขอสิทธิ์เข้าโครงการที่เกี่ยวข้อง'}</p>{hasRole(userProfile,'MasterAdmin')&&<button className="btn" onClick={()=>void addProject()}><Plus size={16}/>เพิ่มโครงการแรก</button>}</section>:<>
+  {tab!=='users'&&(!projects.length?<section className="card empty-state"><Users size={42}/><h2>ยังไม่มีโครงการที่เข้าถึงได้</h2><p>{canManageProjects?(configured?'สร้างโครงการแรกจากเมนูด้านซ้าย แล้วกำหนดผู้ใช้งานและโครงการได้จากหน้าจัดการผู้ใช้งาน':'สร้างโครงการใหม่หรือโครงการตัวอย่างเพื่อเริ่มงาน'):'ติดต่อ MasterAdmin เพื่อขอสิทธิ์เข้าโครงการที่เกี่ยวข้อง'}</p>{canManageProjects&&<div className="header-actions"><button className="btn" onClick={()=>void addProject()}><Plus size={16}/>เพิ่มโครงการแรก</button><button className="btn secondary" onClick={()=>void addMockProject()}><Layers size={16}/>สร้างโครงการตัวอย่าง</button></div>}</section>:<>
   <div className="backup-bar"><button className="btn secondary" onClick={exportProject}><Download size={14}/>สำรองโครงการ</button><button className="btn secondary" onClick={()=>backupPicker.current?.click()}><Upload size={14}/>นำเข้าโครงการ</button><input ref={backupPicker} type="file" accept=".json" hidden onChange={e=>{if(e.target.files?.[0])void importProject(e.target.files[0]);e.target.value='';}}/></div><div className="case-bar"><div><span className="project-label">DESIGN CASE</span><select value={c.id} onChange={e=>{const next=p.cases.find(z=>z.id===e.target.value);setCaseId(e.target.value);setWorkflowElementType(next?.workflowElementType??(next?.input.kind as ElementType)??'FOOTING');setSourceName(null);}}>{p.cases.map(z=><option key={z.id} value={z.id}>{z.name}</option>)}</select></div><div className="element-menu" aria-label="เลือกประเภทองค์อาคาร"><span className="project-label">ELEMENT</span>{ELEMENT_TYPES.map(type=><button key={type.id} className={`btn secondary element-menu-button ${workflowElementType===type.id?'selected':''}`} onClick={()=>selectWorkflowElement(type.id)} title={`เปิดแบบ${type.label}`}>{type.label}</button>)}<button className="btn secondary element-menu-button" onClick={()=>void addCase(workflowElementType)} title="เพิ่ม Design Case ตามประเภทที่เลือก"><Plus size={13}/>เพิ่มแบบ</button></div></div>
  <div hidden={tab!=='upload'||!legacyElement}><SourceUpload key={uid+':'+p.id+':'+c.id} projectId={p.id} caseId={c.id} userId={uid} canEdit={canEditCurrentProject} saveProject={()=>{if(!canEditCurrentProject)return Promise.reject(Error('โครงการนี้เป็นสิทธิ์ดูอย่างเดียว'));return saveProject(p,'upload',c.id);}} onSourceChange={name=>{setSourceName(name);if(name)edit('confirmed',false);}} onPreviewChange={setSource} onApplyDraft={applyAI} onManual={()=>setTab('geometry')} model={analysis.r?x:undefined} onApplyChanges={applyModelChanges} onCreateCases={items=>void createCases(items)} resume={drawing?.projectId===p.id?drawing.value:null} onDrawingChange={reportDrawing} stockIds={p.sectionStock}/>
  <ModelWorkspace caseName={c.name} result={analysis.r} error={analysis.error} history={history[c.id]??[]} canEdit={canEditCurrentProject} onUndo={undoModel} onEditGeometry={()=>setTab('geometry')}/></div>
@@ -264,7 +306,8 @@ function App(){
   </>)}
   {tab==='overview'&&workflowElementType!=='FOOTING'&&workflowElementType!=='COLUMN'&&!v07Enabled&&<section className="card workflow-menu-blocked"><h3>Workflow v0.7 · {ELEMENT_TYPES.find(type=>type.id===workflowElementType)?.label}</h3><p>เมนูนี้พร้อมใช้งานในโหมดร่าง แต่ Workflow v0.7 ถูกปิดไว้จนกว่าจะเปิด `VITE_WORKFLOW_V07_ENABLED=true` ในโหมดออฟไลน์หรือ emulator ตามข้อกำหนดของระบบ</p><p className="muted">ยังไม่มีการคำนวณกำลังสมาชิกจริงจากเมนูนี้ และสถานะยังเป็น NO_GO</p></section>}
   {tab!=='overview'&&tab!=='users'&&!legacyElement&&<section className="card workflow-menu-blocked"><h3>Workflow v0.7 · {ELEMENT_TYPES.find(type=>type.id===workflowElementType)?.label}</h3><p>เลือกเมนูภาพรวมเพื่อเปิดร่าง Workflow v0.7 ขององค์อาคารนี้ รายการคำนวณ legacy ไม่รองรับชนิดนี้</p></section>}
-  {tab==='overview'&&v07Enabled&&<React.Suspense fallback={<p>กำลังโหลด Workflow v0.7…</p>}><WorkflowV07Panel key={p.id+':'+c.id+':'+workflowElementType} input={x} caseId={c.id} initialElementType={workflowElementType}/></React.Suspense>}
+  {tab==='overview'&&v07OnProduction&&<div className="warning" role="alert"><AlertTriangle size={18}/><p>Workflow v0.7 เปิดบน Firebase production (VITE_WORKFLOW_V07_ALLOW_PRODUCTION=true) · ผลทั้งหมดเป็นร่าง DRAFT / NO_GO / NOT FOR CONSTRUCTION ห้ามใช้ก่อสร้าง</p></div>}
+  {tab==='overview'&&v07Enabled&&<React.Suspense fallback={<p>กำลังโหลด Workflow v0.7…</p>}><WorkflowV07Panel key={p.id+':'+c.id+':'+workflowElementType} input={x} caseId={c.id} initialElementType={workflowElementType} stored={c.workflowV07??null} canPersist={canEditCurrentProject} onPersist={draft=>persistWorkflowDraft(p.id,c.id,draft)}/></React.Suspense>}
  <footer className="app-footer"><span>CMG ENGINEERING & CONSTRUCTION</span><span>v0.3 · Column yoke screening · แยกผลคัดกรองจากการอนุมัติ</span><button onClick={()=>{if(window.confirm('คืนค่าข้อมูลสาธิตในเบราว์เซอร์? ไม่ลบข้อมูล Firebase')){setProjects(initial);setProjectId(initial[0].id);setCaseId(initial[0].cases[0].id);}}}><RotateCcw size={12}/>Reset demo</button></footer>
  </main></div>;
 }

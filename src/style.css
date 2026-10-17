@@ -68,3 +68,4 @@
 .section-picker h4{margin:6px 0}.section-props{font-size:12px;line-height:1.7;margin:6px 0}.section-props small{color:#6b7f93}
 .design-book .card{margin-bottom:14px}.book-toc{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px}.book-list{line-height:1.9;font-size:13px}.design-book h4{margin:14px 0 6px}
 .criteria-guide{background:#f3f8fc;border:1px solid #d6e5f2;border-radius:6px;padding:10px 12px;margin:12px 0;font-size:12px}.criteria-guide b svg{vertical-align:-2px;color:#c08a1e}.criteria-guide ul{margin:6px 0 0;padding-left:18px;line-height:1.75}.criteria-values{font-size:13px;margin:8px 0}.criteria-values td{padding:4px 10px 4px 0}
+.new-project.danger{color:#b42318}

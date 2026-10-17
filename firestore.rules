@@ -76,6 +76,15 @@ service cloud.firestore {
         data.app == 'RC-FormWork-App' && data.schemaVersion == 2 && data.updatedAt == request.time;
     }
     function validProject(data, projectId) { return data.id == projectId && data.projectId == projectId; }
+    // Workflow v0.7 authored drafts: inputs/layouts only, never results or authority fields.
+    function validWorkflowDraft(data, projectId, caseId) {
+      return data.keys().hasOnly(['projectId', 'caseId', 'schemaVersion', 'engineVersion', 'savedAtMs', 'sourceInputHash', 'modelJson', 'updatedBy', 'updatedAt']) &&
+        data.projectId == projectId && data.caseId == caseId && data.schemaVersion == 'workflow-draft-1' &&
+        data.engineVersion is string && data.engineVersion.size() > 0 && data.engineVersion.size() <= 50 &&
+        data.savedAtMs is number && data.sourceInputHash is string && data.sourceInputHash.size() <= 2000 &&
+        data.modelJson is string && data.modelJson.size() <= 900000 &&
+        data.updatedBy == request.auth.uid && data.updatedAt == request.time;
+    }
     function menuCategory(category) { return category in ['overview', 'upload', 'geometry', 'criteria', 'layout', 'results', 'drawings', 'report']; }
     function clientSnapshot(data) {
       // Callable results share this collection with client menu snapshots.
@@ -136,6 +145,12 @@ service cloud.firestore {
         allow create: if isAdmin() && validProject(request.resource.data, projectId);
         allow update: if canEditProject(projectId) && validProject(request.resource.data, projectId);
         allow delete: if isAdmin();
+
+        match /workflow/{caseId} {
+          allow read: if canViewProject(projectId);
+          allow create, update: if canEditProject(projectId) && validWorkflowDraft(request.resource.data, projectId, caseId);
+          allow delete: if canEditProject(projectId);
+        }
       }
 
       match /activityLogs/{logId} {

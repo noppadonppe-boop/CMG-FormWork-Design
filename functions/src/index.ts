@@ -220,6 +220,13 @@ export const deleteProject = onCall({region}, async request => {
     });
     await batch.commit();
   }
+  // Workflow v0.7 drafts live under the project document.
+  const drafts = await projectRef.collection('workflow').get();
+  for (let offset = 0; offset < drafts.docs.length; offset += 450) {
+    const batch = db.batch();
+    drafts.docs.slice(offset, offset + 450).forEach(item => batch.delete(item.ref));
+    await batch.commit();
+  }
   await projectRef.delete();
   return {projectId, deleted: true};
 });

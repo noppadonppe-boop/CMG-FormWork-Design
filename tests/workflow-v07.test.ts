@@ -179,6 +179,12 @@ describe('legacy preservation, feature gate and reproducible draft documents', (
     expect(workflowV07Enabled('true', false, false)).toBe(true);
     expect(workflowV07Enabled('true', true, true)).toBe(true);
   });
+  it('enables production only with a second explicit string opt-in', () => {
+    expect(workflowV07Enabled('true', true, false, 'true')).toBe(true);
+    expect(workflowV07Enabled('true', true, false, true)).toBe(false);
+    expect(workflowV07Enabled('true', true, false, 'false')).toBe(false);
+    expect(workflowV07Enabled(undefined, true, false, 'true')).toBe(false);
+  });
   it('rejects forged authority/unknown fields and invalidates applicability after edits/import', () => {
     const m = fromLegacy(defaults, 'F1');
     expect(() => parseWorkflowModel({...m, approved: true})).toThrow();

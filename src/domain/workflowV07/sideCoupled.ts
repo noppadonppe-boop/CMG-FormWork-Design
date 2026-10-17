@@ -1,51 +1,77 @@
 import {analyzeBeam, type BeamAnalysis, type BeamInput} from './beam.js';
+import {screenBeamMemberResistance} from './beamResistance.js';
 import {canonical, finite, identifier, record, uniqueIds} from './common.js';
 import {analyzeLinearFrame, assembleFrameStiffness, type FrameAction, type FrameVector, type LinearFrameInput} from './frameLinear.js';
 import type {PhysicalFace} from './geometry.js';
 export type {PhysicalFace};
-import type {analyzeSideLayout, SideEndpoint} from './sideLayout.js';
+import type {analyzeSideLayout, SideEndpoint, SideLayoutDefinition} from './sideLayout.js';
+import {screenTieAssembly} from './assemblies.js';
+import {evaluateTieDossier, tieGeometryContext} from './tieDossier.js';
+import type {Topology} from './geometry.js';
 import {screenSideLocalChecks, SIDE_COUPLED_LIMIT_KINDS, validateSideLocalEvidence, type SideLocalDemand, type SideLocalEvidence} from './sideLocalChecks.js';
 
 /** Waler-level support compatibility. Unknowns: outward displacement of every actual waler
- * support, outward displacement of rail ends joined by declared corner connectors, and one
- * rigid axial displacement per rail group. Ties are tension-only E·A/L springs; the frame
- * enters through its exact linear flexibility at the mapped nodes (mixed formulation) plus its
- * displacement under the other frame actions. Corner connectors are user-declared isotropic
- * linear springs. Stud→waler transfer stays the rigid-support analysis (one-way).
+ * support, of every stud-line/waler crossing, of rail ends joined by declared corner
+ * connectors, and the axial end motions of rail groups (E·A/L when declared, else rigid).
+ * Studs bring their own load and stiffness over the actual levels; ties are tension-only
+ * E·A/L springs with optional slack or pretension; corner connectors are isotropic springs with
+ * an optional slip gap; the frame enters through its exact linear flexibility at mapped nodes
+ * (mixed formulation) plus its displacement under the other frame actions.
  */
-export interface SideCouplingTie {tieId: string; E_MPa: number | null; A_mm2: number | null; effectiveLengthMm: number | null; evidenceRef: string}
-export interface SideCouplingCorner {id: string; faceAId: string; walerAId: string; faceBId: string; walerBId: string; stiffnessNPerMm: number | null; evidenceRef: string}
+/** pretensionN: initial clamping force; slackMm: take-up elongation before the tie engages.
+ * The tie force is max(0, P0 + k·(e − s)); a pretensioned tie cannot also be slack. */
+export interface SideCouplingTie {tieId: string; E_MPa: number | null; A_mm2: number | null; effectiveLengthMm: number | null; evidenceRef: string; pretensionN?: number | null; slackMm?: number | null}
+/** slipGapMm: free relative movement (bolt-hole/seat clearance) before the connector bears. */
+export interface SideCouplingCorner {id: string; faceAId: string; walerAId: string; faceBId: string; walerBId: string; stiffnessNPerMm: number | null; evidenceRef: string; slipGapMm?: number | null}
+/** Total axial stiffness E·A (N) of one face/level rail group between its two corner points. */
+export interface SideCouplingRailAxial {faceId: string; walerId: string; EA_N: number | null; evidenceRef: string}
 export interface SideCouplingDefinition {
   schemaVersion: '1'; assumptionsEvidenceRef: string;
   ties: SideCouplingTie[]; corners: SideCouplingCorner[]; limits: SideLocalEvidence[];
+  railAxial?: SideCouplingRailAxial[] | null;
 }
 export const emptySideCoupling = (): SideCouplingDefinition => ({schemaVersion: '1', assumptionsEvidenceRef: '', ties: [], corners: [], limits: []});
 export const emptyCouplingTie = (tieId = ''): SideCouplingTie => ({tieId, E_MPa: null, A_mm2: null, effectiveLengthMm: null, evidenceRef: ''});
 export const emptyCouplingCorner = (id: string): SideCouplingCorner => ({id, faceAId: '', walerAId: '', faceBId: '', walerBId: '', stiffnessNPerMm: null, evidenceRef: ''});
-/** Limits are bound to the declared tie and corner stiffness data (not to the limits themselves). */
-export const sideCouplingReference = (c: Pick<SideCouplingDefinition, 'ties' | 'corners'>) => canonical({role: 'SIDE_COUPLING', ties: c.ties, corners: c.corners});
+export const emptyCouplingRailAxial = (faceId = '', walerId = ''): SideCouplingRailAxial => ({faceId, walerId, EA_N: null, evidenceRef: ''});
+/** Limits are bound to the declared tie, corner and rail-axial stiffness data (not to the limits themselves). */
+export const sideCouplingReference = (c: Pick<SideCouplingDefinition, 'ties' | 'corners' | 'railAxial'>) =>
+  canonical({role: 'SIDE_COUPLING', ties: c.ties, corners: c.corners, ...(c.railAxial?.length ? {railAxial: c.railAxial} : {})});
 
 function text(v: unknown, label: string) {if (typeof v !== 'string' || v.length > 2000) throw Error(`Invalid coupling ${label}`);}
-function exact(raw: unknown, keys: string[], label: string) {
+function exact(raw: unknown, keys: string[], label: string, optional: string[] = []) {
   const r = record(raw);
-  if (keys.some(k => !Object.hasOwn(r, k)) || Object.keys(r).some(k => !keys.includes(k))) throw Error(`${label}: unknown/missing fields or authority metadata`);
+  if (keys.some(k => !Object.hasOwn(r, k)) || Object.keys(r).some(k => !keys.includes(k) && !optional.includes(k))) throw Error(`${label}: unknown/missing fields or authority metadata`);
   return r;
 }
+const optionalNonnegative = (v: unknown, label: string) => {if (v !== null && v !== undefined) finite(v, label, true);};
 export function validateSideCoupling(raw: unknown): asserts raw is SideCouplingDefinition {
-  const c = exact(raw, Object.keys(emptySideCoupling()), 'side coupling');
+  const c = exact(raw, Object.keys(emptySideCoupling()), 'side coupling', ['railAxial']);
   if (c.schemaVersion !== '1' || !Array.isArray(c.ties) || c.ties.length > 1000 || !Array.isArray(c.corners) || c.corners.length > 200 || !Array.isArray(c.limits) || c.limits.length > SIDE_COUPLED_LIMIT_KINDS.length) throw Error('Invalid side coupling lists');
   text(c.assumptionsEvidenceRef, 'assumption evidence');
   for (const t of c.ties as SideCouplingTie[]) {
-    exact(t, Object.keys(emptyCouplingTie()), 'coupling tie'); text(t.tieId, 'tie id'); text(t.evidenceRef, 'tie evidence');
+    exact(t, Object.keys(emptyCouplingTie()), 'coupling tie', ['pretensionN', 'slackMm']); text(t.tieId, 'tie id'); text(t.evidenceRef, 'tie evidence');
     for (const k of ['E_MPa', 'A_mm2', 'effectiveLengthMm'] as const) if (t[k] !== null) finite(t[k], `tie ${k}`);
+    optionalNonnegative(t.pretensionN, 'tie pretension'); optionalNonnegative(t.slackMm, 'tie slack');
+    if ((t.pretensionN ?? 0) > 0 && (t.slackMm ?? 0) > 0) throw Error(`${t.tieId}: a pretensioned tie cannot also have slack`);
   }
   uniqueIds((c.ties as SideCouplingTie[]).map(t => ({id: t.tieId})), 'coupling ties');
   for (const k of c.corners as SideCouplingCorner[]) {
-    exact(k, Object.keys(emptyCouplingCorner('')), 'coupling corner');
+    exact(k, Object.keys(emptyCouplingCorner('')), 'coupling corner', ['slipGapMm']);
     for (const f of ['id', 'faceAId', 'walerAId', 'faceBId', 'walerBId', 'evidenceRef'] as const) text(k[f], f);
     if (k.stiffnessNPerMm !== null) finite(k.stiffnessNPerMm, 'corner stiffness');
+    optionalNonnegative(k.slipGapMm, 'corner slip gap');
   }
   uniqueIds(c.corners as SideCouplingCorner[], 'coupling corners');
+  if (c.railAxial != null) {
+    if (!Array.isArray(c.railAxial) || c.railAxial.length > 400) throw Error('Invalid rail axial stiffness list');
+    for (const r of c.railAxial as SideCouplingRailAxial[]) {
+      exact(r, Object.keys(emptyCouplingRailAxial()), 'rail axial stiffness');
+      text(r.faceId, 'rail axial face'); text(r.walerId, 'rail axial waler'); text(r.evidenceRef, 'rail axial evidence');
+      if (r.EA_N !== null) finite(r.EA_N, 'rail EA');
+    }
+    uniqueIds((c.railAxial as SideCouplingRailAxial[]).map(r => ({id: canonical([r.faceId, r.walerId])})), 'rail axial groups');
+  }
   for (const l of c.limits as SideLocalEvidence[]) {
     validateSideLocalEvidence(l);
     if (l.kind !== null && !(SIDE_COUPLED_LIMIT_KINDS as readonly string[]).includes(l.kind)) throw Error('Coupling limits accept only corner connector, rail axial and tie axial kinds');
@@ -89,21 +115,33 @@ function solveScaled(A: number[][], b: number[]) {
   for (let i = 0; i < rank; i++) x[cols[i]] = M[i][n] / M[i][i];
   return {x, rankDeficiency: n - rank};
 }
+const beamAt = (input: BeamInput) => {
+  try {return analyzeBeam(input);} catch (e) {throw Error(`${input.id}: ${(e as Error).message}`);}
+};
+const spanOf = (xs: number[], length: number) => {
+  const s = [...new Set([0, length, ...xs])].sort((p, q) => p - q);
+  return Math.max(...s.slice(1).map((x, i) => x - s[i]));
+};
 
 export function analyzeCoupledSideSupports(input: {
-  side: Side; coupling: SideCouplingDefinition; actionBasis: 'SERVICE' | 'FACTORED';
+  side: Side; coupling: SideCouplingDefinition;
+  /** Authored layout and topology let tie product screens use the coupled tie force. */
+  layout?: SideLayoutDefinition; topology?: Topology; actionBasis: 'SERVICE' | 'FACTORED';
   frame: LinearFrameInput; mappings: {faceId: string; walerId: string; supportId: string; frameNodeId: string; connectionEvidenceRef: string}[];
   context: {revisionId: string; stageId: string; loadCaseId: string; evidenceRef: string};
 }) {
   const {side, coupling, frame} = input;
   validateSideCoupling(coupling);
   identifier(coupling.assumptionsEvidenceRef, 'coupled model assumption evidence');
-  const blockers = ['COUPLED_STUD_TO_WALER_TRANSFER_REMAINS_RIGID_SUPPORT_ONE_WAY', 'COUPLED_RAILS_AXIALLY_RIGID_AND_PAIRED_RAIL_ENDS_MOVE_TOGETHER',
-    'COUPLED_TIE_AND_CORNER_STIFFNESS_ARE_USER_DECLARED_LINEAR_NO_SLIP_GAP_OR_PRETENSION', 'TIE_PRODUCT_SCREENS_IN_SIDE_LAYOUT_USE_RIGID_SUPPORT_DEMANDS_COUPLED_TIE_FORCES_GOVERN',
+  const blockers = ['COUPLED_PLYWOOD_TO_STUD_TRANSFER_REMAINS_RIGID_SUPPORT_ONE_WAY',
+    'COUPLED_STUD_WALER_CONTACT_IS_A_POINT_AT_THE_STUD_LINE_AND_PAIRED_RAILS_SHARE_CROSSING_AND_END_DISPLACEMENT',
+    'COUPLED_TIE_SLACK_PRETENSION_AND_CORNER_GAP_ARE_USER_DECLARED_NO_FRICTION_SLIP_LOAD_CREEP_OR_CONNECTOR_ROTATION',
+    'SIDE_LAYOUT_TIE_PRODUCT_SCREENS_USE_RIGID_DEMANDS_COUPLED_TIE_PRODUCT_SCREENS_GOVERN',
     'SIDE_SYSTEM_STABILITY_ONLY_THROUGH_FRAME_LATERAL_CASE_AND_SECOND_ORDER'];
-  // Rail groups: one per actual face and waler level; paired rails share their support movement.
-  type Group = {id: string; faceId: string; walerId: string; zMm: number; face: PhysicalFace; rails: BeamAnalysis[];
-    supports: {id: string; xMm: number; dof: number}[]; ends: {A: number | null; B: number | null}; axial: number | null};
+  type Station = {id: string; xMm: number; dof: number; kind: 'SUPPORT' | 'END' | 'CROSSING'};
+  type Group = {id: string; faceId: string; walerId: string; level: number; zMm: number; face: PhysicalFace; rails: BeamAnalysis[]; declaredShares: number[];
+    supports: {id: string; xMm: number; dof: number}[]; ends: {A: number | null; B: number | null}; stations: Station[];
+    axialA: number | null; axialB: number | null; axialStiffness: number | null};
   const groups: Group[] = [];
   let dofs = 0;
   const nodeDof = new Map<string, number>();
@@ -111,13 +149,15 @@ export function analyzeCoupledSideSupports(input: {
     const levels = [...f.input.walers].sort((a, b) => a.zMm - b.zMm);
     f.result.walers.forEach((w, level) => {
       const walerId = levels[level].id;
+      if (w.rails.some(r => r.input.patches.length)) throw Error('COUPLED_RAIL_DISTRIBUTED_LOADS_UNSUPPORTED');
       const supports = levels[level].supports.map(s => {
         const k = key({faceId: f.face.id, walerId, supportId: s.id});
         if (!nodeDof.has(k)) nodeDof.set(k, dofs++);
         return {id: s.id, xMm: s.xMm, dof: nodeDof.get(k)!};
       });
-      if (supports.some(s => s.id.startsWith('CORNER-'))) throw Error('Support ids starting with CORNER- are reserved for corner connector stations');
-      groups.push({id: `${f.face.id}:${walerId}`, faceId: f.face.id, walerId, zMm: w.zMm, face: f.face, rails: w.rails, supports, ends: {A: null, B: null}, axial: null});
+      if (supports.some(s => s.id.startsWith('CORNER-') || s.id.startsWith('STUD:'))) throw Error('Support ids starting with CORNER- or STUD: are reserved for coupled stations');
+      groups.push({id: `${f.face.id}:${walerId}`, faceId: f.face.id, walerId, level, zMm: w.zMm, face: f.face, rails: w.rails, declaredShares: w.railDefinitions.map(r => r.share),
+        supports, ends: {A: null, B: null}, stations: [], axialA: null, axialB: null, axialStiffness: null});
     });
   }
   // Corner connectors at actual shared polygon vertices and equal waler heights.
@@ -125,7 +165,7 @@ export function analyzeCoupledSideSupports(input: {
     const ga = groups.find(g => g.faceId === c.faceAId && g.walerId === c.walerAId), gb = groups.find(g => g.faceId === c.faceBId && g.walerId === c.walerBId);
     if (!ga || !gb || ga === gb) throw Error(`${c.id}: corner must join two actual rail groups`);
     identifier(c.evidenceRef, `${c.id} connector evidence`);
-    const k = finite(c.stiffnessNPerMm, `${c.id} corner connector stiffness`);
+    const k = finite(c.stiffnessNPerMm, `${c.id} corner connector stiffness`), gap = c.slipGapMm ?? 0;
     if (Math.abs(ga.zMm - gb.zMm) > 1e-7) throw Error(`${c.id}: corner rails must be at the same height`);
     const vertex = [ga.face.a, ga.face.b].find(p => same(p, gb.face.a) || same(p, gb.face.b));
     if (!vertex) throw Error(`${c.id}: faces do not share an actual corner vertex`);
@@ -133,10 +173,41 @@ export function analyzeCoupledSideSupports(input: {
       const end = same(vertex, g.face.a) ? 'A' as const : 'B' as const, x = end === 'A' ? 0 : g.face.lengthMm;
       if (g.supports.some(s => Math.abs(s.xMm - x) < 1e-7)) throw Error(`${c.id}: waler support at the corner end is unsupported in the coupled model`);
       if (g.ends[end] !== null) throw Error(`${c.id}: rail end already has a corner connector`);
-      g.ends[end] = dofs++; if (g.axial === null) g.axial = dofs++;
+      g.ends[end] = dofs++;
       return end;
     };
-    return {definition: c, k, a: {group: ga, end: endOf(ga)}, b: {group: gb, end: endOf(gb)}, point: vertex};
+    return {definition: c, k, gap, a: {group: ga, end: endOf(ga)}, b: {group: gb, end: endOf(gb)}, point: vertex};
+  });
+  // Rail axial motion: two ends joined by the declared E·A/L, otherwise one rigid motion.
+  for (const g of groups) {
+    if (g.ends.A === null && g.ends.B === null) continue;
+    const declared = coupling.railAxial?.find(r => r.faceId === g.faceId && r.walerId === g.walerId);
+    if (g.ends.A !== null && g.ends.B !== null && declared) {
+      identifier(declared.evidenceRef, `${g.id} rail axial stiffness evidence`);
+      g.axialStiffness = finite(declared.EA_N, `${g.id} rail EA`) / g.face.lengthMm; g.axialA = dofs++; g.axialB = dofs++;
+    } else {
+      g.axialA = g.axialB = dofs++;
+      if (g.ends.A !== null && g.ends.B !== null) blockers.push(`${g.id}:RAIL_AXIAL_TREATED_RIGID_NO_DECLARED_EA`);
+    }
+  }
+  for (const r of coupling.railAxial ?? []) {
+    const g = groups.find(g => g.faceId === r.faceId && g.walerId === r.walerId);
+    if (!g || g.ends.A === null || g.ends.B === null) throw Error(`${r.faceId}/${r.walerId}: rail axial stiffness needs corner connectors at both rail ends`);
+  }
+  // Stud crossings: each actual stud line on each level shares one displacement with the rails.
+  const studCrossings = new Map<string, number[]>();
+  for (const g of groups) {
+    g.stations = [...g.supports.map(s => ({...s, kind: 'SUPPORT' as const})),
+      ...(g.ends.A !== null ? [{id: 'CORNER-A', xMm: 0, dof: g.ends.A, kind: 'END' as const}] : []),
+      ...(g.ends.B !== null ? [{id: 'CORNER-B', xMm: g.face.lengthMm, dof: g.ends.B, kind: 'END' as const}] : [])];
+  }
+  for (const f of side.faces) f.result.studs.forEach((s, i) => {
+    const row = groups.filter(g => g.faceId === f.face.id).sort((a, b) => a.level - b.level).map(g => {
+      const existing = g.stations.find(st => Math.abs(st.xMm - s.xMm) < 1e-7);
+      if (existing) return existing.dof;
+      const dof = dofs++; g.stations.push({id: `STUD:${i + 1}`, xMm: s.xMm, dof, kind: 'CROSSING'}); return dof;
+    });
+    studCrossings.set(s.analysis.id, row);
   });
   // Tie stiffness for every actual tie route; normal to both faces and collinear.
   const tieRows = side.ties.map(t => {
@@ -147,7 +218,8 @@ export function analyzeCoupledSideSupports(input: {
     if (Le < L * (1 - 1e-9)) throw Error(`${t.id}: effective tie length shorter than the actual route`);
     const axis = {x: (t.b.point.xMm - t.a.point.xMm) / L, y: (t.b.point.yMm - t.a.point.yMm) / L};
     if (Math.abs(t.a.normal.x + axis.x) > 1e-9 || Math.abs(t.a.normal.y + axis.y) > 1e-9 || Math.abs(t.b.normal.x - axis.x) > 1e-9 || Math.abs(t.b.normal.y - axis.y) > 1e-9) throw Error(`${t.id}: coupled tie must be normal to both faces`);
-    return {tie: t, k: finite(d.E_MPa, `${t.id} E`) * finite(d.A_mm2, `${t.id} A`) / Le, a: nodeDof.get(t.a.id)!, b: nodeDof.get(t.b.id)!, lengthMm: Le};
+    return {tie: t, k: finite(d.E_MPa, `${t.id} E`) * finite(d.A_mm2, `${t.id} A`) / Le, a: nodeDof.get(t.a.id)!, b: nodeDof.get(t.b.id)!, lengthMm: Le,
+      pretensionN: d.pretensionN ?? 0, slackMm: d.slackMm ?? 0};
   });
   if (coupling.ties.some(d => !side.ties.some(t => t.id === d.tieId))) throw Error('Unused/stale coupled tie definition');
   // Frame flexibility at mapped nodes along the face normal.
@@ -186,84 +258,159 @@ export function analyzeCoupledSideSupports(input: {
       });
     });
   }
-  // Rail transverse stiffness: reactions to unit support movement; base reactions under loads.
-  const railStations = (g: Group) => [...g.supports.map(s => ({id: s.id, xMm: s.xMm, dof: s.dof})),
-    ...(g.ends.A !== null ? [{id: 'CORNER-A', xMm: 0, dof: g.ends.A}] : []), ...(g.ends.B !== null ? [{id: 'CORNER-B', xMm: g.face.lengthMm, dof: g.ends.B}] : [])];
-  const strip = (r: BeamAnalysis): BeamInput => ({id: r.input.id, revision: r.input.revision, lengthMm: r.input.lengthMm, E_MPa: r.input.E_MPa, I_mm4: r.input.I_mm4, supports: [], points: r.input.points, patches: r.input.patches});
+  // Member stiffness from unit station movements. Rails carry no direct load; every stud
+  // brings its own plywood/pressure load and stiffness over its actual waler levels.
+  const strip = (r: BeamAnalysis, loads = true): BeamInput => ({id: r.input.id, revision: r.input.revision, lengthMm: r.input.lengthMm, E_MPa: r.input.E_MPa, I_mm4: r.input.I_mm4,
+    supports: [], points: loads ? r.input.points : [], patches: loads ? r.input.patches : []});
   const K0 = Array.from({length: dofs}, () => Array(dofs).fill(0) as number[]), d0 = Array(dofs).fill(0) as number[];
-  for (const g of groups) {
-    const st = railStations(g);
-    for (const r of g.rails) {
-      const loaded = analyzeBeam({...strip(r), supports: st.map(s => ({id: s.id, xMm: s.xMm}))});
-      st.forEach(s => {d0[s.dof] -= loaded.reactions.find(q => q.supportId === s.id)!.forceN;});
-      st.forEach(sj => {
-        const unit = analyzeBeam({...strip(r), points: [], patches: [], supports: st.map(s => ({id: s.id, xMm: s.xMm, displacementMm: s === sj ? 1 : 0}))});
-        st.forEach(si => {K0[si.dof][sj.dof] += unit.reactions.find(q => q.supportId === si.id)!.forceN;});
-      });
-    }
+  for (const g of groups) for (const r of g.rails) g.stations.forEach(sj => {
+    const unit = beamAt({...strip(r, false), supports: g.stations.map(s => ({id: s.id, xMm: s.xMm, displacementMm: s === sj ? 1 : 0}))});
+    g.stations.forEach(si => {K0[si.dof][sj.dof] += unit.reactions.find(q => q.supportId === si.id)!.forceN;});
+  });
+  const studs = side.faces.flatMap(f => f.result.studs.map(s => ({faceId: f.face.id, analysis: s.analysis, dofs: studCrossings.get(s.analysis.id)!})));
+  for (const s of studs) {
+    const levels = s.analysis.input.supports;
+    if (levels.length !== s.dofs.length) throw Error(`${s.analysis.id}: stud levels do not match the actual waler levels`);
+    const loaded = beamAt({...strip(s.analysis), supports: levels.map(l => ({id: l.id, xMm: l.xMm}))});
+    levels.forEach((l, j) => {d0[s.dofs[j]] -= loaded.reactions.find(q => q.supportId === l.id)!.forceN;});
+    levels.forEach((lj, j) => {
+      const unit = beamAt({...strip(s.analysis, false), supports: levels.map(l => ({id: l.id, xMm: l.xMm, displacementMm: l === lj ? 1 : 0}))});
+      levels.forEach((li, i) => {K0[s.dofs[i]][s.dofs[j]] += unit.reactions.find(q => q.supportId === li.id)!.forceN;});
+    });
   }
-  for (const c of corners) {
-    const gen = (side: {group: Group; end: 'A' | 'B'}) => {
-      const t = {x: (side.group.face.b.x - side.group.face.a.x) / side.group.face.lengthMm, y: (side.group.face.b.y - side.group.face.a.y) / side.group.face.lengthMm};
-      return {dofs: [side.group.ends[side.end]!, side.group.axial!], map: [[side.group.face.normal.x, t.x], [side.group.face.normal.y, t.y]], t};
+  // Corner kinematics: rail end displacement D = e·n + w·t (w of the rail end at that vertex).
+  const tangent = (f: PhysicalFace) => ({x: (f.b.x - f.a.x) / f.lengthMm, y: (f.b.y - f.a.y) / f.lengthMm});
+  const cornerMap = corners.map(c => {
+    const gen = (s: {group: Group; end: 'A' | 'B'}) => {
+      const t = tangent(s.group.face);
+      return {dofs: [s.group.ends[s.end]!, s.end === 'A' ? s.group.axialA! : s.group.axialB!], map: [[s.group.face.normal.x, t.x], [s.group.face.normal.y, t.y]]};
     };
-    const A = gen(c.a), B = gen(c.b), ids = [...A.dofs, ...B.dofs];
-    const M = [[A.map[0][0], A.map[0][1], -B.map[0][0], -B.map[0][1]], [A.map[1][0], A.map[1][1], -B.map[1][0], -B.map[1][1]]];
-    ids.forEach((p, i) => ids.forEach((q, j) => {K0[p][q] += c.k * (M[0][i] * M[0][j] + M[1][i] * M[1][j]);}));
-  }
-  // Tension-only tie active set; frame compatibility rows close the mixed system.
-  let active = tieRows.map(() => true), solution: number[] = [], rankDeficiency = 0, iterations = 0;
-  for (; iterations < 30; iterations++) {
+    const A = gen(c.a), B = gen(c.b);
+    return {ids: [...A.dofs, ...B.dofs], M: [[A.map[0][0], A.map[0][1], -B.map[0][0], -B.map[0][1]], [A.map[1][0], A.map[1][1], -B.map[1][0], -B.map[1][1]]]};
+  });
+  for (const g of groups) if (g.axialStiffness !== null) for (const [p, q, v] of [[g.axialA!, g.axialA!, 1], [g.axialB!, g.axialB!, 1], [g.axialA!, g.axialB!, -1], [g.axialB!, g.axialA!, -1]] as const) K0[p][q] += v * g.axialStiffness;
+  // Piecewise-linear state: tension-only ties with slack/pretension and gapped corner connectors.
+  const delta = (i: number, x: number[]) => {const {ids, M} = cornerMap[i]; return [0, 1].map(r => ids.reduce((s, d, j) => s + M[r][j] * x[d], 0));};
+  let tieActive = tieRows.map(() => true), cornerActive = corners.map(() => true), cornerDir: ({x: number; y: number} | null)[] = corners.map(() => null);
+  let solution: number[] = [], rankDeficiency = 0, iterations = 0, converged = false;
+  for (; iterations < 80; iterations++) {
     const A = K0.map(r => [...r]), b = [...d0];
-    tieRows.forEach((t, i) => {if (!active[i]) return; for (const p of [t.a, t.b]) for (const q of [t.a, t.b]) A[p][q] += t.k;});
+    tieRows.forEach((t, i) => {
+      if (!tieActive[i]) return;
+      for (const p of [t.a, t.b]) {for (const q of [t.a, t.b]) A[p][q] += t.k; b[p] -= t.pretensionN - t.k * t.slackMm;}
+    });
+    corners.forEach((c, i) => {
+      if (!cornerActive[i]) return;
+      const {ids, M} = cornerMap[i];
+      ids.forEach((p, a) => ids.forEach((q, z) => {A[p][q] += c.k * (M[0][a] * M[0][z] + M[1][a] * M[1][z]);}));
+      const n = cornerDir[i];
+      if (c.gap > 0 && n) ids.forEach((p, a) => {b[p] += c.k * c.gap * (M[0][a] * n.x + M[1][a] * n.y);});
+    });
     framed.forEach((f, i) => {
       A[f.dof][f.force] += 1;
       A[f.force][f.dof] = 1; framed.forEach((g, j) => {A[f.force][g.force] -= flex[i][j];}); b[f.force] = u0[i];
     });
     const solved = solveSystem(A, b); solution = solved.x; rankDeficiency = solved.rankDeficiency;
-    const next = tieRows.map(t => t.k * (solution[t.a] + solution[t.b]) > -1e-9 * Math.max(1, t.k));
-    if (next.every((v, i) => v === active[i])) break;
-    active = next;
+    const nextTies = tieRows.map(t => t.pretensionN + t.k * (solution[t.a] + solution[t.b] - t.slackMm) > -1e-9 * Math.max(1, t.k));
+    let directionsSettled = true;
+    const nextCorners = corners.map((c, i) => {
+      const [dx, dy] = delta(i, solution), mag = Math.hypot(dx, dy);
+      if (c.gap === 0) return true;
+      const dir = mag > 0 ? {x: dx / mag, y: dy / mag} : null, prev = cornerDir[i];
+      if (mag > c.gap && (!prev || !dir || Math.hypot(dir.x - prev.x, dir.y - prev.y) > 1e-9)) directionsSettled = false;
+      cornerDir[i] = dir;
+      return mag > c.gap * (1 + 1e-12);
+    });
+    if (directionsSettled && nextTies.every((v, i) => v === tieActive[i]) && nextCorners.every((v, i) => v === cornerActive[i])) {converged = true; break;}
+    tieActive = nextTies; cornerActive = nextCorners;
   }
-  if (iterations >= 30) throw Error('COUPLED_TIE_ACTIVE_SET_DID_NOT_CONVERGE');
+  if (!converged) throw Error('COUPLED_TIE_OR_CORNER_GAP_STATE_DID_NOT_CONVERGE');
   if (rankDeficiency) blockers.push(`COUPLED_MODEL_HAS_${rankDeficiency}_UNRESTRAINED_RIGID_MODES_SELF_EQUILIBRATED_LOAD_ONLY`);
-  // Final rail analyses with the compatible support movement (resistance screens re-run).
-  const railAnalyses = groups.flatMap(g => g.rails.map(r => analyzeBeam({...r.input, id: `${r.id}:COUPLED`, supports: railStations(g).map(s => ({id: s.id, xMm: s.xMm, displacementMm: solution[s.dof]}))})));
-  const demandAt = (g: Group, id: string) => -railAnalyses.filter(a => g.rails.some(r => `${r.id}:COUPLED` === a.id)).reduce((s, a) => s + a.reactions.find(q => q.supportId === id)!.forceN, 0);
-  const ties = tieRows.map((t, i) => ({id: t.tie.id, stiffnessNPerMm: t.k, effectiveLengthMm: t.lengthMm, elongationMm: solution[t.a] + solution[t.b],
-    forceN: active[i] ? t.k * (solution[t.a] + solution[t.b]) : 0, slack: !active[i], rigidSupportForcesN: [t.tie.a.forceN, t.tie.b.forceN] as [number, number]}));
-  for (const t of ties) if (t.slack) blockers.push(`${t.id}:TIE_SLACK_IN_COUPLED_SOLUTION_COMPRESSION_NOT_TRANSFERRED`);
+  // Member responses at the compatible displacements. Rail resistance scope uses actual supports
+  // and corner points only; stud-line contact stations are load points, not supports.
+  const reactionSum = Array(dofs).fill(0) as number[];
+  const railAnalyses = groups.flatMap(g => g.rails.map(r => {
+    const a = beamAt({...strip(r, false), id: `${r.id}:COUPLED`, supports: g.stations.map(s => ({id: s.id, xMm: s.xMm, displacementMm: solution[s.dof]}))});
+    g.stations.forEach(s => {reactionSum[s.dof] += a.reactions.find(q => q.supportId === s.id)!.forceN;});
+    const resistanceScreen = screenBeamMemberResistance({evidence: r.input.resistanceEvidence ?? [], actionBasis: r.input.actionBasis, memberEvidenceRef: r.input.memberEvidenceRef,
+      maximumUnsupportedSpanMm: spanOf(g.stations.filter(s => s.kind !== 'CROSSING').map(s => s.xMm), g.face.lengthMm),
+      demands: {FLEXURE: a.maxMomentNmm, SHEAR: a.maxShearN, DEFLECTION: a.maxDeflectionMm}});
+    return {...a, resistanceScreen, groupId: g.id};
+  }));
+  const studAnalyses = studs.map(s => {
+    const a = beamAt({...s.analysis.input, id: `${s.analysis.id}:COUPLED`, supports: s.analysis.input.supports.map((l, j) => ({...l, displacementMm: solution[s.dofs[j]]}))});
+    s.analysis.input.supports.forEach((l, j) => {reactionSum[s.dofs[j]] += a.reactions.find(q => q.supportId === l.id)!.forceN;});
+    return {...a, faceId: s.faceId, levelDofs: s.dofs};
+  });
+  const crossings = studAnalyses.flatMap(a => a.input.supports.map((l, j) => {
+    const onRail = -a.reactions.find(q => q.supportId === l.id)!.forceN;
+    return {studId: a.id.replace(/:COUPLED$/, ''), faceId: a.faceId, level: j, displacementMm: solution[a.levelDofs[j]], forceOnRailsN: onRail};
+  }));
+  const forceScale = Math.max(1, ...crossings.map(c => Math.abs(c.forceOnRailsN)));
+  for (const c of crossings) if (c.forceOnRailsN < -forceScale * 1e-9) blockers.push(`${c.studId}:LEVEL:${c.level}:STUD_WALER_CONTACT_LOSS_TENSION_NOT_TRANSFERRED`);
+  for (const g of groups) for (const s of g.stations.filter(s => s.kind === 'CROSSING')) {
+    if (Math.abs(reactionSum[s.dof]) > forceScale * 1e-6) throw Error(`${g.id}/${s.id}:COUPLED_STUD_RAIL_CONTACT_EQUILIBRIUM_FAILED`);
+  }
+  // Paired rails: the share now follows contact compatibility, not the declared split.
+  const railShares = groups.filter(g => g.rails.length === 2).map(g => {
+    const rows = railAnalyses.filter(a => a.groupId === g.id), crossingsOnly = g.stations.filter(s => s.kind === 'CROSSING');
+    const shares = crossingsOnly.map(s => {
+      const f = rows.map(a => a.reactions.find(q => q.supportId === s.id)!.forceN), total = f[0] + f[1];
+      return Math.abs(total) > forceScale * 1e-9 ? f[0] / total : null;
+    }).filter((v): v is number => v !== null);
+    const maxDeviation = shares.length ? Math.max(...shares.map(v => Math.abs(v - g.declaredShares[0]))) : 0;
+    if (maxDeviation > 1e-3) blockers.push(`${g.id}:RAIL_SHARE_SET_BY_STUD_CONTACT_COMPATIBILITY_NOT_DECLARED_SHARE`);
+    return {groupId: g.id, declaredRail1Share: g.declaredShares[0], compatibleRail1Shares: shares, maxDeviation};
+  });
+  const ties = tieRows.map((t, i) => {
+    const e = solution[t.a] + solution[t.b];
+    return {id: t.tie.id, stiffnessNPerMm: t.k, effectiveLengthMm: t.lengthMm, pretensionN: t.pretensionN, slackMm: t.slackMm, elongationMm: e,
+      forceN: tieActive[i] ? t.pretensionN + t.k * (e - t.slackMm) : 0, slack: !tieActive[i], rigidSupportForcesN: [t.tie.a.forceN, t.tie.b.forceN] as [number, number]};
+  });
+  for (const t of ties) if (t.slack) blockers.push(`${t.id}:TIE_SLACK_IN_COUPLED_SOLUTION_NO_FORCE_TRANSFERRED`);
+  // Re-run each authored tie product screen with the single coupled tie force (kN, same basis).
+  const demandBasis = input.actionBasis === 'FACTORED' ? 'DESIGN' as const : 'ALLOWABLE' as const;
+  const tieProducts = ties.map(t => {
+    const def = input.layout?.ties.find(d => d.id === t.id), demandKN = t.forceN / 1000;
+    const assembly = def?.assembly ? screenTieAssembly({...def.assembly, demandKN, demandBasis}) : null;
+    const dossier = def?.dossier && input.layout && input.topology ? evaluateTieDossier(def.dossier, tieGeometryContext(input.topology, input.layout, def), demandKN, demandBasis) : null;
+    if (!assembly && !dossier) blockers.push(`${t.id}:COUPLED_TIE_FORCE_HAS_NO_AUTHORED_PRODUCT_ASSEMBLY_OR_DOSSIER`);
+    blockers.push(...(assembly?.blockers ?? []).map(b => `${t.id}:COUPLED:${b}`), ...(dossier?.blockers ?? []).map(b => `${t.id}:COUPLED:${b}`));
+    return {id: t.id, demandKN, demandBasis, assembly, dossier,
+      status: assembly?.status === 'FAIL' || dossier?.status === 'FAIL' ? 'FAIL' as const : 'BLOCKED' as const};
+  });
+  const tieProductFail = tieProducts.some(p => p.status === 'FAIL');
+  if (tieProductFail) blockers.push('COUPLED_TIE_PRODUCT_SCREEN_EXCEEDED');
   const frameForces = framed.map(f => ({...f, forceN: solution[f.force]}));
   const supports = groups.flatMap(g => g.supports.map(s => {
     const k = key({faceId: g.faceId, walerId: g.walerId, supportId: s.id}), node = side.nodes.find(n => n.id === k)!;
     const tieForce = ties.filter((t, i) => tieRows[i].a === s.dof || tieRows[i].b === s.dof).reduce((sum, t) => sum + t.forceN, 0);
-    const frameForce = frameForces.find(f => f.dof === s.dof)?.forceN ?? 0, demandN = demandAt(g, s.id);
+    const frameForce = frameForces.find(f => f.dof === s.dof)?.forceN ?? 0, demandN = -reactionSum[s.dof];
     return {id: k, faceId: g.faceId, walerId: g.walerId, supportId: s.id, point: node.point, displacementMm: solution[s.dof], demandN, tieForceN: tieForce, frameForceN: frameForce,
       rigidDemandN: node.forceN, residualN: demandN - tieForce - frameForce};
   }));
-  const cornerRows = corners.map(c => {
-    const D = (s: {group: Group; end: 'A' | 'B'}) => {
-      const t = {x: (s.group.face.b.x - s.group.face.a.x) / s.group.face.lengthMm, y: (s.group.face.b.y - s.group.face.a.y) / s.group.face.lengthMm}, e = solution[s.group.ends[s.end]!], w = solution[s.group.axial!];
-      return {x: e * s.group.face.normal.x + w * t.x, y: e * s.group.face.normal.y + w * t.y};
-    };
+  const cornerRows = corners.map((c, i) => {
+    const [dx, dy] = delta(i, solution), mag = Math.hypot(dx, dy), engaged = cornerActive[i] && mag > 0;
+    const scaleF = engaged ? -c.k * (mag - c.gap) / mag : 0;
     // Restoring connector force applied ON rail A (equal and opposite on rail B at the same vertex).
-    const da = D(c.a), db = D(c.b), force = {x: -c.k * (da.x - db.x), y: -c.k * (da.y - db.y)};
+    const force = {x: scaleF * dx, y: scaleF * dy};
     return {id: c.definition.id, faceAId: c.a.group.faceId, faceBId: c.b.group.faceId, walerAId: c.a.group.walerId, walerBId: c.b.group.walerId, point: c.point,
-      stiffnessNPerMm: c.k, relativeDisplacementMm: Math.hypot(da.x - db.x, da.y - db.y), forceOnFaceAN: force, connectorForceN: Math.hypot(force.x, force.y)};
+      stiffnessNPerMm: c.k, slipGapMm: c.gap, engaged, relativeDisplacementMm: mag, forceOnFaceAN: force, connectorForceN: Math.hypot(force.x, force.y)};
   });
-  const railAxial = groups.filter(g => g.axial !== null).map(g => {
-    const t = {x: (g.face.b.x - g.face.a.x) / g.face.lengthMm, y: (g.face.b.y - g.face.a.y) / g.face.lengthMm};
-    // Tension positive: the connector force acting on end B along +t.
-    const endB = cornerRows.find((c, i) => (corners[i].a.group === g && corners[i].a.end === 'B') || (corners[i].b.group === g && corners[i].b.end === 'B'));
-    const endA = cornerRows.find((c, i) => (corners[i].a.group === g && corners[i].a.end === 'A') || (corners[i].b.group === g && corners[i].b.end === 'A'));
+  const railAxial = groups.filter(g => g.axialA !== null).map(g => {
+    const t = tangent(g.face);
+    const at = (end: 'A' | 'B') => cornerRows.find((c, i) => (corners[i].a.group === g && corners[i].a.end === end) || (corners[i].b.group === g && corners[i].b.end === end));
     const onRail = (row: typeof cornerRows[number] | undefined) => {
       if (!row) return 0; const sign = row.faceAId === g.faceId && row.walerAId === g.walerId ? 1 : -1;
       return sign * (row.forceOnFaceAN.x * t.x + row.forceOnFaceAN.y * t.y);
     };
-    const span = (() => {const xs = [...new Set([0, g.face.lengthMm, ...railStations(g).map(s => s.xMm)])].sort((p, q) => p - q); return Math.max(...xs.slice(1).map((x, i) => x - xs[i]));})();
-    return {groupId: g.id, faceId: g.faceId, walerId: g.walerId, axialForceN: (onRail(endB) - onRail(endA)) / 2,
-      endBalanceN: onRail(endA) + onRail(endB), maximumUnsupportedSpanMm: span};
+    // Tension positive; with declared E·A this equals k·(wB − wA).
+    const axialForceN = (onRail(at('B')) - onRail(at('A'))) / 2;
+    return {groupId: g.id, faceId: g.faceId, walerId: g.walerId, axialForceN, endBalanceN: onRail(at('A')) + onRail(at('B')),
+      axialStiffnessNPerMm: g.axialStiffness, elongationMm: g.axialStiffness === null ? 0 : solution[g.axialB!] - solution[g.axialA!],
+      maximumUnsupportedSpanMm: spanOf(g.stations.filter(s => s.kind !== 'CROSSING').map(s => s.xMm), g.face.lengthMm)};
   });
+  for (const r of railAxial) if (r.axialStiffnessNPerMm !== null && Math.abs(r.axialStiffnessNPerMm * r.elongationMm - r.axialForceN) > Math.max(1, Math.abs(r.axialForceN)) * 1e-6) throw Error(`${r.groupId}:COUPLED_RAIL_AXIAL_COMPATIBILITY_FAILED`);
   // Global closure: face pressure resultant equals frame-carried force; ties and corners are internal.
   const origin: FrameVector = [side.nodes[0].point.xMm, side.nodes[0].point.yMm, side.nodes[0].point.zMm];
   const pressureForceN: FrameVector = [0, 0, 0], pressureMomentNmm: FrameVector = [0, 0, 0], frameForceN: FrameVector = [0, 0, 0], frameMomentNmm: FrameVector = [0, 0, 0];
@@ -291,13 +438,13 @@ export function analyzeCoupledSideSupports(input: {
     ...ties.map(t => ({kind: 'TIE_AXIAL' as const, id: t.id, memberId: t.id, demand: t.forceN, lengthMm: null, issue: null})),
   ];
   const limits = screenSideLocalChecks({demands, evidence: coupling.limits, actionBasis: input.actionBasis, memberEvidenceRef: sideCouplingReference(coupling),
-    standingBlockers: ['COUPLED_LIMITS_DO_NOT_COVER_CONNECTOR_SLIP_ROTATION_OR_PRODUCT_COMPATIBILITY', 'RAIL_PAIR_AXIAL_SHARING_UNVERIFIED']});
+    standingBlockers: ['COUPLED_LIMITS_DO_NOT_COVER_CONNECTOR_ROTATION_OR_PRODUCT_COMPATIBILITY', 'RAIL_PAIR_AXIAL_SHARING_UNVERIFIED']});
   blockers.push(...limits.blockers);
-  const railFail = railAnalyses.some(a => a.resistanceScreen.status === 'FAIL');
-  if (railFail) blockers.push('COUPLED_RAIL_MEMBER_LIMIT_EXCEEDED');
-  else if (railAnalyses.some(a => a.resistanceScreen.status !== 'SCREENED')) blockers.push('COUPLED_RAIL_MEMBER_EVIDENCE_REQUIRED');
-  return {engineVersion: 'side-coupled-1' as const, status: limits.status === 'FAIL' || railFail ? 'FAIL' as const : 'BLOCKED' as const,
-    iterations: iterations + 1, rankDeficiency, supports, ties, corners: cornerRows, railAxial, railAnalyses, actions,
+  const memberFail = [...railAnalyses, ...studAnalyses].some(a => a.resistanceScreen.status === 'FAIL');
+  if (memberFail) blockers.push('COUPLED_RAIL_OR_STUD_MEMBER_LIMIT_EXCEEDED');
+  else if ([...railAnalyses, ...studAnalyses].some(a => a.resistanceScreen.status !== 'SCREENED')) blockers.push('COUPLED_RAIL_OR_STUD_MEMBER_EVIDENCE_REQUIRED');
+  return {engineVersion: 'side-coupled-2' as const, status: limits.status === 'FAIL' || memberFail || tieProductFail ? 'FAIL' as const : 'BLOCKED' as const,
+    iterations: iterations + 1, rankDeficiency, supports, crossings, railShares, ties, tieProducts, corners: cornerRows, railAxial, railAnalyses, studAnalyses, actions,
     frameCompatibility: frameForces.map(f => ({frameNodeId: f.mapping.frameNodeId, normal: f.node.normal, displacementMm: solution[f.dof]})),
     equilibrium: {originMm: origin, pressureForceN, pressureMomentNmm, frameForceN, frameMomentNmm, forceResidualN, momentResidualNmm, maxSupportResidualN: maxSupportResidual},
     limits, blockers: [...new Set(blockers)], constructionRelease: 'NO_GO' as const};
