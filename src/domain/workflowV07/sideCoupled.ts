@@ -1,10 +1,11 @@
-import {analyzeBeam, type BeamAnalysis, type BeamInput} from './beam.js';
+import {analyzeBeam, beamAt as beamAt2, type BeamAnalysis, type BeamInput} from './beam.js';
+import {analyzeSidePressureDeck} from './sidePressure.js';
 import {screenBeamMemberResistance} from './beamResistance.js';
 import {canonical, finite, identifier, record, uniqueIds} from './common.js';
 import {analyzeLinearFrame, assembleFrameStiffness, type FrameAction, type FrameVector, type LinearFrameInput} from './frameLinear.js';
 import type {PhysicalFace} from './geometry.js';
 export type {PhysicalFace};
-import type {analyzeSideLayout, SideEndpoint, SideLayoutDefinition} from './sideLayout.js';
+import {sidePlywoodEvidenceReference, type analyzeSideLayout, type SideEndpoint, type SideLayoutDefinition} from './sideLayout.js';
 import {screenTieAssembly} from './assemblies.js';
 import {evaluateTieDossier, tieGeometryContext} from './tieDossier.js';
 import type {Topology} from './geometry.js';
@@ -268,11 +269,20 @@ export function analyzeCoupledSideSupports(input: {
     g.stations.forEach(si => {K0[si.dof][sj.dof] += unit.reactions.find(q => q.supportId === si.id)!.forceN;});
   });
   const studs = side.faces.flatMap(f => f.result.studs.map(s => ({faceId: f.face.id, analysis: s.analysis, dofs: studCrossings.get(s.analysis.id)!})));
+  // Stud loads are the plywood strip reactions; for continuous sheets they depend on stud movement and are iterated below.
+  const studPatches = new Map(studs.map(s => [s.analysis.id, s.analysis.input.patches]));
+  const studLoads = () => {
+    const d = [...d0];
+    for (const s of studs) {
+      const levels = s.analysis.input.supports;
+      const loaded = beamAt({...strip(s.analysis, false), patches: studPatches.get(s.analysis.id)!, supports: levels.map(l => ({id: l.id, xMm: l.xMm}))});
+      levels.forEach((l, j) => {d[s.dofs[j]] -= loaded.reactions.find(q => q.supportId === l.id)!.forceN;});
+    }
+    return d;
+  };
   for (const s of studs) {
     const levels = s.analysis.input.supports;
     if (levels.length !== s.dofs.length) throw Error(`${s.analysis.id}: stud levels do not match the actual waler levels`);
-    const loaded = beamAt({...strip(s.analysis), supports: levels.map(l => ({id: l.id, xMm: l.xMm}))});
-    levels.forEach((l, j) => {d0[s.dofs[j]] -= loaded.reactions.find(q => q.supportId === l.id)!.forceN;});
     levels.forEach((lj, j) => {
       const unit = beamAt({...strip(s.analysis, false), supports: levels.map(l => ({id: l.id, xMm: l.xMm, displacementMm: l === lj ? 1 : 0}))});
       levels.forEach((li, i) => {K0[s.dofs[i]][s.dofs[j]] += unit.reactions.find(q => q.supportId === li.id)!.forceN;});
@@ -292,9 +302,12 @@ export function analyzeCoupledSideSupports(input: {
   // Piecewise-linear state: tension-only ties with slack/pretension and gapped corner connectors.
   const delta = (i: number, x: number[]) => {const {ids, M} = cornerMap[i]; return [0, 1].map(r => ids.reduce((s, d, j) => s + M[r][j] * x[d], 0));};
   let tieActive = tieRows.map(() => true), cornerActive = corners.map(() => true), cornerDir: ({x: number; y: number} | null)[] = corners.map(() => null);
-  let solution: number[] = [], rankDeficiency = 0, iterations = 0, converged = false;
+  let solution: number[] = [], rankDeficiency = 0, iterations = 0;
+  function solveState() {
+  let converged = false; iterations = 0;
+  const dLoad = studLoads();
   for (; iterations < 80; iterations++) {
-    const A = K0.map(r => [...r]), b = [...d0];
+    const A = K0.map(r => [...r]), b = [...dLoad];
     tieRows.forEach((t, i) => {
       if (!tieActive[i]) return;
       for (const p of [t.a, t.b]) {for (const q of [t.a, t.b]) A[p][q] += t.k; b[p] -= t.pretensionN - t.k * t.slackMm;}
@@ -325,6 +338,49 @@ export function analyzeCoupledSideSupports(input: {
     tieActive = nextTies; cornerActive = nextCorners;
   }
   if (!converged) throw Error('COUPLED_TIE_OR_CORNER_GAP_STATE_DID_NOT_CONVERGE');
+  }
+  const studAnalysisAt = (s: typeof studs[number], x: number[]) => beamAt({...s.analysis.input, patches: studPatches.get(s.analysis.id)!, id: `${s.analysis.id}:COUPLED`, supports: s.analysis.input.supports.map((l, j) => ({...l, displacementMm: x[s.dofs[j]]}))});
+  const displacementAt = (a: BeamAnalysis, z: number) => {
+    const seg = a.segments.find((sg, i) => z >= sg.startMm - 1e-9 && (i === a.segments.length - 1 || z < a.segments[i + 1].startMm)) ?? a.segments.at(-1)!;
+    return beamAt2(seg, z - seg.startMm).deflectionMm;
+  };
+  // Plywood ↔ stud compatibility: faces whose continuous sheet strips are statically indeterminate
+  // get their strip reactions re-evaluated with the studs' displacement at each zone boundary
+  // (affine between boundaries, as in the rigid deck) until the stud loads stop changing.
+  const coupledFaces = side.faces.filter(f => f.result.pressureDeck && f.result.pressureDeck.segments.some(sg => sg.studsMm.length > 2));
+  const plywoodFaces: {faceId: string; panels: ReturnType<typeof analyzeSidePressureDeck>['panels']; deck: ReturnType<typeof analyzeSidePressureDeck>}[] = [];
+  let plywoodIterations = 0, plywoodMaxChangeNPerMm = 0;
+  solveState();
+  if (coupledFaces.length) {
+    const relax = 0.7;
+    let settled = false;
+    for (; plywoodIterations < 60 && !settled; plywoodIterations++) {
+      settled = true; plywoodMaxChangeNPerMm = 0; plywoodFaces.length = 0;
+      for (const f of coupledFaces) {
+        const faceStuds = studs.filter(s => s.faceId === f.face.id).sort((a, b) => f.result.studs.findIndex(x => x.analysis.id === a.analysis.id) - f.result.studs.findIndex(x => x.analysis.id === b.analysis.id));
+        const analyses = faceStuds.map(s => studAnalysisAt(s, solution)), deck0 = f.result.pressureDeck!;
+        const deck = analyzeSidePressureDeck({faceId: f.face.id, revision: f.result.studs[0].analysis.input.revision, lengthMm: f.face.lengthMm, heightMm: f.result.studs[0].analysis.input.lengthMm,
+          studsMm: f.result.studs.map(s => s.xMm), E_MPa: f.elasticInputs.plywood.E_MPa, I_mm4: f.elasticInputs.plywood.I_mm4, patches: deck0.patches,
+          sheetJointsMm: f.input.plywood.jointsAtEveryStud === false ? f.input.plywood.sheetJointsMm ?? null : null, studDisplacementMm: (index, z) => displacementAt(analyses[index], z)});
+        plywoodFaces.push({faceId: f.face.id, panels: deck.panels, deck});
+        faceStuds.forEach((s, i) => {
+          const old = studPatches.get(s.analysis.id)!, fresh = deck.studPatches[i];
+          if (old.length !== fresh.length) throw Error('COUPLED_PLYWOOD_ZONE_MISMATCH');
+          const next = fresh.map((p, k) => ({...p, startNPerMm: old[k].startNPerMm + relax * (p.startNPerMm - old[k].startNPerMm), endNPerMm: old[k].endNPerMm + relax * (p.endNPerMm - old[k].endNPerMm)}));
+          const change = Math.max(0, ...fresh.map((p, k) => Math.max(Math.abs(p.startNPerMm - old[k].startNPerMm), Math.abs(p.endNPerMm - old[k].endNPerMm))));
+          const scale = Math.max(1e-9, ...fresh.map(p => Math.max(Math.abs(p.startNPerMm), Math.abs(p.endNPerMm))));
+          plywoodMaxChangeNPerMm = Math.max(plywoodMaxChangeNPerMm, change);
+          if (change > 1e-9 * scale) settled = false;
+          studPatches.set(s.analysis.id, next);
+        });
+      }
+      if (!settled) solveState();
+    }
+    if (!settled) throw Error('COUPLED_PLYWOOD_STUD_COMPATIBILITY_DID_NOT_CONVERGE');
+    blockers.push('COUPLED_PLYWOOD_STUD_COMPATIBILITY_EVALUATED_AT_PRESSURE_ZONE_BOUNDARIES_AFFINE_BETWEEN');
+    // A negative strip reaction means the sheet pulls on the stud through its fasteners.
+    for (const s of studs) if (studPatches.get(s.analysis.id)!.some(p => Math.min(p.startNPerMm, p.endNPerMm) < -1e-9)) blockers.push(`${s.analysis.id}:PLYWOOD_LIFTS_OFF_STUD_FASTENER_TENSION_REQUIRED`);
+  } else blockers.push('PLYWOOD_STRIPS_SIMPLY_SPANNING_OR_NO_PRESSURE_DECK_STUD_MOVEMENT_CANNOT_CHANGE_STRIP_REACTIONS');
   if (rankDeficiency) blockers.push(`COUPLED_MODEL_HAS_${rankDeficiency}_UNRESTRAINED_RIGID_MODES_SELF_EQUILIBRATED_LOAD_ONLY`);
   // Member responses at the compatible displacements. Rail resistance scope uses actual supports
   // and corner points only; stud-line contact stations are load points, not supports.
@@ -338,7 +394,7 @@ export function analyzeCoupledSideSupports(input: {
     return {...a, resistanceScreen, groupId: g.id};
   }));
   const studAnalyses = studs.map(s => {
-    const a = beamAt({...s.analysis.input, id: `${s.analysis.id}:COUPLED`, supports: s.analysis.input.supports.map((l, j) => ({...l, displacementMm: solution[s.dofs[j]]}))});
+    const a = studAnalysisAt(s, solution);
     s.analysis.input.supports.forEach((l, j) => {reactionSum[s.dofs[j]] += a.reactions.find(q => q.supportId === l.id)!.forceN;});
     return {...a, faceId: s.faceId, levelDofs: s.dofs};
   });
@@ -440,11 +496,20 @@ export function analyzeCoupledSideSupports(input: {
   const limits = screenSideLocalChecks({demands, evidence: coupling.limits, actionBasis: input.actionBasis, memberEvidenceRef: sideCouplingReference(coupling),
     standingBlockers: ['COUPLED_LIMITS_DO_NOT_COVER_CONNECTOR_ROTATION_OR_PRODUCT_COMPATIBILITY', 'RAIL_PAIR_AXIAL_SHARING_UNVERIFIED']});
   blockers.push(...limits.blockers);
-  const memberFail = [...railAnalyses, ...studAnalyses].some(a => a.resistanceScreen.status === 'FAIL');
+  // Plywood strips at the compatible stud movement, screened per 1000 mm strip against the face's plywood limits.
+  const plywood = plywoodFaces.map(pf => {
+    const f = side.faces.find(x => x.face.id === pf.faceId)!, ref = sidePlywoodEvidenceReference(f.input.plywood), basis = f.result.studs[0].analysis.input.actionBasis ?? input.actionBasis;
+    return {faceId: pf.faceId, panels: pf.panels.map(p => ({...p, resistanceScreen: screenBeamMemberResistance({evidence: f.input.plywood.resistanceEvidence ?? [], actionBasis: basis, memberEvidenceRef: ref,
+      maximumUnsupportedSpanMm: spanOf(p.analysis.input.supports.map(s => s.xMm), p.analysis.input.lengthMm), demands: {FLEXURE: p.analysis.maxMomentNmm, SHEAR: p.analysis.maxShearN, DEFLECTION: p.analysis.maxDeflectionMm}})}))};
+  });
+  const plywoodFail = plywood.some(f => f.panels.some(p => p.resistanceScreen.status === 'FAIL'));
+  if (plywoodFail) blockers.push('COUPLED_PLYWOOD_STRIP_LIMIT_EXCEEDED');
+  const memberFail = plywoodFail || [...railAnalyses, ...studAnalyses].some(a => a.resistanceScreen.status === 'FAIL');
   if (memberFail) blockers.push('COUPLED_RAIL_OR_STUD_MEMBER_LIMIT_EXCEEDED');
   else if ([...railAnalyses, ...studAnalyses].some(a => a.resistanceScreen.status !== 'SCREENED')) blockers.push('COUPLED_RAIL_OR_STUD_MEMBER_EVIDENCE_REQUIRED');
   return {engineVersion: 'side-coupled-2' as const, status: limits.status === 'FAIL' || memberFail || tieProductFail ? 'FAIL' as const : 'BLOCKED' as const,
     iterations: iterations + 1, rankDeficiency, supports, crossings, railShares, ties, tieProducts, corners: cornerRows, railAxial, railAnalyses, studAnalyses, actions,
+    plywood: {iterations: plywoodIterations, maxLoadChangeNPerMm: plywoodMaxChangeNPerMm, faces: plywood},
     frameCompatibility: frameForces.map(f => ({frameNodeId: f.mapping.frameNodeId, normal: f.node.normal, displacementMm: solution[f.dof]})),
     equilibrium: {originMm: origin, pressureForceN, pressureMomentNmm, frameForceN, frameMomentNmm, forceResidualN, momentResidualNmm, maxSupportResidualN: maxSupportResidual},
     limits, blockers: [...new Set(blockers)], constructionRelease: 'NO_GO' as const};

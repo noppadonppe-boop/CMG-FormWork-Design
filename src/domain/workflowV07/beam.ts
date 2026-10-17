@@ -93,7 +93,8 @@ export function analyzeBeam(o: BeamInput): BeamAnalysis {
   o.supports.forEach(s => {station(s.xMm); if (s.displacementMm !== undefined) signed(s.displacementMm, 'prescribed support displacement');});
   if (new Set(o.supports.map(s => s.xMm)).size !== o.supports.length) throw Error('Duplicate supports at one station');
   o.points.forEach(p => {station(p.xMm); finite(p.forceN, 'point load', true);});
-  o.patches.forEach(p => {station(p.startMm); station(p.endMm); if (p.endMm <= p.startMm) throw Error('Invalid patch'); finite(p.startNPerMm, 'patch start', true); finite(p.endNPerMm, 'patch end', true);});
+  // Patch intensities are signed: a negative value is a pull on the member (e.g. a fastened sheet lifting off), not an error.
+  o.patches.forEach(p => {station(p.startMm); station(p.endMm); if (p.endMm <= p.startMm) throw Error('Invalid patch'); signed(p.startNPerMm, 'patch start'); signed(p.endNPerMm, 'patch end');});
   const xs = [...new Set([0, L, ...o.supports.map(s => s.xMm), ...o.points.map(p => p.xMm), ...o.patches.flatMap(p => [p.startMm, p.endMm])])].sort((a, b) => a - b);
   const n = xs.length * 2, K = Array.from({length: n}, () => Array(n).fill(0) as number[]), F = Array(n).fill(0) as number[];
   const elements: {ids: number[]; k: number[][]; f: number[]; q0: number; gradient: number; length: number}[] = [];

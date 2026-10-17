@@ -82,7 +82,9 @@ export function sheetSegments(studsMm: number[], lengthMm: number, sheetJointsMm
     return {startMm: start, endMm: end, studsMm: inside};
   });
 }
-export function analyzeSidePressureDeck(o: {faceId: string; revision: string; lengthMm: number; heightMm: number; studsMm: number[]; E_MPa: number; I_mm4: number; patches: PressurePatch[]; sheetJointsMm?: number[] | null}) {
+export function analyzeSidePressureDeck(o: {faceId: string; revision: string; lengthMm: number; heightMm: number; studsMm: number[]; E_MPa: number; I_mm4: number; patches: PressurePatch[]; sheetJointsMm?: number[] | null;
+  /** Coupled compatibility: outward displacement of stud `index` at height z used as the strip support movement. */
+  studDisplacementMm?: (index: number, zMm: number) => number}) {
   identifier(o.faceId, 'pressure face'); identifier(o.revision, 'pressure revision'); finite(o.lengthMm, 'pressure face length'); finite(o.heightMm, 'pressure face height');
   finite(o.E_MPa, 'plywood E'); finite(o.I_mm4, 'plywood I');
   if (!Array.isArray(o.patches) || o.patches.length > 40 || !Array.isArray(o.studsMm) || o.studsMm.length < 2 || o.studsMm.length > 40 || o.studsMm[0] !== 0 || o.studsMm.at(-1) !== o.lengthMm || o.studsMm.some((x, i) => !Number.isFinite(x) || x < 0 || x > o.lengthMm || (i > 0 && x <= o.studsMm[i - 1]))) throw Error('Actual edge-supported pressure-deck coordinates and bounded patches required');
@@ -104,10 +106,10 @@ export function analyzeSidePressureDeck(o: {faceId: string; revision: string; le
     const reactions = o.studsMm.map(() => [0, 0]);
     segments.forEach((seg, s) => {
       const a = seg.startMm, b = seg.endMm, src = active.filter(p => p.x0Mm < b && p.x1Mm > a), analyses: string[] = [];
-      const supports = seg.studsMm.map(x => ({id: `S${o.studsMm.indexOf(x)}`, xMm: x - a}));
       const endReactions: Record<string, number>[] = [];
       for (const [end, atZ] of [lower, upper].entries()) {
         const id = `${o.faceId}:PLY:${s + 1}:ZONE:${z}:Z${end}`;
+        const supports = seg.studsMm.map(x => {const index = o.studsMm.indexOf(x); return {id: `S${index}`, xMm: x - a, ...(o.studDisplacementMm ? {displacementMm: o.studDisplacementMm(index, atZ)} : {})};});
         const loads = src.map(p => ({id: p.id, startMm: Math.max(a, p.x0Mm) - a, endMm: Math.min(b, p.x1Mm) - a, startNPerMm: Math.max(0, valueAt(p, atZ)), endNPerMm: Math.max(0, valueAt(p, atZ))}));
         // Continuous sheet strip over every stud inside the segment (simply supported when the segment is one bay).
         const analysis = analyzeBeam({id, revision: o.revision, lengthMm: b - a, E_MPa: o.E_MPa, I_mm4: o.I_mm4, supports, points: [], patches: loads});
@@ -118,8 +120,8 @@ export function analyzeSidePressureDeck(o: {faceId: string; revision: string; le
         const xs = [...new Set([a, b, ...loads.flatMap(p => [a + p.startMm, a + p.endMm])])].sort((u, v) => u - v);
         for (let k = 1; k < xs.length; k++) maximumPressureKPa = Math.max(maximumPressureKPa, src.filter(p => p.x0Mm <= xs[k - 1] && p.x1Mm >= xs[k]).reduce((sum, p) => sum + valueAt(p, atZ), 0));
       }
-      for (const sup of supports) {
-        const target = Number(sup.id.slice(1));
+      for (const x of seg.studsMm) {
+        const target = o.studsMm.indexOf(x), sup = {id: `S${target}`};
         transfers.push({sourceAnalysisIds: analyses, targetStudId: `${o.faceId}:STUD:${target + 1}`, xMm: o.studsMm[target], startZMm: lower, endZMm: upper,
           startNPerMm: endReactions[0][sup.id], endNPerMm: endReactions[1][sup.id], upstreamRevision: o.revision});
       }

@@ -233,3 +233,29 @@ it('applies tie slack, tie pretension and corner slip gaps as piecewise-linear s
   const both = coupledFixture(); both.definition.sideTransfers!.coupling!.ties[0] = {...both.definition.sideTransfers!.coupling!.ties[0], pretensionN: 10, slackMm: 1};
   expect(() => stampFrameLayout(both.model, both.definition)).toThrow(/pretensioned tie cannot also have slack/);
 });
+
+it('iterates plywood↔stud compatibility for continuous sheets: stud loads change with stud movement, total pressure is conserved, simple-span faces are left determinate', () => {
+  const stiff = coupledFixture({threeLevels: true, tieE: 2e5, tieA: 1e9, I: () => 1e14});
+  const soft = coupledFixture({threeLevels: true, I: i => (Math.floor(i / 2) % 3 === 1 ? 2e5 : 1e14)});
+  for (const f of [stiff, soft]) for (const face of f.model.sideLayout!.faces) {face.plywood.jointsAtEveryStud = false; face.plywood.sheetJointsMm = [];}
+  const a = solve(stiff).coupled, b = solve(soft).coupled;
+  expect(a.plywood.faces.map(f => f.faceId).sort()).toEqual(['F1', 'F2', 'F3', 'F4']);
+  expect(a.blockers).toContain('COUPLED_PLYWOOD_STUD_COMPATIBILITY_EVALUATED_AT_PRESSURE_ZONE_BOUNDARIES_AFFINE_BETWEEN');
+  // Even on stiff supports the studs bend between waler levels, so continuous strips redistribute load; the iteration must converge.
+  expect(a.plywood.iterations).toBeGreaterThan(1); expect(a.plywood.iterations).toBeLessThan(60);
+  expect(a.plywood.maxLoadChangeNPerMm).toBeLessThan(1e-6);
+  const rigidStud = (c: typeof a, face: string) => c.studAnalyses.filter(s => s.faceId === face).map(s => s.input.patches.map(q => q.startNPerMm + q.endNPerMm));
+  expect(JSON.stringify(rigidStud(a, 'F1'))).not.toBe(JSON.stringify(solve(coupledFixture({threeLevels: true, tieE: 2e5, tieA: 1e9, I: () => 1e14})).side.faces[0].result.studs.map(s => s.analysis.input.patches.map(q => q.startNPerMm + q.endNPerMm))));
+  // Soft middle level on F2/F4: studs bow between levels, continuous strips redistribute load between studs, total per face conserved.
+  const total = (c: typeof a, face: string) => c.crossings.filter(x => x.faceId === face).reduce((s, x) => s + x.forceOnRailsN, 0);
+  expect(total(b, 'F2')).toBeCloseTo(total(a, 'F2'), 3);
+  expect(b.plywood.iterations).toBeGreaterThan(1);
+  const perStud = (c: typeof a) => c.studAnalyses.filter(s => s.faceId === 'F2').map(s => s.reactions.reduce((t, r) => t - r.forceN, 0));
+  expect(perStud(b).some((v, i) => Math.abs(v - perStud(a)[i]) > 1e-3)).toBe(true);
+  expect(b.plywood.faces.find(f => f.faceId === 'F2')!.panels.every(p => p.analysis.input.supports.some(s => (s.displacementMm ?? 0) !== 0))).toBe(true);
+  expect(b.equilibrium.maxSupportResidualN).toBeLessThan(1e-6);
+  // Simple-span sheets stay determinate and are reported as such.
+  const simple = solve(coupledFixture({threeLevels: true, I: i => (Math.floor(i / 2) % 3 === 1 ? 2e5 : 1e14)})).coupled;
+  expect(simple.plywood.faces).toHaveLength(0);
+  expect(simple.blockers).toContain('PLYWOOD_STRIPS_SIMPLY_SPANNING_OR_NO_PRESSURE_DECK_STUD_MOVEMENT_CANNOT_CHANGE_STRIP_REACTIONS');
+});
