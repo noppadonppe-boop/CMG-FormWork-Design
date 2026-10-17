@@ -21,6 +21,7 @@ it('shows actual side coordinates, full tie demands and section responses in the
   setup(); const model = sideApplied(), frozen = await freezeDesign(model), view = await documentView(frozen, model);
   const html = renderToStaticMarkup(<WorkflowDocuments view={view}/>);
   expect(html).toContain('F1-W1-S1'); expect(html).toContain('3.5417'); expect(html).toContain('2,100');
+  expect(html).toContain('จากต้นสมาชิก'); expect(html).toContain('segment');
   expect(html).toContain('F1:PLY:1'); expect(html).toContain('ยังไม่ใช่แบบติดตั้ง');
   expect(html.match(new RegExp(frozen.snapshotHash, 'g'))).toHaveLength(2);
   expect(html).not.toMatch(/NaN|Infinity|undefined/);

@@ -40,7 +40,7 @@ it('keeps explicitly entered zero clearance distinct from missing data and suppo
 });
 it('makes head-seat edits pending in the real assembly editor and includes them in an atomic frame reanalysis', async () => {
   setup(); const m = headBearingApplied(); vi.spyOn(models, 'fromLegacy').mockReturnValue(m); const host = document.createElement('div'), root = createRoot(host);
-  try {await act(async () => root.render(<WorkflowV07Panel input={defaults} caseId="HEAD-UI"/>));
+  try {await act(async () => root.render(<WorkflowV07Panel input={defaults} caseId="HEAD-UI" initialElementType="SLAB"/>));
     const head = host.querySelector('.head-bearing-editor')!; await enter(head, 'ระยะเผื่อข้างที่ระบุแต่ละด้าน', '9');
     expect(button(host, 'สร้างรายการคำนวณและรูปคู่ด้านร่าง').disabled).toBe(true); expect(button(host, 'สร้างคำขอข้อเสนอพิกัดจากร่างปัจจุบัน').disabled).toBe(true);
     await click(host, 'เก็บข้อมูลและวิเคราะห์เฟรมร่าง'); expect(button(host, 'สร้างรายการคำนวณและรูปคู่ด้านร่าง').disabled, host.querySelector('[role="alert"]')?.textContent).toBe(false);

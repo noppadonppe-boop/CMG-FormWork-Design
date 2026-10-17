@@ -43,6 +43,21 @@ export function SoffitResults({model, preview}: {model: WorkflowModel; preview: 
     {!!path?.reactions.length && <table><thead><tr><th>U-head / ต้นทาง</th><th>X / Y / Z (mm)</th><th>N (kN)</th><th>M (N·mm)</th></tr></thead><tbody>
       {path.reactions.map(r => <tr key={r.nodeId}><td>{r.nodeId} / {r.upstreamAnalysisId}</td><td>{show(r.point.xMm)} / {show(r.point.yMm)} / {show(r.point.zMm)}</td><td>{show(r.forceN / 1000)}</td><td>{show(r.momentNmm)}</td></tr>)}
     </tbody></table>}
+    {!!path?.analyses.length && <section aria-label="หลักฐานขีดจำกัด 1D ของคร่าวและคานรับ">
+      <h4>ขีดจำกัดสมาชิก 1D ที่ผู้ใช้ระบุ · evidence screen / NO_GO</h4>
+      <p>ดัด/เฉือนต้องใช้ ALLOWABLE กับแรง SERVICE หรือ DESIGN กับ FACTORED; โก่งตัวรับเฉพาะ limit แบบ SERVICE. ไม่มีการอนุมานค่าจาก E/I, Catalogue หรือ characteristic material values.</p>
+      <table><thead><tr><th>สมาชิก</th><th>ดัด · N·mm</th><th>เฉือน · N</th><th>โก่ง · mm</th><th>สถานะ / ข้อมูลที่ขาด</th></tr></thead><tbody>
+        {path.analyses.map(a => {
+          const check = (quantity: 'FLEXURE' | 'SHEAR' | 'DEFLECTION') => a.resistanceScreen.checks.find(c => c.quantity === quantity)!;
+          const display = (quantity: 'FLEXURE' | 'SHEAR' | 'DEFLECTION') => {
+            const c = check(quantity); return `${show(c.demand)} / ${show(c.limit)} ${c.unit} · ${c.status}${c.utilization === null ? '' : ` · u=${show(c.utilization)}`}`;
+          };
+          return <tr key={a.id}><td>{a.id} / {a.resistanceScreen.actionBasis ?? 'UNKNOWN'}</td><td>{display('FLEXURE')}</td><td>{display('SHEAR')}</td><td>{display('DEFLECTION')}</td>
+            <td>{a.resistanceScreen.status}<details><summary>Blockers</summary><ul>{a.resistanceScreen.blockers.map(b => <li key={b}>{b}</li>)}</ul></details></td></tr>;
+        })}
+      </tbody></table>
+      <p>SCREENED means comparison against explicitly reviewed, member-scoped limits only; connection, bearing, local stability, system checks and construction release remain incomplete.</p>
+    </section>}
     <p>แรงแต่ละหัวใช้ตำแหน่งจริงและความต่อเนื่องของสมาชิก ยังต้องตรวจ U-head → Ringlock → Jack Base → พื้นรองรับ</p>
   </section>;
 }

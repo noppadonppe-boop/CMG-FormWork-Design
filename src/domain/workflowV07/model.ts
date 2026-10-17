@@ -201,6 +201,12 @@ export function previewSingleWorkflow(raw: WorkflowModel) {
     Math.abs(momentResidual.yLeverNmm) > leverScale('yMm') * 1e-7)) {
     blockers.push('SOFFIT_GLOBAL_MOMENT_BALANCE_FAILED'); loadPath = null;
   }
+  const beamResistanceStatus = loadPath?.analyses.length
+    ? loadPath.analyses.some(a => a.resistanceScreen.status === 'FAIL') ? 'FAIL'
+      : loadPath.analyses.every(a => a.resistanceScreen.status === 'SCREENED') ? 'SCREENED' : 'INCOMPLETE'
+    : null;
+  if (beamResistanceStatus === 'FAIL') blockers.push('ONE_D_MEMBER_RESISTANCE_LIMIT_EXCEEDED');
+  else if (beamResistanceStatus === 'INCOMPLETE') blockers.push('ONE_D_MEMBER_RESISTANCE_EVIDENCE_REQUIRED');
   let side: ReturnType<typeof analyzeSideLayout> | null = null;
   if (model.sideLayout) {
     try {side = analyzeSideLayout(model, model.sideLayout); blockers.push(...side.blockers);} catch (e) {blockers.push(`SIDE_LAYOUT:${(e as Error).message}`);}
@@ -244,7 +250,7 @@ export function previewSingleWorkflow(raw: WorkflowModel) {
   contractAudit = overlayContractSignals(contractAudit, overlays);
   if (frame) refreshProducedFrameContractAudit(frame, contractAudit);
   blockers.push(...contractAudit.blockers);
-  return {engineVersion: WORKFLOW_VERSION, status: ringlock?.status === 'FAIL' || side?.status === 'FAIL' || assembly?.status === 'FAIL' || frame?.status === 'FAIL' || supports?.status === 'FAIL' || headBearings?.status === 'FAIL' ? 'FAIL' as const : 'BLOCKED' as const, topology,
+  return {engineVersion: WORKFLOW_VERSION, status: ringlock?.status === 'FAIL' || side?.status === 'FAIL' || assembly?.status === 'FAIL' || frame?.status === 'FAIL' || supports?.status === 'FAIL' || headBearings?.status === 'FAIL' || beamResistanceStatus === 'FAIL' ? 'FAIL' as const : 'BLOCKED' as const, topology,
     pressureBaseKPa: side ? side.faces[0].result.pressureBaseKPa : model.sideLayout || model.elementType === 'SLAB' || model.gammaKNm3 === null ? null : model.gammaKNm3 * model.heightMm / 1000 * actionFactor(model, 'HYDROSTATIC_SIDE'),
     verticalLoads, loadPath, ringlock, ringlockReference,
     soffit: candidate ? {expectedForceN: candidate.expectedForceN, terminalForceN, forceResidualN, momentResidual,

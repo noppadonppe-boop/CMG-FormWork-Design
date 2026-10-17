@@ -1,5 +1,6 @@
 import {finite, identifier, record, signed, uniqueIds} from './common.js';
 import {resolveMemberElastic, validateElasticBinding, type ElasticMemberBinding} from './elasticBinding.js';
+import {beamMemberEvidenceReference, validateBeamMemberEvidence, type BeamMemberEvidence} from './beamResistance.js';
 
 export interface IndependentWalerRail {
   id: string; family: 'SHS' | 'RHS' | 'CHS' | 'C' | 'C_LIP' | null;
@@ -7,6 +8,7 @@ export interface IndependentWalerRail {
   sectionRef: string; materialRef: string; axisEvidenceRef: string;
   continuity: 'CONTINUOUS' | 'SPLICED' | null; spliceStationsMm: (number | null)[]; spliceEvidenceRef: string;
   binding?: ElasticMemberBinding | null;
+  resistanceEvidence?: BeamMemberEvidence[] | null;
 }
 export interface WalerSupportFitting {
   supportId: string; plateRef: string; plateWidthAcrossRailsMm: number | null; plateThicknessMm: number | null;
@@ -39,8 +41,12 @@ export function validateWalerPair(raw: unknown): asserts raw is IndependentWaler
   if (!Array.isArray(p.rails) || p.rails.length !== 2) throw Error('Exactly two physical rails required');
   uniqueIds(p.rails as IndependentWalerRail[], 'physical waler rails');
   for (const rawRail of p.rails) {
-    const r = exact(rawRail, Object.keys(emptyWalerPair().rails[0]), 'waler rail', ['binding']);
+    const r = exact(rawRail, Object.keys(emptyWalerPair().rails[0]), 'waler rail', ['binding', 'resistanceEvidence']);
     if (r.binding !== null && r.binding !== undefined) validateElasticBinding(r.binding);
+    if (r.resistanceEvidence !== null && r.resistanceEvidence !== undefined) {
+      if (!Array.isArray(r.resistanceEvidence) || r.resistanceEvidence.length > 3) throw Error('At most three 1D member evidence rows are supported per rail');
+      r.resistanceEvidence.forEach(validateBeamMemberEvidence);
+    }
     if (![null, 'SHS', 'RHS', 'CHS', 'C', 'C_LIP'].includes(r.family as string | null) || ![null, 0, 90].includes(r.orientationDeg as number | null) || ![null, 'CONTINUOUS', 'SPLICED'].includes(r.continuity as string | null)) throw Error('Invalid waler family/orientation/continuity');
     for (const key of ['E_MPa', 'bendingI_mm4']) if (r[key] !== null) finite(r[key], key);
     for (const key of ['sectionRef', 'materialRef', 'axisEvidenceRef', 'spliceEvidenceRef']) text(r[key], key);
@@ -81,8 +87,15 @@ export function resolveWalerPair(pair: IndependentWalerPair, lengthMm: number, s
     if (r.continuity !== 'CONTINUOUS' || r.spliceStationsMm.length) throw Error(`${r.id}: actual splice stiffness/transfer model required; continuity cannot be assumed across a splice`);
     if (family === 'CHS') blockers.push(`${r.id}:CHS_SADDLE_RETAINER_AND_CURVED_CONTACT_REQUIRED`);
     if (family === 'C_LIP') blockers.push(`${r.id}:C_LIP_EFFECTIVE_SECTION_DISTORTIONAL_AND_LOCAL_METHOD_REQUIRED`);
-    return {id: r.id, E_MPa: bound?.E_MPa ?? finite(r.E_MPa, `${r.id}: E`), I_mm4: bound?.I_mm4 ?? finite(r.bendingI_mm4, `${r.id}: actual bending I`), share: i === 0 ? pair.rail1Share! : 1 - pair.rail1Share!};
-  }) as [{id: string; E_MPa: number; I_mm4: number; share: number}, {id: string; E_MPa: number; I_mm4: number; share: number}];
+    return {id: r.id, E_MPa: bound?.E_MPa ?? finite(r.E_MPa, `${r.id}: E`), I_mm4: bound?.I_mm4 ?? finite(r.bendingI_mm4, `${r.id}: actual bending I`),
+      share: i === 0 ? pair.rail1Share! : 1 - pair.rail1Share!,
+      memberEvidenceRef: beamMemberEvidenceReference('WALER_RAIL', {id: r.id, family: r.family, E_MPa: r.E_MPa, bendingI_mm4: r.bendingI_mm4,
+        orientationDeg: r.orientationDeg, sectionRef: r.sectionRef, materialRef: r.materialRef, axisEvidenceRef: r.axisEvidenceRef, binding: r.binding ?? null}),
+      resistanceEvidence: r.resistanceEvidence ?? []};
+  }) as [
+    {id: string; E_MPa: number; I_mm4: number; share: number; memberEvidenceRef: string; resistanceEvidence: BeamMemberEvidence[]},
+    {id: string; E_MPa: number; I_mm4: number; share: number; memberEvidenceRef: string; resistanceEvidence: BeamMemberEvidence[]}
+  ];
   for (const f of pair.supportFittings) if (!supportIds.includes(f.supportId)) throw Error(`Fitting refers to unknown actual support ${f.supportId}`);
   for (const id of supportIds) {
     const f = pair.supportFittings.find(f => f.supportId === id);

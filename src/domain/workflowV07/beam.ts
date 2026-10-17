@@ -1,21 +1,34 @@
 import {clone, finite, signed, uniqueIds} from './common.js';
+import {screenBeamMemberResistance, type BeamMemberActionBasis, type BeamMemberEvidence, type BeamMemberResistanceScreen} from './beamResistance.js';
 
-export interface BeamSupport {id: string; xMm: number; rotationFixed?: boolean}
+/** displacementMm: prescribed translation in the load-positive direction (coupled support movement). */
+export interface BeamSupport {id: string; xMm: number; rotationFixed?: boolean; displacementMm?: number}
 export interface BeamLoad {id: string; xMm: number; forceN: number}
 export interface BeamPatch {id: string; startMm: number; endMm: number; startNPerMm: number; endNPerMm: number}
 export interface BeamInput {
   id: string; revision: string; lengthMm: number; E_MPa: number; I_mm4: number;
   supports: BeamSupport[]; points: BeamLoad[]; patches: BeamPatch[];
+  actionBasis?: BeamMemberActionBasis;
+  memberEvidenceRef?: string | null;
+  resistanceEvidence?: BeamMemberEvidence[] | null;
 }
 export interface BeamReaction {supportId: string; xMm: number; forceN: number; momentNmm: number}
 export interface BeamSegment {
   startMm: number; lengthMm: number; EI: number; displacementMm: number; rotation: number;
   moment0Nmm: number; shear0N: number; q0NPerMm: number; gradient: number;
 }
+export interface BeamCriticalStation {
+  stationMm: number;
+  segmentIndex: number;
+  /** At a point-load/support split, identifies the one-sided segment value. */
+  side: 'LEFT_LIMIT' | 'INTERIOR' | 'RIGHT_LIMIT';
+}
 export interface BeamAnalysis {
   input: BeamInput;
   id: string; revision: string; model: 'ELASTIC_CONTINUOUS_BEAM'; segments: BeamSegment[];
   reactions: BeamReaction[]; maxMomentNmm: number; maxShearN: number; maxDeflectionMm: number;
+  criticalStations: {moment: BeamCriticalStation; shear: BeamCriticalStation; deflection: BeamCriticalStation};
+  resistanceScreen: BeamMemberResistanceScreen;
   totalLoadN: number; forceResidualN: number; momentResidualNmm: number; status: 'LOAD_PREVIEW';
 }
 const evaluate = (a: number[], x: number) => a.reduceRight((s, c) => s * x + c, 0);
@@ -67,7 +80,7 @@ export function beamAt(s: BeamSegment, xMm: number) {
     deflectionMm: s.displacementMm + s.rotation * x - m * x ** 2 / (2 * EI) - v * x ** 3 / (6 * EI) + q * x ** 4 / (24 * EI) + g * x ** 5 / (120 * EI)};
 }
 
-/** Euler–Bernoulli, prismatic constant EI, small displacement, rigid vertical supports, no settlement.
+/** Euler–Bernoulli, prismatic constant EI, small displacement, rigid vertical supports (zero or explicitly prescribed translation).
  * Actual point and linear patch loads. Downward force and clockwise nodal rotation/moment positive.
  * Does not implement steel/plywood strength, frame stability, springs, joint slip or second order.
  */
@@ -77,7 +90,7 @@ export function analyzeBeam(o: BeamInput): BeamAnalysis {
   if (o.supports.length + o.points.length + o.patches.length * 2 > 120) throw Error('Beam node limit exceeded');
   uniqueIds(o.supports, 'supports'); uniqueIds(o.points, 'point loads'); uniqueIds(o.patches, 'patch loads');
   const station = (v: number) => {signed(v, 'station'); if (v < 0 || v > L) throw Error('Station outside beam'); return v;};
-  o.supports.forEach(s => station(s.xMm));
+  o.supports.forEach(s => {station(s.xMm); if (s.displacementMm !== undefined) signed(s.displacementMm, 'prescribed support displacement');});
   if (new Set(o.supports.map(s => s.xMm)).size !== o.supports.length) throw Error('Duplicate supports at one station');
   o.points.forEach(p => {station(p.xMm); finite(p.forceN, 'point load', true);});
   o.patches.forEach(p => {station(p.startMm); station(p.endMm); if (p.endMm <= p.startMm) throw Error('Invalid patch'); finite(p.startNPerMm, 'patch start', true); finite(p.endNPerMm, 'patch end', true);});
@@ -106,8 +119,10 @@ export function analyzeBeam(o: BeamInput): BeamAnalysis {
   const fixed = new Set<number>();
   o.supports.forEach(s => {const i = xs.indexOf(s.xMm) * 2; fixed.add(i); if (s.rotationFixed) fixed.add(i + 1);});
   const free = Array.from({length: n}, (_, i) => i).filter(i => !fixed.has(i));
-  const solution = solve(free.map(a => free.map(b => K[a][b])), free.map(i => F[i]));
-  const d = Array(n).fill(0) as number[]; free.forEach((id, i) => d[id] = solution[i]);
+  const d = Array(n).fill(0) as number[];
+  o.supports.forEach(s => {d[xs.indexOf(s.xMm) * 2] = s.displacementMm ?? 0;});
+  const solution = solve(free.map(a => free.map(b => K[a][b])), free.map(i => F[i] - [...fixed].reduce((sum, j) => sum + K[i][j] * d[j], 0)));
+  free.forEach((id, i) => d[id] = solution[i]);
   const residual = K.map((row, i) => row.reduce((v, k, j) => v + k * d[j], -F[i]));
   const reactions = o.supports.map(s => {const i = xs.indexOf(s.xMm) * 2; return {supportId: s.id, xMm: s.xMm, forceN: residual[i], momentNmm: s.rotationFixed ? residual[i + 1] * L : 0};});
   const segments = elements.map((e, i): BeamSegment => {
@@ -116,22 +131,47 @@ export function analyzeBeam(o: BeamInput): BeamAnalysis {
       moment0Nmm: end[1] * L, shear0N: -end[0], q0NPerMm: e.q0, gradient: e.gradient};
   });
   let maxMomentNmm = 0, maxShearN = 0, maxDeflectionMm = 0;
-  for (const s of segments) {
+  let momentStation: BeamCriticalStation | null = null, shearStation: BeamCriticalStation | null = null, deflectionStation: BeamCriticalStation | null = null;
+  const locate = (s: BeamSegment, segmentIndex: number, localXMm: number): BeamCriticalStation => {
+    const tolerance = Math.max(1, s.lengthMm) * 1e-10;
+    const side = localXMm <= tolerance ? 'RIGHT_LIMIT' : s.lengthMm - localXMm <= tolerance ? 'LEFT_LIMIT' : 'INTERIOR';
+    return {stationMm: s.startMm + localXMm, segmentIndex, side};
+  };
+  for (const [segmentIndex, s] of segments.entries()) {
     const l = s.lengthMm, m = s.moment0Nmm, v = s.shear0N, q = s.q0NPerMm, g = s.gradient;
     const momentStations = [0, 1, ...roots([v, -q * l, -g * l * l / 2])];
     const shearStations = [0, 1, ...roots([q, g * l])];
     const deflectionStations = [0, 1, ...roots([s.rotation, -m * l / s.EI, -v * l * l / (2 * s.EI), q * l ** 3 / (6 * s.EI), g * l ** 4 / (24 * s.EI)])];
-    maxMomentNmm = Math.max(maxMomentNmm, ...momentStations.map(t => Math.abs(beamAt(s, t * l).momentNmm)));
-    maxShearN = Math.max(maxShearN, ...shearStations.map(t => Math.abs(beamAt(s, t * l).shearN)));
-    maxDeflectionMm = Math.max(maxDeflectionMm, ...deflectionStations.map(t => Math.abs(beamAt(s, t * l).deflectionMm)));
+    for (const t of momentStations) {
+      const localXMm = t * l, value = Math.abs(beamAt(s, localXMm).momentNmm);
+      if (!momentStation || value > maxMomentNmm) {maxMomentNmm = value; momentStation = locate(s, segmentIndex, localXMm);}
+    }
+    for (const t of shearStations) {
+      const localXMm = t * l, value = Math.abs(beamAt(s, localXMm).shearN);
+      if (!shearStation || value > maxShearN) {maxShearN = value; shearStation = locate(s, segmentIndex, localXMm);}
+    }
+    for (const t of deflectionStations) {
+      const localXMm = t * l, value = Math.abs(beamAt(s, localXMm).deflectionMm);
+      if (!deflectionStation || value > maxDeflectionMm) {maxDeflectionMm = value; deflectionStation = locate(s, segmentIndex, localXMm);}
+    }
   }
+  if (!momentStation || !shearStation || !deflectionStation) throw Error('Beam governing stations missing');
   const totalLoadN = o.points.reduce((s, p) => s + p.forceN, 0) + o.patches.reduce((s, p) => s + (p.startNPerMm + p.endNPerMm) / 2 * (p.endMm - p.startMm), 0);
   const loadMoment = o.points.reduce((s, p) => s + p.forceN * p.xMm, 0) + o.patches.reduce((s, p) => {
     const len = p.endMm - p.startMm; return s + p.startMm * (p.startNPerMm + p.endNPerMm) * len / 2 + len ** 2 * (p.startNPerMm / 6 + p.endNPerMm / 3);
   }, 0);
   const forceResidualN = totalLoadN + reactions.reduce((s, r) => s + r.forceN, 0);
   const momentResidualNmm = loadMoment + reactions.reduce((s, r) => s + r.forceN * r.xMm + r.momentNmm, 0);
-  if (Math.abs(forceResidualN) > Math.max(1, totalLoadN) * 1e-7 || Math.abs(momentResidualNmm) > Math.max(1, totalLoadN * L) * 1e-7) throw Error('Beam equilibrium failed');
+  // Prescribed movement creates self-equilibrated reactions, so scale by reaction magnitudes too.
+  const reactionScale = reactions.reduce((s, r) => s + Math.abs(r.forceN), 0), reactionMomentScale = reactions.reduce((s, r) => s + Math.abs(r.forceN * r.xMm) + Math.abs(r.momentNmm), 0);
+  if (Math.abs(forceResidualN) > Math.max(1, Math.abs(totalLoadN), reactionScale) * 1e-7 || Math.abs(momentResidualNmm) > Math.max(1, Math.abs(totalLoadN) * L, reactionMomentScale) * 1e-7) throw Error('Beam equilibrium failed');
+  const supportStations = [...new Set([0, L, ...o.supports.map(s => s.xMm)])].sort((a, b) => a - b);
+  const maximumUnsupportedSpanMm = Math.max(...supportStations.slice(1).map((x, i) => x - supportStations[i]));
+  const resistanceScreen = screenBeamMemberResistance({evidence: o.resistanceEvidence, actionBasis: o.actionBasis,
+    memberEvidenceRef: o.memberEvidenceRef, maximumUnsupportedSpanMm,
+    demands: {FLEXURE: maxMomentNmm, SHEAR: maxShearN, DEFLECTION: maxDeflectionMm}});
   return {input: clone(o), id: o.id, revision: o.revision, model: 'ELASTIC_CONTINUOUS_BEAM', segments, reactions, maxMomentNmm, maxShearN, maxDeflectionMm,
+    criticalStations: {moment: momentStation, shear: shearStation, deflection: deflectionStation},
+    resistanceScreen,
     totalLoadN, forceResidualN, momentResidualNmm, status: 'LOAD_PREVIEW'};
 }

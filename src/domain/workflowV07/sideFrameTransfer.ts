@@ -3,26 +3,31 @@ import type {FrameAction, FrameNode, FrameVector} from './frameLinear.js';
 import {pairFaces} from './geometry.js';
 import type {WorkflowModel} from './model.js';
 import {analyzeSideLayout, type SideEndpoint, type SideNode} from './sideLayout.js';
+import {validateSideCoupling, type SideCouplingDefinition} from './sideCoupled.js';
 
 export interface SideFrameMapping extends SideEndpoint {
   frameNodeId: string; connectionEvidenceRef: string; offsetEvidenceRef: string | null;
 }
 export interface SideFrameDefinition {
-  schemaVersion: '1'; mode: 'DOWNSTREAM_SIDE_SUPPORTS_ONLY' | null;
+  /** MIXED: actual balanced tie routes keep their own supports; only every untied support goes to the frame.
+   * COUPLED: ties (E·A/L), frame flexibility and declared corner connectors share support movement. */
+  schemaVersion: '1'; mode: 'DOWNSTREAM_SIDE_SUPPORTS_ONLY' | 'MIXED_TIED_AND_FRAME_SUPPORTS' | 'COUPLED_TIE_FRAME_SUPPORTS' | null;
   separationEvidenceRef: string; mappings: SideFrameMapping[];
+  coupling?: SideCouplingDefinition | null;
 }
 export const emptySideFrame = (): SideFrameDefinition => ({schemaVersion: '1', mode: null, separationEvidenceRef: '', mappings: []});
 export const sideSupportKey = (s: SideEndpoint) => canonical([s.faceId, s.walerId, s.supportId]);
 function text(v: unknown, max: number) {if (typeof v !== 'string' || v.length > max) throw Error('Invalid side/frame text');}
-function exact(raw: unknown, keys: string[]) {
+function exact(raw: unknown, keys: string[], optional: string[] = []) {
   const v = record(raw);
-  if (keys.some(k => !Object.hasOwn(v, k)) || Object.keys(v).some(k => !keys.includes(k))) throw Error('Side/frame unknown/missing fields or authority metadata');
+  if (keys.some(k => !Object.hasOwn(v, k)) || Object.keys(v).some(k => !keys.includes(k) && !optional.includes(k))) throw Error('Side/frame unknown/missing fields or authority metadata');
   return v;
 }
 export function validateSideFrame(raw: unknown): asserts raw is SideFrameDefinition {
-  const d = exact(raw, Object.keys(emptySideFrame()));
-  if (d.schemaVersion !== '1' || ![null, 'DOWNSTREAM_SIDE_SUPPORTS_ONLY'].includes(d.mode as string | null) || !Array.isArray(d.mappings) || d.mappings.length > 1000) throw Error('Invalid side/frame schema/mode or 1000-mapping limit');
+  const d = exact(raw, Object.keys(emptySideFrame()), ['coupling']);
+  if (d.schemaVersion !== '1' || ![null, 'DOWNSTREAM_SIDE_SUPPORTS_ONLY', 'MIXED_TIED_AND_FRAME_SUPPORTS', 'COUPLED_TIE_FRAME_SUPPORTS'].includes(d.mode as string | null) || !Array.isArray(d.mappings) || d.mappings.length > 1000) throw Error('Invalid side/frame schema/mode or 1000-mapping limit');
   text(d.separationEvidenceRef, 2000);
+  if (d.coupling != null) validateSideCoupling(d.coupling);
   for (const m of d.mappings) {
     const r = exact(m, ['faceId', 'walerId', 'supportId', 'frameNodeId', 'connectionEvidenceRef', 'offsetEvidenceRef']);
     for (const k of ['faceId', 'walerId', 'supportId', 'frameNodeId']) text(r[k], 300);
@@ -45,14 +50,37 @@ export function transferSideReactionsToFrame(model: WorkflowModel, supplied: Sid
   for (const k of ['revisionId', 'stageId', 'loadCaseId'] as const) identifier(context[k], k);
   const layout = model.sideLayout;
   if (context.revisionId !== model.revisionId || !layout || layout.stageId !== context.stageId || layout.loadCaseId !== context.loadCaseId) throw Error('CURRENT_SAME_STAGE_CASE_SIDE_REACTIONS_REQUIRED');
-  if (!['COLUMN_YOKE', 'GROUND_BRACED'].includes(model.sideTopology ?? '') || layout.ties.length) throw Error('EXPLICIT_YOKE_OR_GROUND_BRACED_TOPOLOGY_WITHOUT_TIES_REQUIRED');
-  if (definition.mode !== 'DOWNSTREAM_SIDE_SUPPORTS_ONLY' || !definition.separationEvidenceRef.trim()) throw Error('DOWNSTREAM_FRAME_SCOPE_AND_NO_DUPLICATED_SIDE_MEMBERS_EVIDENCE_REQUIRED');
+  if (definition.mode === 'COUPLED_TIE_FRAME_SUPPORTS') throw Error('COUPLED_MODE_USES_THE_COMPATIBILITY_SOLVER_NOT_ONE_WAY_TRANSFER');
+  if (definition.coupling != null) throw Error('UNUSED_COUPLING_DEFINITION_IN_ONE_WAY_MODE');
+  const mixed = definition.mode === 'MIXED_TIED_AND_FRAME_SUPPORTS';
+  if (mixed) {
+    if (!['THROUGH_TIE', 'SEGMENTED_TIE'].includes(model.sideTopology ?? '') || !layout.ties.length) throw Error('MIXED_MODE_REQUIRES_ACTUAL_TIE_TOPOLOGY_AND_TIE_ROUTES');
+  } else if (!['COLUMN_YOKE', 'GROUND_BRACED'].includes(model.sideTopology ?? '') || layout.ties.length) throw Error('EXPLICIT_YOKE_OR_GROUND_BRACED_TOPOLOGY_WITHOUT_TIES_REQUIRED');
+  if (!definition.mode || !definition.separationEvidenceRef.trim()) throw Error('DOWNSTREAM_FRAME_SCOPE_AND_NO_DUPLICATED_SIDE_MEMBERS_EVIDENCE_REQUIRED');
   const side = analyzeSideLayout(model, layout), actual = side.nodes;
   const ordered = (v: SideNode[]) => [...v].sort((a, b) => sideSupportKey(a).localeCompare(sideSupportKey(b)));
   if (!actual.length || actual.length > 1000 || canonical(ordered(supplied)) !== canonical(ordered(actual))) throw Error('SIDE_REACTIONS_STALE_TAMPERED_OR_INCOMPLETE');
+  // A tie is accepted as self-equilibrated only when both actual end demands are equal,
+  // nonnegative, moment-free, opposite and collinear with the tie centreline.
+  const tiedKeys = new Set(side.ties.flatMap(t => [t.a.id, t.b.id]));
+  const tiedForceN: FrameVector = [0, 0, 0], tiedPoints: {point: FrameVector; force: FrameVector}[] = [];
+  for (const t of side.ties) {
+    const fa: FrameVector = [t.a.forceN * t.a.normal.x, t.a.forceN * t.a.normal.y, 0], fb: FrameVector = [t.b.forceN * t.b.normal.x, t.b.forceN * t.b.normal.y, 0];
+    const axis = [t.b.point.xMm - t.a.point.xMm, t.b.point.yMm - t.a.point.yMm], length = Math.hypot(axis[0], axis[1]);
+    const scale = Math.max(1, Math.abs(t.a.forceN), Math.abs(t.b.forceN));
+    const collinear = length > 0 && Math.abs(t.a.normal.x * axis[1] - t.a.normal.y * axis[0]) / length <= 1e-9 && Math.abs(t.b.normal.x * axis[1] - t.b.normal.y * axis[0]) / length <= 1e-9;
+    if (t.demandKN === null || !collinear || Math.hypot(fa[0] + fb[0], fa[1] + fb[1]) > scale * 1e-7) throw Error(`${t.id}:MIXED_TIE_NOT_SELF_EQUILIBRATED_COUPLED_TIE_FRAME_MODEL_REQUIRED`);
+    for (const [n, f] of [[t.a, fa], [t.b, fb]] as const) {
+      tiedPoints.push({point: [n.point.xMm, n.point.yMm, n.point.zMm], force: f});
+      for (let d = 0; d < 3; d++) tiedForceN[d] += f[d];
+    }
+  }
+  const framed = mixed ? actual.filter(s => !tiedKeys.has(s.id)) : actual;
+  if (mixed && !framed.length) throw Error('MIXED_MODE_HAS_NO_UNTIED_SUPPORT_FOR_FRAME');
+  if (definition.mappings.some(m => tiedKeys.has(sideSupportKey(m)))) throw Error('TIED_SUPPORT_CANNOT_ALSO_BE_MAPPED_TO_FRAME');
   const faces = pairFaces(model.vertices, model.heightMm).faces, used = new Set<string>();
   const receivingPoints = new Map<string, FrameVector>();
-  const sources = ordered(actual).map((s, i) => {
+  const sources = ordered(framed).map((s, i) => {
     const key = sideSupportKey(s), mapping = definition.mappings.find(m => sideSupportKey(m) === key);
     const node = nodes.find(n => n.id === mapping?.frameNodeId), face = faces.find(f => f.id === s.faceId);
     if (!mapping || !node || !face) throw Error('Missing actual side support or receiving frame mapping');
@@ -99,11 +127,19 @@ export function transferSideReactionsToFrame(model: WorkflowModel, supplied: Sid
     }
     forceScale += Math.hypot(...a.forceN); momentScale += Math.hypot(...a.momentNmm) + Math.hypot(...originalLever) + Math.hypot(...targetLever) + Math.hypot(...offsetLever);
   }
+  // Tied support demands stay in the ties; they must close with the frame-carried part.
+  const tiedMomentNmm: FrameVector = [0, 0, 0];
+  for (const t of tiedPoints) {
+    const lever = cross(t.point.map((v, d) => v - origin[d]) as FrameVector, t.force);
+    for (let d = 0; d < 3; d++) {tiedMomentNmm[d] += lever[d]; forceResidualN[d] += t.force[d]; momentResidualNmm[d] += lever[d];}
+    forceScale += Math.hypot(...t.force); momentScale += Math.hypot(...lever);
+  }
   for (let d = 0; d < 3; d++) {forceResidualN[d] -= pressureForceN[d]; momentResidualNmm[d] -= pressureMomentNmm[d];}
   const result = {revisionId: model.revisionId, stageId: layout.stageId, loadCaseId: layout.loadCaseId, mode: definition.mode,
     separationEvidenceRef: definition.separationEvidenceRef, sources, actions: sources.map(s => s.action),
+    tiedSupportIds: mixed ? [...tiedKeys].sort() : [],
     missingPhysicalFaceIds: faces.filter(f => !layout.faces.some(s => s.faceId === f.id)).map(f => f.id),
-    equilibrium: {originMm: origin, pressureForceN, pressureMomentNmm, sourceForceN, sourceMomentNmm, forceResidualN, momentResidualNmm}};
+    equilibrium: {originMm: origin, pressureForceN, pressureMomentNmm, sourceForceN, sourceMomentNmm, tiedForceN, tiedMomentNmm, forceResidualN, momentResidualNmm}};
   canonical(result);
   if (Math.hypot(...forceResidualN) > forceScale * 1e-7 || Math.hypot(...momentResidualNmm) > momentScale * 1e-7) throw Error('SIDE_FRAME_FORCE_OR_MOMENT_TRANSFER_BALANCE_FAILED');
   return result;

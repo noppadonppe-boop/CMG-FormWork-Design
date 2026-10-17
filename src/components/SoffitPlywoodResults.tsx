@@ -1,6 +1,7 @@
 import React from 'react';
 import type {WorkflowModel, previewWorkflow} from '../domain/workflowV07/model';
 import {PlywoodBindingSummary} from './PlywoodBinding';
+import {beamStationLabel} from './beamTrace';
 const show = (v: number | null) => v === null ? 'UNKNOWN' : v.toLocaleString('en-US', {maximumFractionDigits: 5});
 export function SoffitPlywoodResults({model, preview}: {model: WorkflowModel; preview: ReturnType<typeof previewWorkflow>}) {
   const p = model.soffitLayout?.plywood; if (!p) return null;
@@ -24,7 +25,7 @@ export function SoffitPlywoodResults({model, preview}: {model: WorkflowModel; pr
         </svg>;
       })()}
       <p>วิเคราะห์แยกตามช่วงคร่าว X และขอบเขตโหลด Y โดยเก็บขอบ Patch ตาม X จริง แรงปฏิกิริยาแถบ 1 m ถูกแปลงเป็นโหลดเส้นเข้าคร่าวในช่วง Y จริง ค่า q ในตารางเป็นค่าเฉลี่ยเพื่อแสดงภาพเท่านั้น การวิเคราะห์ใช้ Patch ของแต่ละแหล่งโดยตรง</p>
-      <table><thead><tr><th>แถบจริง / โซน</th><th>X เริ่ม/จบ · mm</th><th>Y เริ่ม/จบ · mm</th><th>q เฉลี่ยแสดงภาพ · kPa / Patch จริง</th><th>M · N·mm/m</th><th>V · N/m</th><th>δ · mm</th><th>หน่วยแรงดัดที่ต้องรับ · MPa</th></tr></thead><tbody>{deck.strips.map(s => <tr key={s.id}><td>{s.id}</td><td>{show(s.startXMm)} / {show(s.endXMm)}</td><td>{show(s.startYMm)} / {show(s.endYMm)}</td><td>{show(s.qKPa)} / {s.spatialPatches.map(a => `${a.id}: X ${show(a.startXMm)}–${show(a.endXMm)} mm / ${show(a.qKPa)} kPa`).join('; ') || 'ไม่มีโหลดที่ระบุในโซนนี้'}</td><td>{show(s.analysis.maxMomentNmm)}</td><td>{show(s.analysis.maxShearN)}</td><td>{show(s.analysis.maxDeflectionMm)}</td><td>{show(s.stressDemandMPa)}</td></tr>)}</tbody></table>
+      <table><thead><tr><th>แถบจริง / โซน</th><th>X เริ่ม/จบ · mm</th><th>Y เริ่ม/จบ · mm</th><th>q เฉลี่ยแสดงภาพ · kPa / Patch จริง</th><th>Mmax · N·mm/m @ station</th><th>Vmax · N/m @ station</th><th>δmax · mm @ station</th><th>หน่วยแรงดัดที่ต้องรับ · MPa</th></tr></thead><tbody>{deck.strips.map(s => <tr key={s.id}><td>{s.id}</td><td>{show(s.startXMm)} / {show(s.endXMm)}</td><td>{show(s.startYMm)} / {show(s.endYMm)}</td><td>{show(s.qKPa)} / {s.spatialPatches.map(a => `${a.id}: X ${show(a.startXMm)}–${show(a.endXMm)} mm / ${show(a.qKPa)} kPa`).join('; ') || 'ไม่มีโหลดที่ระบุในโซนนี้'}</td><td>{show(s.analysis.maxMomentNmm)} @ {beamStationLabel(s.analysis.criticalStations.moment)}</td><td>{show(s.analysis.maxShearN)} @ {beamStationLabel(s.analysis.criticalStations.shear)}</td><td>{show(s.analysis.maxDeflectionMm)} @ {beamStationLabel(s.analysis.criticalStations.deflection)}</td><td>{show(s.stressDemandMPa)}</td></tr>)}</tbody></table>
       <details><summary>แรงส่งต่อรายแถบ → คร่าว ({deck.transfers.length})</summary><table><thead><tr><th>แถบต้นทาง / Revision</th><th>คร่าวปลายทาง</th><th>X / Y เริ่ม–จบ · mm</th><th>โหลดเส้น · N/mm</th></tr></thead><tbody>{deck.transfers.map((t, i) => <tr key={i}><td>{t.sourceStripId} / {t.upstreamRevision}</td><td>{t.targetJoistId}</td><td>{show(t.xMm)} / {show(t.startYMm)}–{show(t.endYMm)}</td><td>{show(t.lineLoadNPerMm)}</td></tr>)}</tbody></table></details>
     </>}
     <p>ผลแถบนี้ยังไม่ตรวจกำลังผลิตภัณฑ์ rolling shear การยึดแผ่น รองรับขอบ หรือแผ่นสองทาง ไม่มีการใช้ค่า characteristic เป็น allowable โดยอัตโนมัติ</p>

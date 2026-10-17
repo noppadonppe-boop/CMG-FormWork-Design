@@ -1,0 +1,15 @@
+{
+  "firestore": {"rules": "firestore.rules", "indexes": "firestore.indexes.json"},
+  "storage": {"rules": "storage.rules"},
+  "functions": [{"source": "functions", "codebase": "formwork", "runtime": "nodejs22"}],
+  "emulators": {
+    "auth": {"port": 9109},
+    "firestore": {"port": 8180, "websocketPort": 9250},
+    "storage": {"port": 9299},
+    "functions": {"port": 5101},
+    "hub": {"port": 4410},
+    "logging": {"port": 4510},
+    "ui": {"enabled": true, "port": 4100},
+    "singleProjectMode": true
+  }
+}

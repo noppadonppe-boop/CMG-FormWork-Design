@@ -1,5 +1,6 @@
 import {expect, it} from 'vitest';
 import {analyzeBeam, type BeamInput} from '../src/domain/workflowV07/beam';
+import {emptyBeamMemberEvidence} from '../src/domain/workflowV07/beamResistance';
 import {compareLocalBeamInputs, evaluateCoverageReview, requirementKey, requirementRef, stampCoverageReview, validateCoverageReview} from '../src/domain/workflowV07/coverageReview';
 import {applyCoverageReview, parseWorkflowModel, previewWorkflow, regenerateDraftLayouts, reviseDraft} from '../src/domain/workflowV07/model';
 import {contentHash, documentView, freezeDesign, importDraft} from '../src/domain/workflowV07/snapshot';
@@ -42,6 +43,16 @@ it('ignores load/support labels and input order while rejecting unknown local mo
   expect(() => compareLocalBeamInputs(a, {...b, composite: true} as BeamInput)).toThrow(/authority/);
   b.points[0].xMm = 1001; expect(() => compareLocalBeamInputs(a, b)).toThrow(/station/);
   b.points[0].xMm = 350; b.supports[0].rotationFixed = null as never; expect(() => compareLocalBeamInputs(a, b)).toThrow(/restraint/);
+});
+it('accepts explicit evidence fields but compares only 1D actions and requires a matching action basis', () => {
+  const a = asymmetricBeam(), b = structuredClone(a);
+  a.actionBasis = b.actionBasis = 'SERVICE';
+  a.memberEvidenceRef = 'member-A'; b.memberEvidenceRef = 'member-B';
+  a.resistanceEvidence = [{...emptyBeamMemberEvidence('FLEXURE'), limit: 1e6}];
+  b.resistanceEvidence = [{...emptyBeamMemberEvidence('FLEXURE'), limit: 2e6}];
+  expect(compareLocalBeamInputs(a, b).equivalent).toBe(true);
+  b.actionBasis = 'FACTORED';
+  expect(compareLocalBeamInputs(a, b).differences).toContain('actionBasis');
 });
 it('retains every actual member/check/case/revision row and all unassigned specifications rather than inferring coverage from present representatives', () => {
   const model = coverageModel(), p = previewWorkflow(model), matrix = p.coverageReview;

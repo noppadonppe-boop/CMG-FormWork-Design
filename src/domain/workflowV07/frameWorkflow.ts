@@ -9,6 +9,7 @@ import {assemblyFrameIssues, evaluateRinglockAssembly} from './ringlockAssembly.
 import {actionFactor} from './caseFactors.js';
 import {analyzeSideLayout, type SideNode} from './sideLayout.js';
 import {emptySideFrame, transferSideReactionsToFrame, validateSideFrame, type SideFrameDefinition} from './sideFrameTransfer.js';
+import {analyzeCoupledSideSupports} from './sideCoupled.js';
 import {analyzeSecondOrderFrame, validateSecondOrderDefinition, type SecondOrderDefinition} from './frameSecondOrder.js';
 import {screenFrameMemberDemands, type FrameMemberDemandScreen} from './frameDemands.js';
 import {validateResistanceEvidence, type ResistanceEvidence} from './resistanceEvidence.js';
@@ -151,8 +152,11 @@ export function frameGeometryFromSoffit(model: WorkflowModel, reactions: Deliver
 }
 /** Only actual side support datums. No anchors, braces, connection stiffness or fixities. */
 export function frameGeometryFromSide(model: WorkflowModel): FrameLayoutDefinition {
-  if (!model.sideLayout || !['COLUMN_YOKE', 'GROUND_BRACED'].includes(model.sideTopology ?? '') || model.sideLayout.ties.length) throw Error('Explicit current yoke/ground-braced side layout without ties required');
-  const actual = analyzeSideLayout(model, model.sideLayout).nodes;
+  const mixed = !!model.sideLayout?.ties.length && ['THROUGH_TIE', 'SEGMENTED_TIE'].includes(model.sideTopology ?? '');
+  if (!model.sideLayout || (!mixed && (!['COLUMN_YOKE', 'GROUND_BRACED'].includes(model.sideTopology ?? '') || model.sideLayout.ties.length))) throw Error('Explicit current yoke/ground-braced side layout without ties, or tied layout with untied supports, required');
+  const side = analyzeSideLayout(model, model.sideLayout), tied = new Set(side.ties.flatMap(t => [t.a.id, t.b.id]));
+  // Mixed capture only lists untied supports; the scope still has to be selected explicitly.
+  const actual = side.nodes.filter(n => !tied.has(n.id));
   if (!actual.length || actual.length > 80) throw Error('SIDE_FRAME_GEOMETRY_EXCEEDS_80_NODE_LIMIT_OR_EMPTY; no support omitted');
   const result: FrameLayoutDefinition = {...emptyFrameLayout(), stageId: model.sideLayout.stageId, loadCaseId: model.sideLayout.loadCaseId,
     loadSource: 'SIDE_REACTIONS', sideTransfers: emptySideFrame()};
@@ -274,6 +278,8 @@ export function evaluateFrameLayout(model: WorkflowModel, layout: AppliedFrameLa
   let demands: FrameMemberDemandScreen | null = null;
   let sls: FrameSlsScreen | null = null;
   let sideTransfer: ReturnType<typeof transferSideReactionsToFrame> | null = null;
+  let sideCoupling: ReturnType<typeof analyzeCoupledSideSupports> | null = null;
+  let stability: {lateralActionIds: string[]; horizontalForceN: FrameVector; secondOrder: boolean; status: 'LATERAL_CASE_REQUIRED' | 'SECOND_ORDER_REQUIRED' | 'SCREENED_FOR_DECLARED_LATERAL_CASE'} | null = null;
   try {
     if (layout.revisionId !== model.revisionId || layout.inputDefinition !== sourceDefinition) throw Error('STALE_FRAME_LAYOUT_REANALYSIS_REQUIRED');
     const includesSide = ['SIDE_REACTIONS', 'SOFFIT_AND_SIDE_REACTIONS'].includes(layout.loadSource ?? '');
@@ -318,8 +324,12 @@ export function evaluateFrameLayout(model: WorkflowModel, layout: AppliedFrameLa
       blockers.push('SIDE_FRAME_ONE_WAY_SUPPORT_DEMANDS_ONLY_DISPLACEMENT_FEEDBACK_NOT_MODELED', 'SIDE_FRAME_CORNERS_CONTACT_CLAMP_ANCHOR_AND_FULL_SURFACE_COVERAGE_UNVERIFIED');
       if (!layout.sideTransfers || !sideNodes) throw Error('CURRENT_SIDE_SUPPORT_MAPPING_AND_REACTIONS_REQUIRED');
       if (layout.sideTransfers.mappings.some(m => layout.nodes.find(n => n.id === m.frameNodeId)?.role !== 'SIDE_SUPPORT')) throw Error('SIDE_REACTION_REQUIRES_DECLARED_SIDE_SUPPORT_NODE');
-      sideTransfer = transferSideReactionsToFrame(model, sideNodes, nodes, layout.sideTransfers, context);
-      actions.push(...sideTransfer.actions);
+      if (layout.sideTransfers.mode === 'MIXED_TIED_AND_FRAME_SUPPORTS') blockers.push('MIXED_TIE_FRAME_SUPPORTS_ONE_WAY_TIE_ELONGATION_AND_FRAME_DISPLACEMENT_COMPATIBILITY_NOT_MODELED');
+      // The coupled compatibility solve needs every other frame action first (see below).
+      if (layout.sideTransfers.mode !== 'COUPLED_TIE_FRAME_SUPPORTS') {
+        sideTransfer = transferSideReactionsToFrame(model, sideNodes, nodes, layout.sideTransfers, context);
+        actions.push(...sideTransfer.actions);
+      }
     } else {
       if (layout.sideTransfers != null) throw Error('UNUSED_SIDE_TRANSFER_DEFINITION');
       if (sameSide && layout.loadSource === 'FRAME_ACTIONS_ONLY') throw Error('SIDE_REACTIONS_CANNOT_BE_OMITTED_FROM_SAME_STAGE_CASE');
@@ -337,18 +347,47 @@ export function evaluateFrameLayout(model: WorkflowModel, layout: AppliedFrameLa
       actions.push({id: `EXTRA:${a.id}`, nodeId: a.nodeId, ...context, evidenceRef: a.evidenceRef, forceN: valueVector(a.forceN, 'explicit force N').map(scale) as FrameVector, momentNmm: valueVector(a.momentNmm, 'explicit moment Nmm').map(scale) as FrameVector,
         application: a.atNode ? 'AT_NODE' : {offsetMm: valueVector(a.offsetMm, 'force offset mm'), evidenceRef: a.offsetEvidenceRef}});
     }
-    const candidateInput: LinearFrameInput = {schemaVersion: 'frame-linear-1', units: 'N_MM_MPA_RAD', id: `${model.id}:FRAME`, revisionId: model.revisionId, stageId: layout.stageId,
-      loadCaseId: layout.loadCaseId, assumptionEvidenceRef: layout.assumptionEvidenceRef, nodes, elements, actions};
+    const frameInput = (list: FrameAction[]): LinearFrameInput => ({schemaVersion: 'frame-linear-1', units: 'N_MM_MPA_RAD', id: `${model.id}:FRAME`, revisionId: model.revisionId, stageId: layout.stageId,
+      loadCaseId: layout.loadCaseId, assumptionEvidenceRef: layout.assumptionEvidenceRef, nodes, elements, actions: list});
+    if (includesSide && layout.sideTransfers?.mode === 'COUPLED_TIE_FRAME_SUPPORTS') {
+      const side = model.sideLayout && model.sideLayout.stageId === layout.stageId && model.sideLayout.loadCaseId === layout.loadCaseId ? analyzeSideLayout(model, model.sideLayout) : null;
+      if (!side || !layout.sideTransfers.coupling || !layout.sideTransfers.separationEvidenceRef.trim()) throw Error('CURRENT_SAME_STAGE_CASE_SIDE_LAYOUT_COUPLING_DATA_AND_SEPARATION_EVIDENCE_REQUIRED');
+      if (canonical([...side.nodes].sort((a, b) => a.id.localeCompare(b.id))) !== canonical([...sideNodes!].sort((a, b) => a.id.localeCompare(b.id)))) throw Error('SIDE_REACTIONS_STALE_TAMPERED_OR_INCOMPLETE');
+      sideCoupling = analyzeCoupledSideSupports({side, coupling: layout.sideTransfers.coupling, actionBasis: layout.actionBasis!, frame: frameInput([...actions]),
+        mappings: layout.sideTransfers.mappings, context});
+      blockers.push(...sideCoupling.blockers);
+      actions.push(...sideCoupling.actions);
+    }
+    const candidateInput = frameInput(actions);
     canonical(candidateInput); input = candidateInput;
     analysis = analyzeLinearFrame(input); blockers.push(...analysis.blockers);
+    if (sideCoupling) {
+      // The solved frame must reproduce the coupled support movement at every mapped node.
+      const scale = Math.max(1e-6, ...sideCoupling.frameCompatibility.map(c => Math.abs(c.displacementMm)));
+      for (const c of sideCoupling.frameCompatibility) {
+        const d = analysis.nodes.find(n => n.id === c.frameNodeId)!.displacementMm, value = d[0] * c.normal.x + d[1] * c.normal.y;
+        if (Math.abs(value - c.displacementMm) > scale * 1e-6) throw Error(`${c.frameNodeId}:COUPLED_FRAME_DISPLACEMENT_COMPATIBILITY_FAILED`);
+      }
+    }
     if (layout.secondOrder) {secondOrder = analyzeSecondOrderFrame(input, layout.secondOrder); blockers.push(...secondOrder.blockers);}
+    if (includesSide) {
+      // Side-form stability is only screened through explicit lateral frame-node actions in this
+      // same Stage/case plus the second-order frame path; nothing is inferred from face pressure.
+      const lateral = actions.filter(a => a.id.startsWith('EXTRA:') && layout.additionalActions.find(d => `EXTRA:${d.id}` === a.id)?.kind !== 'SELF_WEIGHT' && Math.hypot(a.forceN[0], a.forceN[1]) > 0);
+      const horizontal = [0, 1].map(d => lateral.reduce((s, a) => s + a.forceN[d], 0));
+      stability = {lateralActionIds: lateral.map(a => a.id), horizontalForceN: [horizontal[0], horizontal[1], 0] as FrameVector, secondOrder: !!secondOrder,
+        status: !lateral.length ? 'LATERAL_CASE_REQUIRED' as const : !secondOrder ? 'SECOND_ORDER_REQUIRED' as const : 'SCREENED_FOR_DECLARED_LATERAL_CASE' as const};
+      blockers.push(stability.status === 'LATERAL_CASE_REQUIRED' ? 'SIDE_SYSTEM_STABILITY_REQUIRES_EXPLICIT_LATERAL_FRAME_ACTION_IN_THIS_CASE'
+        : stability.status === 'SECOND_ORDER_REQUIRED' ? 'SIDE_SYSTEM_STABILITY_REQUIRES_SECOND_ORDER_ANALYSIS_WITH_LATERAL_CASE'
+          : 'SIDE_SYSTEM_STABILITY_SCREENED_FOR_DECLARED_LATERAL_CASE_ONLY_COMBINATIONS_ANCHORS_AND_BRACING_REVIEW_REQUIRED');
+    }
     demands = screenFrameMemberDemands(analysis, secondOrder, layout.elements.map(e => ({id: e.id, role: e.role, resistance: e.resistance ?? null})), layout.actionBasis);
     blockers.push(...demands.blockers, ...demands.records.flatMap(r => r.missingInputs.map(m => `${r.memberId}:${m}`)));
     sls = screenFrameSls(analysis, layout.sls ?? [], layout.actionBasis);
     blockers.push(...sls.blockers, ...sls.records.flatMap(r => r.blockers.map(b => `${r.nodeId}/${r.quantity}:${b}`)));
   } catch (e) {blockers.push(`FRAME_INPUT_OR_SOLVE:${(e as Error).message}`);}
   const contractAudit = frameContractAudit(layout, analysis, secondOrder, demands, sls, blockers);
-  const result = {status: secondOrder?.status === 'FAIL' || demands?.status === 'FAIL' || sls?.status === 'FAIL' ? 'FAIL' as const : 'BLOCKED' as const, actionBasis: layout.actionBasis, input, analysis, secondOrder, demands, sls, sideTransfer, requiredChecks, contractAudit, blockers: [...new Set([...blockers, ...contractAudit.blockers])], constructionEligible: false as const, constructionRelease: 'NO_GO' as const};
+  const result = {status: secondOrder?.status === 'FAIL' || demands?.status === 'FAIL' || sls?.status === 'FAIL' || sideCoupling?.status === 'FAIL' ? 'FAIL' as const : 'BLOCKED' as const, actionBasis: layout.actionBasis, input, analysis, secondOrder, demands, sls, sideTransfer, sideCoupling, stability, requiredChecks, contractAudit, blockers: [...new Set([...blockers, ...contractAudit.blockers])], constructionEligible: false as const, constructionRelease: 'NO_GO' as const};
   producedFrames.set(result, {revision: model.revisionId, inputs: sourceDefinition, layout: canonical(layout), output: canonical(result)});
   return result;
 }

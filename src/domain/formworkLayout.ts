@@ -1,10 +1,12 @@
 import type {Point, Result} from './index.js';
 import {equalPositions} from './mechanics.js';
 import {sectionById, timberGrade} from './sectionStock.js';
+import type {ElementType} from './workflowV07/common.js';
+import type {WorkflowModel, previewWorkflow} from './workflowV07/model.js';
 
 /**
- * Element-agnostic formwork layout used by drawings, BOM and reports.
- * Built from the footing/column screening engine today; other element engines can produce the same shape later.
+ * Legacy footing/column layout used by A3 drawings and reports.
+ * Workflow v0.7 quantities use buildWorkflowFormworkLayout below and remain geometry-only.
  * All lengths are mm; plan coordinates match the engine polygon (X right, Y up), Z is up from the concrete base.
  */
 /** extStart/extEnd: waler extension past each end (positive at convex corners, negative = stops short at re-entrant corners). */
@@ -96,4 +98,116 @@ export function buildFormworkLayout(r: Result): FormworkLayout {
   return {kind: x.kind, shape: x.shape, points: r.points, width: x.width, length: x.length, height: H, armX: x.armX, armY: x.armY,
     plywood: {t: x.plywood, sheetW: sheet.w, sheetH: sheet.h}, stud, waler, tie: throughTies ? {d: x.tieDiameter, label: `Ø${x.tieDiameter} ${x.tieGrade}`} : null,
     offsets, levels, faces, ties, bom, status: r.status, confirmed: x.confirmed, pressure: r.pressure, volume: r.volume, formArea: r.formArea, warnings};
+}
+
+export type WorkflowTakeoffItem =
+  | 'SIDE_FORM_AREA' | 'SIDE_STUDS' | 'SIDE_WALER_RAILS' | 'TIE_ROUTES'
+  | 'SOFFIT_PLYWOOD_AREA' | 'JOISTS' | 'BEARERS' | 'U_HEADS' | 'FRAME_MEMBERS';
+
+export interface WorkflowTakeoffRow {
+  id: string;
+  item: WorkflowTakeoffItem;
+  source: 'SIDE' | 'SOFFIT' | 'FRAME';
+  faceId: string | null;
+  stageId: string | null;
+  loadCaseId: string | null;
+  quantity: number | null;
+  unit: 'm2' | 'ea';
+  modeledSpanMm: number | null;
+  evidenceRef: string | null;
+  note: string;
+}
+
+export interface WorkflowFormworkLayout {
+  elementType: ElementType;
+  revisionId: string;
+  bom: WorkflowTakeoffRow[];
+  status: 'DRAFT';
+  constructionRelease: 'NO_GO';
+  warnings: string[];
+}
+
+const takeoffInterval = (start: unknown, end: unknown) =>
+  typeof start === 'number' && Number.isFinite(start) && typeof end === 'number' && Number.isFinite(end) && end > start
+    ? end - start : null;
+const takeoffNumber = (value: number) => Number.isFinite(value) && value >= 0 ? value : null;
+const evidence = (value: unknown) => typeof value === 'string' && value.trim() ? value.trim() : null;
+
+/**
+ * Projects only authored, current workflow geometry into a quantity schedule.
+ * It does not infer product sizes, cut lengths, capacity, or construction readiness.
+ */
+export function buildWorkflowFormworkLayout(model: WorkflowModel, preview: ReturnType<typeof previewWorkflow>): WorkflowFormworkLayout {
+  const bom: WorkflowTakeoffRow[] = [];
+  const warnings = [
+    'GEOMETRY_ONLY_QUANTITIES_NOT_A_PROCUREMENT_SCHEDULE',
+    'MODELED_SPANS_ARE_NOT_CUT_LENGTHS_AND_EXCLUDE_LAPS_OVERHANGS_WASTE_AND_CONNECTIONS',
+    'PRODUCT_CAPACITY_AND_CONSTRUCTION_RELEASE_REMAIN_UNVERIFIED',
+  ];
+  const add = (row: WorkflowTakeoffRow) => bom.push(row);
+
+  if (model.sideLayout) {
+    const sideIsCurrent = model.sideLayout.revisionId === model.revisionId && preview.side?.revisionId === model.revisionId;
+    if (!sideIsCurrent) warnings.push('SIDE_LAYOUT_NOT_CURRENT_OR_NOT_ANALYZABLE');
+    else {
+      const modeledFaces = new Set<string>();
+      for (const faceLayout of model.sideLayout.faces) {
+        const face = preview.topology.faces.find(candidate => candidate.id === faceLayout.faceId);
+        if (!face) {warnings.push(`SIDE_FACE_GEOMETRY_MISSING:${faceLayout.faceId}`); continue;}
+        modeledFaces.add(face.id);
+        const areaM2 = takeoffNumber(face.lengthMm * model.heightMm / 1e6);
+        add({id: `SIDE:${face.id}:AREA`, item: 'SIDE_FORM_AREA', source: 'SIDE', faceId: face.id, stageId: model.sideLayout.stageId || null,
+          loadCaseId: model.sideLayout.loadCaseId || null, quantity: areaM2, unit: 'm2', modeledSpanMm: face.lengthMm,
+          evidenceRef: evidence(faceLayout.evidenceRef), note: 'One modeled face area; not plywood sheet nesting or waste.'});
+        add({id: `SIDE:${face.id}:STUDS`, item: 'SIDE_STUDS', source: 'SIDE', faceId: face.id, stageId: model.sideLayout.stageId || null,
+          loadCaseId: model.sideLayout.loadCaseId || null, quantity: takeoffNumber(faceLayout.studPositionsMm.length), unit: 'ea',
+          modeledSpanMm: model.heightMm, evidenceRef: evidence(faceLayout.stud.evidenceRef), note: 'Count of authored stud lines; height is modeled span, not cut length.'});
+        add({id: `SIDE:${face.id}:WALERS`, item: 'SIDE_WALER_RAILS', source: 'SIDE', faceId: face.id, stageId: model.sideLayout.stageId || null,
+          loadCaseId: model.sideLayout.loadCaseId || null, quantity: takeoffNumber(faceLayout.walers.length * 2), unit: 'ea',
+          modeledSpanMm: face.lengthMm, evidenceRef: evidence(faceLayout.rail.evidenceRef), note: 'Two rails per modeled waler level; cut length, splice and end extension are unknown.'});
+      }
+      if (preview.topology.faces.some(face => !modeledFaces.has(face.id))) warnings.push('PHYSICAL_SIDE_FACES_MISSING_FROM_TAKEOFF');
+      if (model.sideLayout.ties.length) add({id: 'SIDE:TIES', item: 'TIE_ROUTES', source: 'SIDE', faceId: null, stageId: model.sideLayout.stageId || null,
+        loadCaseId: model.sideLayout.loadCaseId || null, quantity: takeoffNumber(model.sideLayout.ties.length), unit: 'ea', modeledSpanMm: null,
+        evidenceRef: evidence(model.sideLayout.evidenceRef), note: 'Route count only; rod length, thread, plates, nuts and product assembly are not inferred.'});
+    }
+  } else if (model.elementType !== 'SLAB') warnings.push('ACTUAL_SIDE_LAYOUT_REQUIRED');
+
+  if (['BEAM', 'SLAB'].includes(model.elementType)) {
+    const layout = model.soffitLayout;
+    const soffitIsCurrent = !!layout && !!preview.soffit && !!preview.loadPath &&
+      model.members.length > 0 && model.members.every(member => member.beam.revision === model.revisionId);
+    if (!soffitIsCurrent || !layout) warnings.push('CURRENT_SOFFIT_LOAD_PATH_REQUIRED_FOR_TAKEOFF');
+    else {
+      const joistSpan = takeoffInterval(layout.joistStartYMm, layout.joistEndYMm);
+      const bearerSpan = takeoffInterval(layout.bearerStartXMm, layout.bearerEndXMm);
+      add({id: 'SOFFIT:PLYWOOD', item: 'SOFFIT_PLYWOOD_AREA', source: 'SOFFIT', faceId: null, stageId: layout.stageId || null,
+        loadCaseId: layout.loadCaseId || null, quantity: layout.plywood ? takeoffNumber(
+          (Math.max(...preview.topology.vertices.map(p => p.x)) - Math.min(...preview.topology.vertices.map(p => p.x))) *
+          (takeoffInterval(layout.plywood.startYMm, layout.plywood.endYMm) ?? NaN) / 1e6) : null,
+        unit: 'm2', modeledSpanMm: null, evidenceRef: evidence(layout.plywood?.evidenceRef),
+        note: layout.plywood ? 'Modeled panel area only; no sheet count, nesting or waste allowance.' : 'Plywood extent not authored.'});
+      add({id: 'SOFFIT:JOISTS', item: 'JOISTS', source: 'SOFFIT', faceId: null, stageId: layout.stageId || null,
+        loadCaseId: layout.loadCaseId || null, quantity: takeoffNumber(layout.joistXMm.length), unit: 'ea', modeledSpanMm: joistSpan,
+        evidenceRef: evidence(layout.joist.evidenceRef), note: 'Count and span from authored joist coordinates; section/cut length are not inferred.'});
+      add({id: 'SOFFIT:BEARERS', item: 'BEARERS', source: 'SOFFIT', faceId: null, stageId: layout.stageId || null,
+        loadCaseId: layout.loadCaseId || null, quantity: takeoffNumber(layout.bearers.length), unit: 'ea', modeledSpanMm: bearerSpan,
+        evidenceRef: evidence(layout.bearer.evidenceRef), note: 'Count and span from authored bearer lines; section/cut length are not inferred.'});
+      const headCount = layout.bearers.reduce((sum, bearer) => sum + bearer.headsXMm.length, 0);
+      add({id: 'SOFFIT:U_HEADS', item: 'U_HEADS', source: 'SOFFIT', faceId: null, stageId: layout.stageId || null,
+        loadCaseId: layout.loadCaseId || null, quantity: takeoffNumber(headCount), unit: 'ea', modeledSpanMm: null,
+        evidenceRef: evidence(layout.evidenceRef), note: 'Count of authored support-head nodes; no capacity or installation-height conclusion.'});
+    }
+  }
+
+  if (model.frameLayout?.revisionId === model.revisionId && preview.frame) {
+    const frameMembers = model.frameLayout.elements.filter(element => element.kind === 'BEAM_COLUMN').length;
+    if (frameMembers !== model.frameLayout.elements.length) warnings.push('JOINT_SPRINGS_AND_UNCLASSIFIED_FRAME_ELEMENTS_NOT_COUNTED_AS_STOCK_MEMBERS');
+    add({id: 'FRAME:MEMBERS', item: 'FRAME_MEMBERS', source: 'FRAME', faceId: null,
+      stageId: model.frameLayout.stageId || null, loadCaseId: model.frameLayout.loadCaseId || null,
+      quantity: takeoffNumber(frameMembers), unit: 'ea', modeledSpanMm: null,
+      evidenceRef: evidence(model.frameLayout.assumptionEvidenceRef), note: 'Beam-column member count only; no cut lengths, joints or capacities inferred.'});
+  }
+
+  return {elementType: model.elementType, revisionId: model.revisionId, bom, status: 'DRAFT', constructionRelease: 'NO_GO', warnings: [...new Set(warnings)]};
 }

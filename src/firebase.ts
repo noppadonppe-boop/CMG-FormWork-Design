@@ -90,10 +90,12 @@ export const cloud: Cloud | null = configured ? (() => {
   const functions = getFunctions(app, 'asia-southeast1');
   const storage = getStorage(app);
   if (usingEmulators) {
-    connectAuthEmulator(auth, 'http://127.0.0.1:9099', {disableWarnings: true});
-    connectFirestoreEmulator(db, '127.0.0.1', 8080);
-    connectFunctionsEmulator(functions, '127.0.0.1', 5001);
-    connectStorageEmulator(storage, '127.0.0.1', 9199);
+    const port = (value: string | undefined, fallback: number) => {const n = Number(value); return Number.isInteger(n) && n > 0 && n < 65536 ? n : fallback;};
+    const env = import.meta.env;
+    connectAuthEmulator(auth, `http://127.0.0.1:${port(env.VITE_FIREBASE_EMULATOR_AUTH_PORT, 9099)}`, {disableWarnings: true});
+    connectFirestoreEmulator(db, '127.0.0.1', port(env.VITE_FIREBASE_EMULATOR_FIRESTORE_PORT, 8080));
+    connectFunctionsEmulator(functions, '127.0.0.1', port(env.VITE_FIREBASE_EMULATOR_FUNCTIONS_PORT, 5001));
+    connectStorageEmulator(storage, '127.0.0.1', port(env.VITE_FIREBASE_EMULATOR_STORAGE_PORT, 9199));
   }
   return {auth, db, functions, storage};
 })() : null;

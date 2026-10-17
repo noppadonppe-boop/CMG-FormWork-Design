@@ -1,15 +1,22 @@
 import {analyzeBeam, type BeamSupport} from './beam.js';
 import {finite, uniqueIds} from './common.js';
 import {analyzeSidePressureDeck, type PressurePatch} from './sidePressure.js';
+import {validateBeamMemberEvidence, type BeamMemberActionBasis, type BeamMemberEvidence} from './beamResistance.js';
 
 export interface SidePanelInput {
   faceId: string; revision: string; lengthMm: number; heightMm: number; pourHeadMm: number | null; gammaKNm3: number | null;
   studPositionsMm: number[]; walerLevelsMm: number[]; walerSupports: BeamSupport[];
+  actionBasis?: BeamMemberActionBasis;
+  studMemberEvidenceRef?: string | null; studResistanceEvidence?: BeamMemberEvidence[] | null;
+  railMemberEvidenceRef?: string | null; railResistanceEvidence?: BeamMemberEvidence[] | null;
   /** Explicit rows may have different support stations. Legacy callers may use the shared list. */
   walerSupportsByLevel?: BeamSupport[][];
   studE_MPa: number; studI_mm4: number; railE_MPa?: number | null; railI_mm4?: number | null;
   heavierRailShare?: number | null; sharingEvidence: string | null;
-  independentRailsByLevel?: [{id: string; E_MPa: number; I_mm4: number; share: number}, {id: string; E_MPa: number; I_mm4: number; share: number}][];
+  independentRailsByLevel?: [
+    {id: string; E_MPa: number; I_mm4: number; share: number; memberEvidenceRef?: string | null; resistanceEvidence?: BeamMemberEvidence[] | null},
+    {id: string; E_MPa: number; I_mm4: number; share: number; memberEvidenceRef?: string | null; resistanceEvidence?: BeamMemberEvidence[] | null}
+  ][];
   sharingEvidenceByLevel?: (string | null)[];
   pressurePatches?: PressurePatch[];
   plywoodE_MPa?: number; plywoodI_mm4?: number;
@@ -36,7 +43,8 @@ export function analyzeSidePanel(o: SidePanelInput) {
     const rows = o.independentRailsByLevel[i];
     if (!Array.isArray(rows) || rows.length !== 2 || !rows[0] || !rows[1]) throw Error('Two explicit rail definitions required at every level');
     uniqueIds(rows, 'level rails');
-    if (rows.some(r => Object.keys(r).some(k => !['id', 'E_MPa', 'I_mm4', 'share'].includes(k)))) throw Error('Unsupported rail analysis fields');
+    if (rows.some(r => Object.keys(r).some(k => !['id', 'E_MPa', 'I_mm4', 'share', 'memberEvidenceRef', 'resistanceEvidence'].includes(k)))) throw Error('Unsupported rail analysis fields');
+    rows.forEach(r => r.resistanceEvidence?.forEach(validateBeamMemberEvidence));
   }
   if (o.sharingEvidenceByLevel && o.sharingEvidenceByLevel.length !== o.walerLevelsMm.length) throw Error('Every waler level requires its sharing evidence');
   if (!o.independentRailsByLevel && (typeof o.heavierRailShare !== 'number' || !Number.isFinite(o.heavierRailShare) || o.heavierRailShare < .5 || o.heavierRailShare > 1)) throw Error('Invalid rail share');
@@ -47,18 +55,22 @@ export function analyzeSidePanel(o: SidePanelInput) {
     const right = i === o.studPositionsMm.length - 1 ? length : (x + o.studPositionsMm[i + 1]) / 2;
     const result = analyzeBeam({id: `${o.faceId}:STUD:${i + 1}`, revision: o.revision, lengthMm: H, E_MPa: o.studE_MPa, I_mm4: o.studI_mm4,
       supports: o.walerLevelsMm.map((z, j) => ({id: `LEVEL:${j}`, xMm: z})), points: [],
-      patches: pressureDeck ? pressureDeck.studPatches[i] : [{id: `HYDRO:${i}`, startMm: 0, endMm: head!, startNPerMm: o.gammaKNm3! * head! / 1e6 * (right - left), endNPerMm: 0}]});
+      patches: pressureDeck ? pressureDeck.studPatches[i] : [{id: `HYDRO:${i}`, startMm: 0, endMm: head!, startNPerMm: o.gammaKNm3! * head! / 1e6 * (right - left), endNPerMm: 0}],
+      ...(o.studResistanceEvidence?.length ? {actionBasis: o.actionBasis, memberEvidenceRef: o.studMemberEvidenceRef, resistanceEvidence: o.studResistanceEvidence} : {})});
     return {xMm: x, tributaryMm: right - left, analysis: result};
   });
   const walers = o.walerLevelsMm.map((z, level) => {
     const supports = o.walerSupportsByLevel?.[level] ?? o.walerSupports;
     const points = studs.map((s, j) => ({id: `STUD:${j}`, xMm: s.xMm, forceN: -s.analysis.reactions.find(r => r.supportId === `LEVEL:${level}`)!.forceN}));
     if (points.some(p => p.forceN < -1e-7)) throw Error('BLOCKED_UNSUPPORTED: stud uplift/contact loss at waler');
-    const railDefinitions = o.independentRailsByLevel?.[level] ?? [o.heavierRailShare!, 1 - o.heavierRailShare!].map((share, i) => ({id: `RAIL-${i + 1}`, E_MPa: finite(o.railE_MPa, 'rail E'), I_mm4: finite(o.railI_mm4, 'rail I'), share}));
+    const railDefinitions = o.independentRailsByLevel?.[level] ?? [o.heavierRailShare!, 1 - o.heavierRailShare!].map((share, i) => ({id: `RAIL-${i + 1}`,
+      E_MPa: finite(o.railE_MPa, 'rail E'), I_mm4: finite(o.railI_mm4, 'rail I'), share,
+      memberEvidenceRef: o.railMemberEvidenceRef, resistanceEvidence: o.railResistanceEvidence}));
     if (railDefinitions.length !== 2 || railDefinitions.some(r => !Number.isFinite(r.share) || r.share < 0 || r.share > 1) || Math.abs(railDefinitions.reduce((s, r) => s + r.share, 0) - 1) > 1e-12) throw Error('Two declared rail shares must sum to 1');
     const rails = railDefinitions.map((r, i) => analyzeBeam({id: `${o.faceId}:WALER:${level}:RAIL:${i + 1}`, revision: o.revision,
       lengthMm: length, E_MPa: r.E_MPa, I_mm4: r.I_mm4, supports, patches: [],
-      points: points.map(p => ({...p, forceN: Math.max(0, p.forceN) * r.share}))}));
+      points: points.map(p => ({...p, forceN: Math.max(0, p.forceN) * r.share})),
+      ...(r.resistanceEvidence?.length ? {actionBasis: o.actionBasis, memberEvidenceRef: r.memberEvidenceRef, resistanceEvidence: r.resistanceEvidence} : {})}));
     return {zMm: z, rails, railDefinitions, supportDemands: supports.map(s => ({supportId: s.id, xMm: s.xMm,
       forceN: -rails.reduce((sum, r) => sum + r.reactions.find(q => q.supportId === s.id)!.forceN, 0),
       momentNmm: -rails.reduce((sum, r) => sum + r.reactions.find(q => q.supportId === s.id)!.momentNmm, 0)}))};

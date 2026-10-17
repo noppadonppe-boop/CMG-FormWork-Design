@@ -16,12 +16,13 @@ const slsNames: Record<string, string> = {TRANSLATION_X: 'เลื่อน X �
 function definitionOf(layout: AppliedFrameLayout | null): FrameLayoutDefinition {
   if (!layout) return emptyFrameLayout(); const {revisionId: _revision, inputDefinition: _input, ...definition} = layout; return clone(definition);
 }
-export function FrameLayoutEditor({layout, headIds, captureEnabled, onCapture, onApply, onPendingChange, onDraftChange, referenceSnapshot = null, captureAssemblyEnabled = false, onCaptureAssembly, sideSources = [], captureSideEnabled = false, onCaptureSide}: {
+export function FrameLayoutEditor({layout, headIds, captureEnabled, onCapture, onApply, onPendingChange, onDraftChange, referenceSnapshot = null, captureAssemblyEnabled = false, onCaptureAssembly, sideSources = [], captureSideEnabled = false, onCaptureSide, sideTieIds = [], sideWalers = []}: {
   layout: AppliedFrameLayout | null; headIds: string[]; captureEnabled: boolean; onCapture: () => FrameLayoutDefinition;
   onApply: (definition: FrameLayoutDefinition) => void; onPendingChange: (pending: boolean) => void; onDraftChange: (definition: FrameLayoutDefinition) => void;
   referenceSnapshot?: RinglockResearchSnapshot | null;
   captureAssemblyEnabled?: boolean; onCaptureAssembly?: () => FrameLayoutDefinition;
   sideSources?: SideEndpoint[]; captureSideEnabled?: boolean; onCaptureSide?: () => FrameLayoutDefinition;
+  sideTieIds?: string[]; sideWalers?: {faceId: string; walerId: string}[];
 }) {
   const [form, setForm] = useState(() => definitionOf(layout)), [error, setError] = useState('');
   const identity = canonical(definitionOf(layout));
@@ -76,7 +77,7 @@ export function FrameLayoutEditor({layout, headIds, captureEnabled, onCapture, o
     </fieldset>
     <label className="field"><span>แหล่งแรงของกรณีเฟรม</span><select value={form.loadSource ?? ''} onChange={e => {const source = e.target.value as FrameLayoutDefinition['loadSource']; change({...form, loadSource: source || null,
       ...(!['SOFFIT_REACTIONS', 'SOFFIT_AND_SIDE_REACTIONS'].includes(source ?? '') ? {headMappings: []} : {}),
-      ...(!['SIDE_REACTIONS', 'SOFFIT_AND_SIDE_REACTIONS'].includes(source ?? '') ? {sideTransfers: null} : {})});}}><option value="">ยังไม่เลือก</option><option value="SOFFIT_REACTIONS">แรงราย U-head จากแบบท้องใน Stage/Case เดียวกัน</option><option value="SIDE_REACTIONS">แรงรายจุดจากแบบข้าง · Yoke / Ground braced</option><option value="SOFFIT_AND_SIDE_REACTIONS">แรงรายหัวแบบท้องและรายจุดแบบข้าง</option><option value="FRAME_ACTIONS_ONLY">กรณีเฟรมแยก เช่นขั้นตั้ง · ไม่รวมแรงแบบท้องหรือแบบข้าง</option></select></label>
+      ...(!['SIDE_REACTIONS', 'SOFFIT_AND_SIDE_REACTIONS'].includes(source ?? '') ? {sideTransfers: null} : {})});}}><option value="">ยังไม่เลือก</option><option value="SOFFIT_REACTIONS">แรงราย U-head จากแบบท้องใน Stage/Case เดียวกัน</option><option value="SIDE_REACTIONS">แรงรายจุดจากแบบข้าง · Yoke / Ground braced / จุดที่ไม่ผูกไทร์ในระบบผสม</option><option value="SOFFIT_AND_SIDE_REACTIONS">แรงรายหัวแบบท้องและรายจุดแบบข้าง</option><option value="FRAME_ACTIONS_ONLY">กรณีเฟรมแยก เช่นขั้นตั้ง · ไม่รวมแรงแบบท้องหรือแบบข้าง</option></select></label>
     <p>เมื่อเปลี่ยนแหล่งแรง การผูกของแหล่งที่เอาออกจะถูกล้าง ต้องเลือกและให้หลักฐานใหม่เมื่อนำกลับมา</p>
     {form.loadSource === 'FRAME_ACTIONS_ONLY' && <label className="field"><span>เหตุผลของกรณีแยกที่ไม่รวมแรงแบบท้อง</span><input value={form.excludeSoffitReason} onChange={e => change({...form, excludeSoffitReason: e.target.value})}/></label>}
     <button className="btn secondary" disabled={!captureEnabled || form.nodes.length > 0 || form.elements.length > 0} onClick={() => {try {change(onCapture());} catch (e) {setError((e as Error).message);}}}>เริ่มจุดหัว/ฐานจากแบบท้องที่วิเคราะห์แล้ว</button>
@@ -122,7 +123,7 @@ export function FrameLayoutEditor({layout, headIds, captureEnabled, onCapture, o
       <button className="btn secondary" onClick={() => change({...form, elements: form.elements.filter((_, j) => j !== i)})}>ลบสมาชิกเฟรม {e.id}</button>
     </details>)}
     <button className="btn secondary" disabled={form.elements.length >= 240} onClick={() => change({...form, elements: [...form.elements, emptyFrameElement(addId('M', form.elements.map(e => e.id)))]})}>เพิ่มสมาชิกหรือจุดต่อเฟรม</button>
-    {['SIDE_REACTIONS', 'SOFFIT_AND_SIDE_REACTIONS'].includes(form.loadSource ?? '') && <SideFrameMappingEditor value={form.sideTransfers ?? null} sources={sideSources} nodes={form.nodes} onChange={sideTransfers => change({...form, sideTransfers})}/>}
+    {['SIDE_REACTIONS', 'SOFFIT_AND_SIDE_REACTIONS'].includes(form.loadSource ?? '') && <SideFrameMappingEditor value={form.sideTransfers ?? null} sources={sideSources} nodes={form.nodes} tieIds={sideTieIds} walers={sideWalers} onChange={sideTransfers => change({...form, sideTransfers})}/>}
     {['SOFFIT_REACTIONS', 'SOFFIT_AND_SIDE_REACTIONS'].includes(form.loadSource ?? '') && <><h4>ผูกแรงรายหัวกับจุดเฟรม</h4>{form.headMappings.map((m, i) => <div className="form-grid frame-mapping" key={i}>
       <label className="field"><span>U-head ต้นทาง</span><select value={m.headNodeId} onChange={e => change({...form, headMappings: form.headMappings.map((old, j) => j === i ? {...old, headNodeId: e.target.value} : old)})}><option value="">ยังไม่เลือก</option>{headIds.map(id => <option key={id}>{id}</option>)}</select></label>
       <label className="field"><span>จุด HEAD ในเฟรม</span><select value={m.frameNodeId} onChange={e => change({...form, headMappings: form.headMappings.map((old, j) => j === i ? {...old, frameNodeId: e.target.value} : old)})}><option value="">ยังไม่เลือก</option>{form.nodes.filter(n => n.role === 'HEAD').map(n => <option key={n.id}>{n.id}</option>)}</select></label>

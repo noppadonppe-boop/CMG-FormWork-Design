@@ -1,13 +1,18 @@
 import React from 'react';
 import {emptyWalerPair, type IndependentWalerPair, type IndependentWalerRail, type WalerSupportFitting} from '../domain/workflowV07/walerPair';
 import {canonical} from '../domain/workflowV07/common';
+import {beamMemberEvidenceReference} from '../domain/workflowV07/beamResistance';
 import {ElasticBindingEditor, type BindingSelections} from './ElasticBinding';
+import {BeamMemberEvidenceEditor} from './BeamMemberEvidenceEditor';
 
 const number = (value: string) => value === '' ? null : Number(value);
 export function PairedWalerEditor({pair, supportIds, onChange, selections}: {pair: IndependentWalerPair | null; supportIds: string[]; onChange: (next: IndependentWalerPair | null) => void; selections?: BindingSelections}) {
   if (!pair) return <section className="paired-waler-editor"><button className="btn secondary" onClick={() => onChange(emptyWalerPair())}>กำหนดรางแยกรายชิ้นสำหรับระดับนี้</button>
     <p>ขณะนี้ใช้ค่ารางร่วมจากผิว ยังไม่มีข้อมูลหน้าตัด วัสดุ แกน และรอยต่อแยกรายราง</p></section>;
-  const updateRail = (i: number, patch: Partial<IndependentWalerRail>) => onChange({...pair, rails: pair.rails.map((r, j) => i === j ? {...r, ...patch} : r) as IndependentWalerPair['rails']});
+  const updateRail = (i: number, patch: Partial<IndependentWalerRail>) => {
+    const changedDefinition = Object.keys(patch).some(key => key !== 'resistanceEvidence');
+    onChange({...pair, rails: pair.rails.map((r, j) => i === j ? {...r, ...patch, ...(changedDefinition ? {resistanceEvidence: []} : {})} : r) as IndependentWalerPair['rails']});
+  };
   const updateFitting = (i: number, patch: Partial<WalerSupportFitting>) => onChange({...pair, supportFittings: pair.supportFittings.map((f, j) => i === j ? {...f, ...patch} : f)});
   return <section className="paired-waler-editor" aria-label="รางสองชิ้นแยกกันในคานรัดระดับนี้"><h4>ราง 2 ชิ้น · Independent / Noncomposite</h4>
     <p>ระบุ I ของแกนดัดที่ใช้จริงหลังวางหน้าตัด ค่าในนี้แทนค่ารางร่วมเฉพาะระดับนี้ การแบ่งแรงเป็นสมมติฐานที่ต้องมีหลักฐาน ยังไม่มีแบบจำลองแผ่นประกับ/สัมผัสที่ยืนยัน</p>
@@ -25,6 +30,9 @@ export function PairedWalerEditor({pair, supportIds, onChange, selections}: {pai
         ...(source(binding) !== source(r.binding) ? {continuity: null, spliceStationsMm: [], spliceEvidenceRef: ''} : {})});
     }}/>{r.spliceStationsMm.map((x, j) => <div className="form-grid" key={j}><label className="field"><span>ตำแหน่งรอยต่อจาก A · mm</span><input type="number" step="any" value={x ?? ''} onChange={e => updateRail(i, {spliceStationsMm: r.spliceStationsMm.map((old, k) => k === j ? number(e.target.value) : old)})}/></label><button className="btn secondary" onClick={() => updateRail(i, {spliceStationsMm: r.spliceStationsMm.filter((_, k) => k !== j)})}>ลบรอยต่อ {j + 1}</button></div>)}
       <button className="btn secondary" disabled={r.spliceStationsMm.length >= 40} onClick={() => updateRail(i, {continuity: 'SPLICED', spliceStationsMm: [...r.spliceStationsMm, null]})}>เพิ่มตำแหน่งรอยต่อราง</button>
+      <BeamMemberEvidenceEditor value={r.resistanceEvidence ?? []} memberEvidenceRef={beamMemberEvidenceReference('WALER_RAIL', {id: r.id, family: r.family, E_MPa: r.E_MPa, bendingI_mm4: r.bendingI_mm4,
+        orientationDeg: r.orientationDeg, sectionRef: r.sectionRef, materialRef: r.materialRef, axisEvidenceRef: r.axisEvidenceRef, binding: r.binding ?? null})}
+        onChange={resistanceEvidence => updateRail(i, {resistanceEvidence})}/>
     </fieldset>)}
     <div className="form-grid">
       <label className="field"><span>ส่วนแบ่งแรงรางชิ้นที่ 1 · 0 ถึง 1</span><input type="number" min="0" max="1" step="any" value={pair.rail1Share ?? ''} onChange={e => onChange({...pair, rail1Share: number(e.target.value)})}/></label>

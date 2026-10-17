@@ -9,7 +9,9 @@ import WorkflowV07Panel, {WorkflowDocuments} from '../src/components/WorkflowV07
 import {SoffitLayoutEditor} from '../src/components/SoffitLayoutEditor';
 import {defaults} from '../src/domain';
 import {documentView, freezeDesign} from '../src/domain/workflowV07/snapshot';
-import {builtModel, layoutFixture} from './fixtures/workflow-v07-soffit';
+import {beamMemberEvidenceReference} from '../src/domain/workflowV07/beamResistance';
+import {builtModel, layoutFixture, slabModel} from './fixtures/workflow-v07-soffit';
+import {plywoodFixture} from './fixtures/workflow-v07-plywood';
 
 afterEach(() => vi.unstubAllGlobals());
 function setup() {vi.stubGlobal('crypto', webcrypto); vi.stubGlobal('TextEncoder', TextEncoder); vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);}
@@ -17,11 +19,25 @@ async function enter(input: HTMLInputElement, value: string) {
   await act(async () => {Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value); input.dispatchEvent(new Event('input', {bubbles: true}));});
 }
 it('snapshot report contains the actual head coordinates, individual reactions and load balance', async () => {
-  setup(); const model = builtModel(), snapshot = await freezeDesign(model), view = await documentView(snapshot, model);
+  setup(); const model = builtModel(slabModel(), {...layoutFixture(), plywood: plywoodFixture()}), snapshot = await freezeDesign(model), view = await documentView(snapshot, model);
   const html = renderToStaticMarkup(<WorkflowDocuments view={view}/>);
   expect(html).toContain('B1:HEAD-2'); expect(html).toContain('7.0538'); expect(html).toContain('23.76');
+  expect(html).toContain('จากต้นสมาชิก'); expect(html).toContain('station');
   expect(html).toContain('ΣF·X'); expect(html).toContain('MISSING_CONFIGURATION_RATING');
   expect(html.match(new RegExp(snapshot.snapshotHash, 'g'))).toHaveLength(2);
+});
+it('authors an explicit member evidence draft bound to the current member definition', async () => {
+  setup(); const host = document.createElement('div'), root = createRoot(host), layout = layoutFixture(), pending = vi.fn();
+  let draft: ReturnType<typeof layoutFixture> | null = null;
+  try {
+    await act(async () => root.render(<SoffitLayoutEditor layout={layout} beam={false} onApply={() => undefined}
+      onPendingChange={pending} onDraftChange={next => {draft = next;}}/>));
+    const joist = host.querySelector('[aria-label="คุณสมบัติกลุ่ม joist"]')!;
+    const add = Array.from(joist.querySelectorAll('button')).find(button => button.textContent === 'เพิ่มหลักฐานขีดจำกัด')!;
+    await act(async () => add.click());
+    expect(pending).toHaveBeenLastCalledWith(true);
+    expect(draft?.joist.resistanceEvidence?.[0]).toMatchObject({quantity: null, memberEvidenceRef: beamMemberEvidenceReference('JOIST', {E_MPa: layout.joist.E_MPa, I_mm4: layout.joist.I_mm4, evidenceRef: layout.joist.evidenceRef, binding: null}), status: 'REFERENCE_ONLY'});
+  } finally {await act(async () => root.unmount());}
 });
 it('editor preserves in-progress coordinates across unrelated revision renders and rejects empty list entries', async () => {
   setup(); const host = document.createElement('div'), root = createRoot(host), apply = vi.fn(), pending = vi.fn(), layout = layoutFixture();

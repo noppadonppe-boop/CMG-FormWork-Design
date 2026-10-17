@@ -11,17 +11,27 @@ import {resolvePlywoodElastic, validatePlywoodBinding, type PlywoodProductBindin
 import {actionFactor} from './caseFactors.js';
 import {compileSidePressure, pressureZones, validateSidePressure, type SidePressureDefinition} from './sidePressure.js';
 import {evaluateTieDossier, tieGeometryContext, validateTieDossier, type TieDossier} from './tieDossier.js';
+import {beamMemberEvidenceReference, screenBeamMemberResistance, validateBeamMemberEvidence, type BeamMemberEvidence} from './beamResistance.js';
+import {screenSideLocalChecks, sideLocalDemands, sideLocalMemberReference, validateSideLocalEvidenceList, type SideLocalEvidence} from './sideLocalChecks.js';
 
-export interface SideStiffness {E_MPa: number | null; I_mm4: number | null; evidenceRef: string; binding?: ElasticMemberBinding | null}
+export interface SideStiffness {E_MPa: number | null; I_mm4: number | null; evidenceRef: string; binding?: ElasticMemberBinding | null; resistanceEvidence?: BeamMemberEvidence[] | null}
+export interface SidePlywoodLayout {
+  thicknessMm: number | null; effectiveE_MPa: number | null; grainAxis: 'ALONG_FACE' | 'VERTICAL' | null;
+  jointsAtEveryStud: boolean | null; evidenceRef: string; binding?: PlywoodProductBinding | null;
+  /** Reviewer limits per 1000 mm design strip (N·mm/m, N/m, mm); never derived from E or a grade label. */
+  resistanceEvidence?: BeamMemberEvidence[] | null;
+}
 export interface SideFaceLayout {
   faceId: string; evidenceRef: string; studPositionsMm: number[];
   walers: {id: string; zMm: number; supports: {id: string; xMm: number}[]; pair?: IndependentWalerPair | null}[];
   stud: SideStiffness; rail: SideStiffness;
-  plywood: {thicknessMm: number | null; effectiveE_MPa: number | null; grainAxis: 'ALONG_FACE' | 'VERTICAL' | null;
-    jointsAtEveryStud: boolean | null; evidenceRef: string; binding?: PlywoodProductBinding | null};
+  plywood: SidePlywoodLayout;
   heavierRailShare: number | null; sharingEvidence: string | null;
   pressure?: SidePressureDefinition | null;
+  localEvidence?: SideLocalEvidence[] | null;
 }
+export const sidePlywoodEvidenceReference = (p: SidePlywoodLayout) => beamMemberEvidenceReference('SIDE_PLYWOOD_1000MM_STRIP',
+  {thicknessMm: p.thicknessMm, effectiveE_MPa: p.effectiveE_MPa, grainAxis: p.grainAxis, jointsAtEveryStud: p.jointsAtEveryStud, evidenceRef: p.evidenceRef, binding: p.binding ?? null});
 export interface SideEndpoint {faceId: string; walerId: string; supportId: string}
 export interface SideTieDefinition {
   id: string; a: SideEndpoint; b: SideEndpoint; diameterMm: number | null;
@@ -52,8 +62,19 @@ export function validateSidePairDrafts(layout: SideLayoutDefinition) {
   if (dossierSize > 500000) throw Error('Aggregate tie dossiers exceed 500000 characters; no records omitted');
   if (Array.isArray(layout.faces)) for (const f of layout.faces) {
     if (f.pressure != null) validateSidePressure(f.pressure);
-    for (const s of [f.stud, f.rail]) if (s?.binding !== null && s?.binding !== undefined) validateElasticBinding(s.binding);
+    for (const s of [f.stud, f.rail]) {
+      if (s?.binding !== null && s?.binding !== undefined) validateElasticBinding(s.binding);
+      if (s?.resistanceEvidence !== null && s?.resistanceEvidence !== undefined) {
+        if (!Array.isArray(s.resistanceEvidence) || s.resistanceEvidence.length > 3) throw Error('At most three 1D member evidence rows are supported per side member group');
+        s.resistanceEvidence.forEach(validateBeamMemberEvidence);
+      }
+    }
     if (f.plywood?.binding !== null && f.plywood?.binding !== undefined) validatePlywoodBinding(f.plywood.binding);
+    if (f.plywood?.resistanceEvidence != null) {
+      if (!Array.isArray(f.plywood.resistanceEvidence) || f.plywood.resistanceEvidence.length > 3) throw Error('At most three plywood strip evidence rows are supported per face');
+      f.plywood.resistanceEvidence.forEach(validateBeamMemberEvidence);
+    }
+    validateSideLocalEvidenceList(f.localEvidence);
     if (Array.isArray(f.walers)) for (const w of f.walers) if (w.pair !== null && w.pair !== undefined) validateWalerPair(w.pair);
   }
 }
@@ -105,7 +126,11 @@ export function analyzeSideLayout(model: WorkflowModel, layout: AppliedSideLayou
       blockers.push(`${face.id}/${w.id}:SHARED_LEGACY_RAIL_PROPERTIES_AND_PHYSICAL_PAIR_DATA_UNVERIFIED`);
       const share = finite(input.heavierRailShare, 'declared rail load share');
       if (share < .5 || share > 1) throw Error('Legacy heavier rail share must be between .5 and 1');
-      return [{id: 'RAIL-1', E_MPa: sharedRailElastic!.E_MPa, I_mm4: sharedRailElastic!.I_mm4, share}, {id: 'RAIL-2', E_MPa: sharedRailElastic!.E_MPa, I_mm4: sharedRailElastic!.I_mm4, share: 1 - share}] as [{id: string; E_MPa: number; I_mm4: number; share: number}, {id: string; E_MPa: number; I_mm4: number; share: number}];
+      const memberEvidenceRef = beamMemberEvidenceReference('SIDE_SHARED_RAIL', {E_MPa: input.rail.E_MPa, I_mm4: input.rail.I_mm4, evidenceRef: input.rail.evidenceRef, binding: input.rail.binding ?? null});
+      return [{id: 'RAIL-1', E_MPa: sharedRailElastic!.E_MPa, I_mm4: sharedRailElastic!.I_mm4, share, memberEvidenceRef, resistanceEvidence: input.rail.resistanceEvidence ?? []},
+        {id: 'RAIL-2', E_MPa: sharedRailElastic!.E_MPa, I_mm4: sharedRailElastic!.I_mm4, share: 1 - share, memberEvidenceRef, resistanceEvidence: input.rail.resistanceEvidence ?? []}] as
+        [{id: string; E_MPa: number; I_mm4: number; share: number; memberEvidenceRef: string; resistanceEvidence: BeamMemberEvidence[]},
+          {id: string; E_MPa: number; I_mm4: number; share: number; memberEvidenceRef: string; resistanceEvidence: BeamMemberEvidence[]}];
     });
     const pressurePatches = input.pressure ? compileSidePressure(model, input.pressure, face.lengthMm) : null;
     const head = pressurePatches ? layout.pourHeadMm : finite(layout.pourHeadMm, 'explicit pour head');
@@ -114,6 +139,13 @@ export function analyzeSideLayout(model: WorkflowModel, layout: AppliedSideLayou
     if (analysesUsed > 400) throw Error('BLOCKED_MODEL_SIZE: complete side pressure/member analysis exceeds 400; no zones omitted');
     const result = analyzeSidePanel({faceId: face.id, revision: model.revisionId, lengthMm: face.lengthMm, heightMm: model.heightMm, pourHeadMm: head,
       gammaKNm3: pressurePatches ? null : finite(model.gammaKNm3, 'concrete unit weight') * actionFactor(model, 'HYDROSTATIC_SIDE'),
+      actionBasis: model.analysisCase?.basis ?? 'SERVICE',
+      studMemberEvidenceRef: beamMemberEvidenceReference('SIDE_STUD', {E_MPa: input.stud.E_MPa, I_mm4: input.stud.I_mm4, evidenceRef: input.stud.evidenceRef, binding: input.stud.binding ?? null}),
+      studResistanceEvidence: input.stud.resistanceEvidence ?? [],
+      railMemberEvidenceRef: input.rail.resistanceEvidence?.length
+        ? beamMemberEvidenceReference('SIDE_SHARED_RAIL', {E_MPa: input.rail.E_MPa, I_mm4: input.rail.I_mm4, evidenceRef: input.rail.evidenceRef, binding: input.rail.binding ?? null})
+        : null,
+      railResistanceEvidence: input.rail.resistanceEvidence ?? [],
       ...(pressurePatches ? {pressurePatches, plywoodE_MPa: E, plywoodI_mm4: plywoodElastic.I_mm4} : {}),
       studPositionsMm: input.studPositionsMm, walerLevelsMm: walers.map(w => w.zMm), walerSupports: [], walerSupportsByLevel: walers.map(w => w.supports),
       studE_MPa: studElastic.E_MPa, studI_mm4: studElastic.I_mm4, railE_MPa: sharedRailElastic?.E_MPa ?? null, railI_mm4: sharedRailElastic?.I_mm4 ?? null,
@@ -126,7 +158,7 @@ export function analyzeSideLayout(model: WorkflowModel, layout: AppliedSideLayou
         localXMm: d.xMm, localZMm: walers[i].zMm, forceN: d.forceN, momentNmm: d.momentNmm, normal: face.normal});
     }
     // Governing hydrostatic pressure envelope per 1m vertical design strip; never fed into studs again.
-    const panels = result.pressureDeck ? result.pressureDeck.panels.map(p => ({...p, stressDemandMPa: p.analysis.maxMomentNmm / plywoodElastic.S_mm3})) : input.studPositionsMm.slice(1).map((x, i) => {
+    const rawPanels = result.pressureDeck ? result.pressureDeck.panels.map(p => ({...p, stressDemandMPa: p.analysis.maxMomentNmm / plywoodElastic.S_mm3})) : input.studPositionsMm.slice(1).map((x, i) => {
       const length = x - input.studPositionsMm[i], I = 1000 * t ** 3 / 12;
       const analysis = analyzeBeam({id: `${face.id}:PLY:${i + 1}`, revision: model.revisionId, lengthMm: length, E_MPa: E, I_mm4: I,
         supports: [{id: 'A', xMm: 0}, {id: 'B', xMm: length}], points: [],
@@ -135,7 +167,15 @@ export function analyzeSideLayout(model: WorkflowModel, layout: AppliedSideLayou
         lowerZMm: 0, upperZMm: head!, evaluationZMm: 0, sourceActionIds: ['LEGACY_HYDROSTATIC_PEAK_ENVELOPE'],
         stressDemandMPa: analysis.maxMomentNmm / (1000 * t ** 2 / 6)};
     });
-    return {face, input, result, panels, elasticInputs: {stud: studElastic, sharedRail: sharedRailElastic, plywood: plywoodElastic}, pressureAction: {id: `${model.id}:${face.id}:HYDRO`, stageId: layout.stageId, loadCaseId: layout.loadCaseId,
+    const actionBasis = model.analysisCase?.basis ?? 'SERVICE', plywoodRef = sidePlywoodEvidenceReference(panel);
+    // Plywood limits are per 1000 mm strip and compared with that strip's own M/V/deflection only.
+    const panels = rawPanels.map(p => ({...p, resistanceScreen: screenBeamMemberResistance({evidence: panel.resistanceEvidence ?? [], actionBasis,
+      memberEvidenceRef: plywoodRef, maximumUnsupportedSpanMm: p.endMm - p.startMm,
+      demands: {FLEXURE: p.analysis.maxMomentNmm, SHEAR: p.analysis.maxShearN, DEFLECTION: p.analysis.maxDeflectionMm}})}));
+    const local = screenSideLocalChecks({demands: sideLocalDemands(face.id, result.studs, result.walers, face.lengthMm), evidence: input.localEvidence ?? [],
+      actionBasis, memberEvidenceRef: sideLocalMemberReference(input)});
+    blockers.push(...local.blockers.map(b => `${face.id}:LOCAL:${b}`));
+    return {face, input, result, panels, local, elasticInputs: {stud: studElastic, sharedRail: sharedRailElastic, plywood: plywoodElastic}, pressureAction: {id: `${model.id}:${face.id}:HYDRO`, stageId: layout.stageId, loadCaseId: layout.loadCaseId,
       sourceRef: input.pressure?.evidenceRef ?? layout.evidenceRef, forceN: result.expectedForceN, normal: face.normal,
       centroid: result.expectedForceN === 0 ? null : {...pointOnFace(face, result.expectedXMomentNmm / result.expectedForceN), zMm: base + result.expectedZMomentNmm / result.expectedForceN}}};
   });
@@ -172,7 +212,13 @@ export function analyzeSideLayout(model: WorkflowModel, layout: AppliedSideLayou
     return {id: t.id, a, b, route, endForcesN: [a.forceN, b.forceN], demandKN, assembly, dossier, fits};
   });
   blockers.push(...tieRouteIssues(topology, routes, layout.rebarClearanceEvidence));
-  for (const n of nodes) if (!used.has(n.id)) blockers.push(`${n.faceId}/${n.walerId}/${n.supportId}:TIE_CLAMP_OR_END_RESTRAINT_NOT_MODELED`);
+  // Mixed systems: an untied support explicitly assigned to the downstream frame is a frame
+  // obligation (one-way, no displacement compatibility), not a silently satisfied restraint.
+  const frameMode = model.frameLayout?.sideTransfers?.mode;
+  const frameSide = frameMode === 'MIXED_TIED_AND_FRAME_SUPPORTS' || frameMode === 'COUPLED_TIE_FRAME_SUPPORTS' ? model.frameLayout!.sideTransfers! : null;
+  for (const n of nodes) if (!used.has(n.id)) blockers.push(frameSide?.mappings.some(m => endpointKey(m) === n.id)
+    ? `${n.faceId}/${n.walerId}/${n.supportId}:${frameMode === 'COUPLED_TIE_FRAME_SUPPORTS' ? 'ASSIGNED_TO_FRAME_IN_COUPLED_SUPPORT_MODEL_RIGID_SUPPORT_RESULTS_SUPERSEDED' : 'ASSIGNED_TO_DOWNSTREAM_FRAME_ONE_WAY_TIE_FRAME_COMPATIBILITY_UNVERIFIED'}`
+    : `${n.faceId}/${n.walerId}/${n.supportId}:TIE_CLAMP_OR_END_RESTRAINT_NOT_MODELED`);
   if (model.sideTopology === 'COLUMN_YOKE') blockers.push('CLOSED_COLUMN_YOKE_CORNER_CONTACT_AND_CLAMP_MODEL_REQUIRED');
   if (model.sideTopology === 'GROUND_BRACED') blockers.push('GROUND_BRACE_ANCHOR_AND_SUPPORT_MODEL_REQUIRED');
   const requiredChecks: RequiredCheck[] = [];
@@ -196,6 +242,15 @@ export function analyzeSideLayout(model: WorkflowModel, layout: AppliedSideLayou
       applicability: {stageId: layout.stageId, sideLayoutInput: layout.inputDefinition, memberId, evidenceRef: layout.evidenceRef, sideLayoutDefinition: layoutDefinition,
         tieEntityDefinition: assemblyEntities.find(e => e.id === memberId)?.input ?? layout.ties.find(t => `TIE:${t.id}` === memberId) ?? null}});
   }
-  return {status: ties.some(t => t.assembly?.status === 'FAIL' || t.dossier?.status === 'FAIL' || t.fits.some(f => f?.status === 'FAIL')) ? 'FAIL' as const : 'BLOCKED' as const, revisionId: model.revisionId,
+  const memberScreens = faces.flatMap(f => [...f.result.studs.map(s => s.analysis), ...f.result.walers.flatMap(w => w.rails)]).map(a => a.resistanceScreen);
+  const memberFail = memberScreens.some(s => s.status === 'FAIL');
+  if (memberFail) blockers.push('SIDE_ONE_D_MEMBER_RESISTANCE_LIMIT_EXCEEDED');
+  else if (memberScreens.some(s => s.status !== 'SCREENED')) blockers.push('SIDE_ONE_D_MEMBER_RESISTANCE_EVIDENCE_REQUIRED');
+  const plywoodScreens = faces.flatMap(f => f.panels.map(p => p.resistanceScreen)), plywoodFail = plywoodScreens.some(s => s.status === 'FAIL');
+  if (plywoodFail) blockers.push('SIDE_PLYWOOD_STRIP_LIMIT_EXCEEDED');
+  else if (plywoodScreens.some(s => s.status !== 'SCREENED')) blockers.push('SIDE_PLYWOOD_STRIP_RESISTANCE_EVIDENCE_REQUIRED');
+  const localFail = faces.some(f => f.local.status === 'FAIL');
+  if (localFail) blockers.push('SIDE_LOCAL_LIMIT_EXCEEDED');
+  return {status: memberFail || plywoodFail || localFail || ties.some(t => t.assembly?.status === 'FAIL' || t.dossier?.status === 'FAIL' || t.fits.some(f => f?.status === 'FAIL')) ? 'FAIL' as const : 'BLOCKED' as const, revisionId: model.revisionId,
     faces, nodes, ties, routes, requiredChecks, blockers: [...new Set(blockers)], constructionRelease: 'NO_GO' as const};
 }

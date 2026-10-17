@@ -7,12 +7,14 @@ import type {RequiredCheck} from './coverage.js';
 import {pairFaces} from './geometry.js';
 import {resolveMemberElastic, validateElasticBinding, type ElasticMemberBinding} from './elasticBinding.js';
 import {analyzePlywoodDeck, assertDeckCoverage, validateSoffitPlywood, type PlywoodSurfacePatch, type SoffitPlywoodDefinition} from './plywood.js';
+import {beamMemberEvidenceReference, validateBeamMemberEvidence, type BeamMemberEvidence} from './beamResistance.js';
 import {actionFactor} from './caseFactors.js';
 import {applySpatialMemberActions, compileSpatialSurfaces, validateSpatialLoading, type SpatialLoading} from './spatialLoads.js';
 
 export interface MemberStiffness {
   E_MPa: number | null; I_mm4: number | null; selfWeightKNPerM: number | null; evidenceRef: string;
   binding?: ElasticMemberBinding | null;
+  resistanceEvidence?: BeamMemberEvidence[] | null;
 }
 export interface SoffitLayout {
   schemaVersion: '1'; stageId: string; loadCaseId: string; ownershipId: string; evidenceRef: string;
@@ -50,7 +52,13 @@ export function validateSoffitBindings(layout: SoffitLayout) {
       if (typeof row.evidenceRef !== 'string' || row.evidenceRef.length > 2000) throw Error('Invalid base datum evidence');
     }
   }
-  for (const s of [layout.joist, layout.bearer]) if (s?.binding !== null && s?.binding !== undefined) validateElasticBinding(s.binding);
+  for (const s of [layout.joist, layout.bearer]) {
+    if (s?.binding !== null && s?.binding !== undefined) validateElasticBinding(s.binding);
+    if (s?.resistanceEvidence !== null && s?.resistanceEvidence !== undefined) {
+      if (!Array.isArray(s.resistanceEvidence) || s.resistanceEvidence.length > 3) throw Error('At most three 1D member evidence rows are supported');
+      s.resistanceEvidence.forEach(validateBeamMemberEvidence);
+    }
+  }
   if (layout.plywood !== null && layout.plywood !== undefined) validateSoffitPlywood(layout.plywood);
 }
 function stiffness(s: MemberStiffness, role: 'joist' | 'bearer') {
@@ -180,7 +188,10 @@ export function buildSoffitCandidate(model: WorkflowModel, layout: SoffitLayout)
     patches.push({id: `SELF:${id}`, startMm: 0, endMm: endY - startY, startNPerMm: j.selfWeight, endNPerMm: j.selfWeight});
     members.push({role: 'JOIST', placement: {axis: 'Y', origin: {xMm: bounds.x0 + x, yMm: bounds.y0 + startY, zMm: headZ}},
       beam: {id, revision: model.revisionId, lengthMm: endY - startY, E_MPa: j.E, I_mm4: j.I, points: [], patches,
-        supports: sorted.map(line => ({id: line.id, xMm: line.yMm - startY}))},
+        supports: sorted.map(line => ({id: line.id, xMm: line.yMm - startY})),
+        ...(layout.joist.resistanceEvidence?.length ? {actionBasis: model.analysisCase?.basis ?? 'SERVICE',
+          memberEvidenceRef: beamMemberEvidenceReference('JOIST', {E_MPa: layout.joist.E_MPa, I_mm4: layout.joist.I_mm4,
+            evidenceRef: layout.joist.evidenceRef, binding: layout.joist.binding ?? null}), resistanceEvidence: layout.joist.resistanceEvidence} : {})},
       links: sorted.map(line => ({supportId: line.id, target: {kind: 'MEMBER', memberId: line.id, xMm: x - startX}}))});
     const force = j.selfWeight * (endY - startY); selfWeightN += force;
     sourceXMomentNmm += force * (bounds.x0 + x); sourceYMomentNmm += force * (bounds.y0 + (startY + endY) / 2);
@@ -200,7 +211,10 @@ export function buildSoffitCandidate(model: WorkflowModel, layout: SoffitLayout)
     });
     members.push({role: 'BEARER', placement: {axis: 'X', origin: {xMm: bounds.x0 + startX, yMm: bounds.y0 + line.yMm, zMm: headZ}},
       beam: {id: line.id, revision: model.revisionId, lengthMm: endX - startX, E_MPa: b.E, I_mm4: b.I, points: [], supports,
-        patches: [{id: `SELF:${line.id}`, startMm: 0, endMm: endX - startX, startNPerMm: b.selfWeight, endNPerMm: b.selfWeight}]},
+        patches: [{id: `SELF:${line.id}`, startMm: 0, endMm: endX - startX, startNPerMm: b.selfWeight, endNPerMm: b.selfWeight}],
+        ...(layout.bearer.resistanceEvidence?.length ? {actionBasis: model.analysisCase?.basis ?? 'SERVICE',
+          memberEvidenceRef: beamMemberEvidenceReference('BEARER', {E_MPa: layout.bearer.E_MPa, I_mm4: layout.bearer.I_mm4,
+            evidenceRef: layout.bearer.evidenceRef, binding: layout.bearer.binding ?? null}), resistanceEvidence: layout.bearer.resistanceEvidence} : {})},
       links: supports.map(s => ({supportId: s.id, target: {kind: 'U_HEAD', nodeId: s.id}}))});
     const force = b.selfWeight * (endX - startX); selfWeightN += force;
     sourceXMomentNmm += force * (bounds.x0 + (startX + endX) / 2); sourceYMomentNmm += force * (bounds.y0 + line.yMm);

@@ -21,6 +21,8 @@ import {FrameLayoutEditor} from './FrameLayoutEditor';
 import {FrameResults} from './FrameResults';
 import {SupportLayoutEditor} from './SupportLayoutEditor';
 import {SupportResults} from './SupportResults';
+import {WorkflowTakeoffResults} from './WorkflowTakeoffResults';
+import {beamStationLabel} from './beamTrace';
 import {captureSupportLayout, stampSupportLayout, type SupportLayoutDefinition} from '../domain/workflowV07/supportLayout';
 import {LayoutCandidateEditor, LayoutCandidateSummary} from './LayoutCandidateEditor';
 import {applyLayoutCandidate, type CandidateRequest, type CandidateReview} from '../domain/workflowV07/layoutCandidate';
@@ -134,6 +136,7 @@ export function WorkflowDocuments({view}: {view: View}) {
     {(model.elementType === 'BEAM' || model.elementType === 'SLAB') && model.ringlock?.planLayout && <section aria-label="แปลน Ringlock จากฉบับร่าง"><h3>แปลนตั้ง Ringlock</h3><RinglockPlanSummary config={model.ringlock}/></section>}
     <SoffitResults model={model} preview={preview}/>
     <SideResults model={model} preview={preview}/>
+    <WorkflowTakeoffResults model={model} preview={preview}/>
     <FrameResults model={model} preview={preview}/>
     <SupportResults model={model} preview={preview}/>
     <RinglockAssemblyResults model={model} preview={preview}/>
@@ -145,8 +148,11 @@ export function WorkflowDocuments({view}: {view: View}) {
       {view.drawing.topology.pairs.map(p => <tr key={p.id}><td>{p.id}</td><td>{p.faceAId} ↔ {p.faceBId}</td><td>{show(p.chordMm)} mm</td><td>{show(p.endMm - p.startMm)} mm</td></tr>)}
     </tbody></table>
     <p>สถานะ {preview.status} · ข้อมูลและผลที่ยังขาดทั้งหมด:</p><ul>{preview.blockers.map(b => <li key={b}>{b}</li>)}</ul>
-    {!!preview.loadPath?.analyses.length && <table><thead><tr><th>สมาชิก / Revision</th><th>M (N·mm)</th><th>V (N)</th><th>δ (mm)</th></tr></thead><tbody>
-      {preview.loadPath.analyses.map(a => <tr key={a.id}><td>{a.id} / {a.revision}</td><td>{show(a.maxMomentNmm)}</td><td>{show(a.maxShearN)}</td><td>{show(a.maxDeflectionMm)}</td></tr>)}
+    {!!preview.loadPath?.analyses.length && <table><thead><tr><th>สมาชิก / Revision</th><th>Mmax · N·mm @ station</th><th>Vmax · N @ station</th><th>δmax · mm @ station</th></tr></thead><tbody>
+      {preview.loadPath.analyses.map(a => <tr key={a.id}><td>{a.id} / {a.revision}</td>
+        <td>{show(a.maxMomentNmm)} @ {beamStationLabel(a.criticalStations.moment)}</td>
+        <td>{show(a.maxShearN)} @ {beamStationLabel(a.criticalStations.shear)}</td>
+        <td>{show(a.maxDeflectionMm)} @ {beamStationLabel(a.criticalStations.deflection)}</td></tr>)}
     </tbody></table>}
     {model.checkCatalogue && <details><summary>ข้อกำหนดตรวจและ Coverage · ฉบับ {model.checkCatalogue.version}</summary><table><thead><tr><th>Check</th><th>ขอบเขต</th><th>สถานะร่าง</th></tr></thead><tbody>
       {model.checkCatalogue.specifications.filter(s => s.appliesTo === 'ALL' || s.appliesTo.split('|').includes(model.elementType)).map(s => <tr key={s.id}><td>{s.id} · {s.description}</td><td>{s.group}</td><td>{preview.specificationGaps.includes(s.id) ? 'BLOCKED · ยังไม่ผูกสมาชิกจริง' : 'BLOCKED · รอตรวจกำลัง/หลักฐาน'}</td></tr>)}
@@ -369,9 +375,12 @@ export default function WorkflowV07Panel({input, caseId, initialElementType}: {i
       onCapture={() => frameGeometryFromSoffit(model, analysis.preview?.loadPath?.reactions.filter(r => r.kind === 'U_HEAD') ?? [])}
       captureAssemblyEnabled={!!analysis.preview?.assembly?.frameGeometryReady && !assemblyPending && !soffitPending && !sidePending && !geometryPending && !referencesPending && !supplierPending && !supportPending}
       onCaptureAssembly={() => frameGeometryFromAssembly(model)}
-      sideSources={analysis.preview?.side?.nodes ?? []}
-      captureSideEnabled={!!analysis.preview?.side && ['COLUMN_YOKE', 'GROUND_BRACED'].includes(model.sideTopology ?? '') && !model.sideLayout?.ties.length && !geometryPending && !sidePending && !soffitPending && !assemblyPending && !referencesPending && !supplierPending && !supportPending}
+      sideSources={(analysis.preview?.side?.nodes ?? []).filter(n => !analysis.preview?.side?.ties.some(t => t.a.id === n.id || t.b.id === n.id))}
+      captureSideEnabled={!!analysis.preview?.side && (['COLUMN_YOKE', 'GROUND_BRACED'].includes(model.sideTopology ?? '') ? !model.sideLayout?.ties.length
+        : ['THROUGH_TIE', 'SEGMENTED_TIE'].includes(model.sideTopology ?? '') && analysis.preview.side.nodes.some(n => !analysis.preview!.side!.ties.some(t => t.a.id === n.id || t.b.id === n.id))) && !geometryPending && !sidePending && !soffitPending && !assemblyPending && !referencesPending && !supplierPending && !supportPending}
       onCaptureSide={() => frameGeometryFromSide(model)}
+      sideTieIds={model.sideLayout?.ties.map(t => t.id) ?? []}
+      sideWalers={model.sideLayout?.faces.flatMap(f => f.walers.map(w => ({faceId: f.faceId, walerId: w.id}))) ?? []}
       onApply={applyFrame} onPendingChange={setFramePending} onDraftChange={d => {pendingFrame.current = d;}}/>}
     <SupportLayoutEditor key={`support:${caseId}:${model.elementType}:${editorEpoch}`} layout={model.supportLayout ?? null}
       baseIds={model.frameLayout?.nodes.filter(n => n.role === 'BASE').map(n => n.id) ?? []}

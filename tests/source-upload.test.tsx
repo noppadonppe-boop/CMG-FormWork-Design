@@ -18,7 +18,7 @@ const revokeUrl = vi.fn();
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (reason: Error) => void;
-  const promise = new Promise<T>((done, fail) => {resolve = done; rejecnืt = fail;});
+  const promise = new Promise<T>((done, fail) => {resolve = done; reject = fail;});
   return {promise, resolve, reject};
 }
 

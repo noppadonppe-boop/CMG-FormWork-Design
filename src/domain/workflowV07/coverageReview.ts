@@ -1,5 +1,6 @@
 import {canonical, clone, finite, identifier, record, uniqueIds, WORKFLOW_VERSION} from './common.js';
 import type {BeamAnalysis, BeamInput} from './beam.js';
+import {validateBeamMemberEvidence} from './beamResistance.js';
 import type {RequiredCheck} from './coverage.js';
 import type {WorkflowModel} from './model.js';
 
@@ -14,8 +15,8 @@ export interface AppliedCoverageReview extends CoverageReviewDefinition {revisio
 export const emptyCoverageReview = (): CoverageReviewDefinition => ({schemaVersion: '1', groups: []});
 export const requirementKey = (r: RequirementRef) => canonical([r.memberId, r.checkId, r.loadCaseId, r.revision]);
 export const requirementRef = (r: RequiredCheck): RequirementRef => ({memberId: r.memberId, checkId: r.checkId, loadCaseId: r.loadCaseId, revision: r.revision});
-function exact(v: unknown, keys: string[], label: string) {
-  const r = record(v); if (Object.keys(r).some(k => !keys.includes(k)) || keys.some(k => !Object.hasOwn(r, k))) throw Error(`${label}: unknown/missing fields or authority metadata`); return r;
+function exact(v: unknown, keys: string[], label: string, optional: string[] = []) {
+  const r = record(v); if (Object.keys(r).some(k => !keys.includes(k) && !optional.includes(k)) || keys.some(k => !Object.hasOwn(r, k))) throw Error(`${label}: unknown/missing fields or authority metadata`); return r;
 }
 function text(v: unknown, label: string, max = 2000) {if (typeof v !== 'string' || v.length > max) throw Error(`Invalid ${label}`);}
 function reference(r: unknown) {const v = exact(r, ['memberId', 'checkId', 'loadCaseId', 'revision'], 'requirement reference'); for (const k of Object.keys(v)) {if (k === 'memberId') {text(v[k], k, 1000); if (!String(v[k]).trim()) throw Error('Empty member reference');} else identifier(v[k], k);}}
@@ -42,14 +43,21 @@ export function stampCoverageReview(model: WorkflowModel, definition: CoverageRe
   const result = {...clone(definition), revisionId: model.revisionId, inputDefinition: coverageReviewInputDefinition(model)};
   validateCoverageReview(result); return result;
 }
-/** The comparison proves only the declared prismatic 1D input, never material resistance,
- * global frames, physical mirror axes, local bearing, connection/contact or bracing equivalence.
+/** The comparison proves only the declared prismatic 1D action input, never material resistance,
+ * evidence equivalence, global frames, physical mirror axes, local bearing, connection/contact or bracing equivalence.
  * No tolerance merging, load aggregation or favorable-result envelope is used. */
 export function compareLocalBeamInputs(a: BeamInput, b: BeamInput, reversed = false) {
   function normalized(input: BeamInput, reverse: boolean) {
-    exact(input, ['id', 'revision', 'lengthMm', 'E_MPa', 'I_mm4', 'supports', 'points', 'patches'], '1D beam input');
+    exact(input, ['id', 'revision', 'lengthMm', 'E_MPa', 'I_mm4', 'supports', 'points', 'patches'], '1D beam input',
+      ['actionBasis', 'memberEvidenceRef', 'resistanceEvidence']);
     identifier(input.id, 'beam identity'); identifier(input.revision, 'beam revision'); const L = finite(input.lengthMm, 'beam length');
     finite(input.E_MPa, 'beam E'); finite(input.I_mm4, 'beam I');
+    if (input.actionBasis !== undefined && input.actionBasis !== null && !['SERVICE', 'FACTORED'].includes(input.actionBasis)) throw Error('Invalid 1D beam action basis');
+    if (input.memberEvidenceRef !== undefined && input.memberEvidenceRef !== null) text(input.memberEvidenceRef, 'beam member evidence reference', 2000);
+    if (input.resistanceEvidence !== undefined && input.resistanceEvidence !== null) {
+      if (!Array.isArray(input.resistanceEvidence) || input.resistanceEvidence.length > 3) throw Error('Invalid 1D beam resistance evidence list');
+      input.resistanceEvidence.forEach(validateBeamMemberEvidence);
+    }
     const x = (v: number) => {if (!Number.isFinite(v) || v < 0 || v > L) throw Error('Invalid 1D station'); return reverse ? L - v : v;};
     const sorted = <T>(rows: T[]) => rows.sort((u, v) => canonical(u).localeCompare(canonical(v)));
     for (const k of ['supports', 'points', 'patches'] as const) {if (!Array.isArray(input[k]) || input[k].length > 120) throw Error('Invalid 1D input list'); uniqueIds(input[k], k);}
@@ -67,7 +75,7 @@ export function compareLocalBeamInputs(a: BeamInput, b: BeamInput, reversed = fa
       const q0 = finite(p.startNPerMm, 'patch q0', true), q1 = finite(p.endNPerMm, 'patch q1', true);
       return reverse ? {startMm: end, endMm: start, startNPerMm: q1, endNPerMm: q0} : {startMm: start, endMm: end, startNPerMm: q0, endNPerMm: q1};
     }));
-    return {lengthMm: L, E_MPa: input.E_MPa, I_mm4: input.I_mm4, supports, points, patches};
+    return {lengthMm: L, E_MPa: input.E_MPa, I_mm4: input.I_mm4, actionBasis: input.actionBasis ?? null, supports, points, patches};
   }
   const source = normalized(a, false), target = normalized(b, reversed);
   const differences = Object.keys(source).filter(k => canonical(source[k as keyof typeof source]) !== canonical(target[k as keyof typeof target]));

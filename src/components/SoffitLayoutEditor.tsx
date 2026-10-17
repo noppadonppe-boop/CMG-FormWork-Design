@@ -7,8 +7,11 @@ import type {SoffitPlywoodDefinition} from '../domain/workflowV07/plywood';
 import {SoffitPlywoodEditor} from './SoffitPlywoodEditor';
 import {SpatialLoadingEditor} from './SpatialLoading';
 import type {SpatialLoading} from '../domain/workflowV07/spatialLoads';
+import type {BeamMemberEvidence} from '../domain/workflowV07/beamResistance';
+import {beamMemberEvidenceReference} from '../domain/workflowV07/beamResistance';
+import {BeamMemberEvidenceEditor} from './BeamMemberEvidenceEditor';
 
-type StiffnessForm = {E_MPa: string; I_mm4: string; selfWeightKNPerM: string; evidenceRef: string; binding: ElasticMemberBinding | null};
+type StiffnessForm = {E_MPa: string; I_mm4: string; selfWeightKNPerM: string; evidenceRef: string; binding: ElasticMemberBinding | null; resistanceEvidence: BeamMemberEvidence[]};
 interface Form {
   stageId: string; loadCaseId: string; ownershipId: string; evidenceRef: string;
   joistXMm: string; joistStartYMm: string; joistEndYMm: string; bearerStartXMm: string; bearerEndXMm: string;
@@ -20,7 +23,8 @@ interface Form {
 }
 const string = (v: number | null | undefined) => v == null ? '' : String(v);
 function formOf(layout: SoffitLayout | null): Form {
-  const stiffness = (s?: MemberStiffness): StiffnessForm => ({E_MPa: string(s?.E_MPa), I_mm4: string(s?.I_mm4), selfWeightKNPerM: string(s?.selfWeightKNPerM), evidenceRef: s?.evidenceRef ?? '', binding: s?.binding ?? null});
+  const stiffness = (s?: MemberStiffness): StiffnessForm => ({E_MPa: string(s?.E_MPa), I_mm4: string(s?.I_mm4), selfWeightKNPerM: string(s?.selfWeightKNPerM), evidenceRef: s?.evidenceRef ?? '', binding: s?.binding ?? null,
+    resistanceEvidence: s?.resistanceEvidence ?? []});
   return {stageId: layout?.stageId ?? '', loadCaseId: layout?.loadCaseId ?? '', ownershipId: layout?.ownershipId ?? '', evidenceRef: layout?.evidenceRef ?? '',
     joistXMm: layout?.joistXMm.join(', ') ?? '', joistStartYMm: string(layout?.joistStartYMm), joistEndYMm: string(layout?.joistEndYMm),
     bearerStartXMm: string(layout?.bearerStartXMm), bearerEndXMm: string(layout?.bearerEndXMm), headNodeElevationMm: string(layout?.headNodeElevationMm), baseElevationMm: string(layout?.baseElevationMm),
@@ -35,7 +39,8 @@ function list(s: string) {
   return s.split(',').map(v => {const n = number(v); if (n === null) throw Error('รายการพิกัดต้องไม่มีช่องว่างระหว่างจุลภาค'); return n;});
 }
 function layoutOf(form: Form): SoffitLayout {
-  const stiffness = (s: StiffnessForm): MemberStiffness => ({E_MPa: number(s.E_MPa), I_mm4: number(s.I_mm4), selfWeightKNPerM: number(s.selfWeightKNPerM), evidenceRef: s.evidenceRef, ...(s.binding ? {binding: s.binding} : {})});
+  const stiffness = (s: StiffnessForm): MemberStiffness => ({E_MPa: number(s.E_MPa), I_mm4: number(s.I_mm4), selfWeightKNPerM: number(s.selfWeightKNPerM), evidenceRef: s.evidenceRef,
+    ...(s.binding ? {binding: s.binding} : {}), ...(s.resistanceEvidence.length ? {resistanceEvidence: s.resistanceEvidence} : {})});
   return {schemaVersion: '1', stageId: form.stageId, loadCaseId: form.loadCaseId, ownershipId: form.ownershipId, evidenceRef: form.evidenceRef,
     joistXMm: list(form.joistXMm), joistStartYMm: number(form.joistStartYMm), joistEndYMm: number(form.joistEndYMm),
     bearerStartXMm: number(form.bearerStartXMm), bearerEndXMm: number(form.bearerEndXMm), headNodeElevationMm: number(form.headNodeElevationMm), baseElevationMm: number(form.baseElevationMm),
@@ -87,12 +92,17 @@ export function SoffitLayoutEditor({layout, beam, onApply, onPendingChange, onDr
       </fieldset>)}</div><button className="btn secondary" onClick={() => change({...form, baseDatumsByHead: null, baseElevationMm: ''})}>กลับไปกรอกฐานร่วมใหม่</button></>}
     </fieldset>
     {(['joist', 'bearer'] as const).map(role => <fieldset key={role} aria-label={`คุณสมบัติกลุ่ม ${role}`}><legend>{role === 'joist' ? 'คร่าว' : 'คานรับ'} · หน้าตัดและแกนที่ใช้จริง</legend><div className="form-grid">
-      {(['E_MPa', 'I_mm4', 'selfWeightKNPerM', 'evidenceRef'] as const).map(k => <label className="field" key={k}><span>{k === 'E_MPa' ? 'E · MPa' : k === 'I_mm4' ? 'I แกนดัด · mm⁴' : k === 'selfWeightKNPerM' ? 'น้ำหนักตัวเอง · kN/m (ศูนย์ต้องระบุ)' : 'หลักฐานหน้าตัด/แกน/วัสดุ/น้ำหนัก'}</span><input disabled={!!form[role].binding && (k === 'E_MPa' || k === 'I_mm4')} type={k === 'evidenceRef' ? 'text' : 'number'} step={k === 'evidenceRef' ? undefined : 'any'} value={form[role][k]} onChange={e => change({...form, [role]: {...form[role], [k]: e.target.value}})}/></label>)}
+      {(['E_MPa', 'I_mm4', 'selfWeightKNPerM', 'evidenceRef'] as const).map(k => <label className="field" key={k}><span>{k === 'E_MPa' ? 'E · MPa' : k === 'I_mm4' ? 'I แกนดัด · mm⁴' : k === 'selfWeightKNPerM' ? 'น้ำหนักตัวเอง · kN/m (ศูนย์ต้องระบุ)' : 'หลักฐานหน้าตัด/แกน/วัสดุ/น้ำหนัก'}</span><input disabled={!!form[role].binding && (k === 'E_MPa' || k === 'I_mm4')} type={k === 'evidenceRef' ? 'text' : 'number'} step={k === 'evidenceRef' ? undefined : 'any'} value={form[role][k]} onChange={e => change({...form, [role]: {...form[role], [k]: e.target.value,
+        ...(['E_MPa', 'I_mm4', 'evidenceRef'].includes(k) ? {resistanceEvidence: []} : {})}})}/></label>)}
     </div><ElasticBindingEditor binding={form[role].binding} role={role === 'joist' ? 'JOIST' : 'BEARER'} label={`SOFFIT:${role}`} selections={selections} onChange={binding => {
       const source = (b: ElasticMemberBinding | null) => canonical(b ? {mode: b.sectionMode, section: b.section, material: b.material, width: b.actualWidthMm, depth: b.actualDepthMm} : null);
       const changedSource = source(binding) !== source(form[role].binding);
-      change({...form, [role]: {...form[role], binding, E_MPa: '', I_mm4: '', ...(changedSource ? {selfWeightKNPerM: '', evidenceRef: ''} : {})}});
-    }}/></fieldset>)}
+      change({...form, [role]: {...form[role], binding, E_MPa: '', I_mm4: '', resistanceEvidence: [], ...(changedSource ? {selfWeightKNPerM: '', evidenceRef: ''} : {})}});
+    }}/>
+      <BeamMemberEvidenceEditor value={form[role].resistanceEvidence} memberEvidenceRef={beamMemberEvidenceReference(role === 'joist' ? 'JOIST' : 'BEARER', {
+        E_MPa: number(form[role].E_MPa), I_mm4: number(form[role].I_mm4), evidenceRef: form[role].evidenceRef, binding: form[role].binding})}
+        onChange={resistanceEvidence => change({...form, [role]: {...form[role], resistanceEvidence}})}/>
+    </fieldset>)}
     <SoffitPlywoodEditor definition={form.plywood} materialSelection={selections?.material} onChange={plywood => change({...form, plywood})}/>
     <SpatialLoadingEditor value={form.loading} onChange={loading => change({...form, loading})} memberIds={[...form.joistXMm.split(',').filter(s => s.trim()).map((_, i) => `JOIST-${i + 1}`), ...form.bearers.map(b => b.id)]}/>
     <p>การวิเคราะห์แรงยังไม่ตรวจกำลังไม้อัด รอยต่อ แรงลม และเสถียรภาพ Ringlock น้ำหนักอุปกรณ์อื่นต้องระบุในโหลดพร้อมหลักฐาน</p>
