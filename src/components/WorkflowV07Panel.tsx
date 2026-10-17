@@ -5,6 +5,8 @@ import {createStoredWorkflowDraft, restoreWorkflowDraft, type StoredWorkflowDraf
 import {emptyReviewRecord, type ReviewActor, type ReviewRecord} from '../domain/workflowV07/review';
 import {ReviewPanel} from './ReviewPanel';
 import {contentHash} from '../domain/workflowV07/snapshot';
+import {outstandingRegister, STEP_GROUPS, WIZARD_STEP_LABEL, wizardSteps, type WizardStep} from '../domain/workflowV07/register';
+import {OutstandingRegister} from './OutstandingRegister';
 import {applyCoverageReview, fromLegacy, previewWorkflow, regenerateDraftLayouts, reviseDraft, type WorkflowModel} from '../domain/workflowV07/model';
 import type {SoffitLayout} from '../domain/workflowV07/soffit';
 import {stampSideLayout, type SideLayoutDefinition} from '../domain/workflowV07/sideLayout';
@@ -221,6 +223,13 @@ export default function WorkflowV07Panel({input, caseId, initialElementType, sto
     }, 700);
     return () => window.clearTimeout(timer);
   }, [draftIdentity, model, input, onPersist, canPersist]);
+  // Wizard: steps follow the load path of the element system; inactive steps stay mounted (hidden) so editor state survives.
+  const steps = wizardSteps(model.elementType);
+  const [stepChoice, setStepChoice] = useState<WizardStep>('GEOMETRY');
+  const step: WizardStep = steps.includes(stepChoice) ? stepChoice : steps[0];
+  const register = outstandingRegister(analysis.preview?.blockers ?? (analysis.error ? [`ANALYSIS:${analysis.error}`] : []));
+  const stepCount = (s: WizardStep) => STEP_GROUPS[s].reduce((n, g) => n + register.counts[g], 0);
+  const soffitSystem = model.elementType === 'BEAM' || model.elementType === 'SLAB';
   // Review binding uses the same content identity as frozen documents (SHA-256 of the authored draft).
   const [draftHash, setDraftHash] = useState('');
   useEffect(() => {
@@ -358,13 +367,15 @@ export default function WorkflowV07Panel({input, caseId, initialElementType, sto
           : saveState.status === 'SAVED' && saveState.atMs !== null ? `บันทึกร่างแล้ว ${new Date(saveState.atMs).toLocaleString('th-TH')} · engine ${WORKFLOW_VERSION}` : 'ยังไม่มีการแก้ไขที่ต้องบันทึก'}
       {' · Revision '}{model.revisionId}
     </p>
-    {reviewActor && onReviewChange && <ReviewPanel record={review ?? emptyReviewRecord(reviewActor.projectId ?? '', caseId)} actor={reviewActor}
-      context={{contentHash: draftHash, engineVersion: WORKFLOW_VERSION, draftPending: anyPending || !!analysis.error || !draftHash}} blockers={analysis.preview?.blockers ?? [analysis.error ?? 'ANALYSIS_FAILED']} onChange={onReviewChange}/>}
     {restored.staleEngine && <div className="warning" role="alert"><p>ร่างนี้บันทึกด้วย engine {restored.savedEngineVersion} (ปัจจุบัน {WORKFLOW_VERSION}) ผลที่คำนวณไว้ทั้งหมดถือว่า stale ต้องคำนวณใหม่ก่อนใช้</p>
       <button className="btn secondary" disabled={anyPending} onClick={reanalyseAll}>คำนวณ Layout ทั้งหมดใหม่ด้วย engine ปัจจุบัน</button></div>}
     {restored.sourceChanged && <div className="warning" role="alert"><p>มิติต้นทาง (legacy) ของแบบนี้เปลี่ยนไปหลังบันทึกร่าง ร่างยังใช้รูปทรงเดิมที่บันทึกไว้ ตรวจพิกัดก่อนใช้งานต่อ</p></div>}
     {initialElementType && model.elementType !== initialElementType && <div className="warning" role="alert"><p>ร่างที่บันทึกเป็น {model.elementType} แต่แบบนี้ถูกเลือกเป็น {initialElementType} ระบบใช้ร่างที่บันทึกไว้ก่อน</p>
       <button className="btn secondary" disabled={anyPending} onClick={() => edit('elementType', initialElementType)}>เปลี่ยนประเภทร่างเป็น {initialElementType}</button></div>}
+    <nav className="wizard-steps" aria-label="ขั้นตอนตามเส้นทางแรง">{steps.map((s, i) => <button key={s} className={`btn ${s === step ? '' : 'secondary'} wizard-step`} aria-current={s === step ? 'step' : undefined} onClick={() => setStepChoice(s)}>
+      {i + 1}. {WIZARD_STEP_LABEL[s].replace(/^1 · /, '')}{stepCount(s) ? ` · ขาด ${stepCount(s)}` : ''}</button>)}</nav>
+    <p className="muted">ร่างทั้งหมด: ข้อมูลที่ยังขาด {register.total} รายการ · สถานะ {analysis.preview?.status ?? 'ANALYSIS_FAILED'} · NO_GO</p>
+    <div hidden={step !== 'GEOMETRY'}>
     <div className="grid two"><div>
       <label className="field"><span>ประเภทองค์อาคาร</span><select value={model.elementType} onChange={e => edit('elementType', e.target.value as ElementType)}>
         {(['FOOTING', 'COLUMN', 'WALL', 'BEAM', 'SLAB'] as const).map(t => <option key={t}>{t}</option>)}
@@ -419,14 +430,24 @@ export default function WorkflowV07Panel({input, caseId, initialElementType, sto
           <tr><td>รวมเฉพาะโหลดที่ระบุ</td><td>{show(analysis.preview.verticalLoads.listedServiceKNPerM)} kN/m</td></tr></>}
           <tr><td colSpan={2}>ยังต้องกำหนด Self-weight, โหลดเฉพาะจุด และ Load Combinations</td></tr>
         </tbody></table>}
-        <details><summary>ข้อมูล/วิธีคำนวณที่ยังขาด ({analysis.preview.blockers.length})</summary><ul>{analysis.preview.blockers.map(b => <li key={b}>{b}</li>)}</ul></details>
       </>}
     </div></div>
-    {(model.elementType === 'BEAM' || model.elementType === 'SLAB') && <SoffitLayoutEditor key={`soffit:${caseId}:${model.elementType}:${editorEpoch}`} layout={model.soffitLayout ?? null} selections={model.selections} beam={model.elementType === 'BEAM'} onApply={applySoffit} onPendingChange={setSoffitPending} onDraftChange={d => {pendingSoffit.current = d;}}/>}
-    <LayoutCandidateEditor key={`candidate:${caseId}:${model.elementType}:${editorEpoch}`} model={model} sourcePending={candidateSourcePending} onPendingChange={setCandidatePending} onApply={applyCandidate}/>
-    <LayoutCandidateSummary model={model}/>
+    <OutstandingRegister blockers={analysis.preview?.blockers ?? []} groups={STEP_GROUPS.GEOMETRY} title="ข้อมูลที่ยังขาดในขั้นนี้"/>
+    </div>
+    <div hidden={step !== 'SOFFIT'}>
+    {soffitSystem && <SoffitLayoutEditor key={`soffit:${caseId}:${model.elementType}:${editorEpoch}`} layout={model.soffitLayout ?? null} selections={model.selections} beam={model.elementType === 'BEAM'} onApply={applySoffit} onPendingChange={setSoffitPending} onDraftChange={d => {pendingSoffit.current = d;}}/>}
+    {soffitSystem && <><LayoutCandidateEditor key={`candidate:${caseId}:${model.elementType}:${editorEpoch}`} model={model} sourcePending={candidateSourcePending} onPendingChange={setCandidatePending} onApply={applyCandidate}/><LayoutCandidateSummary model={model}/></>}
+    {analysis.preview && soffitSystem && <SoffitResults model={model} preview={analysis.preview}/>}
+    <OutstandingRegister blockers={analysis.preview?.blockers ?? []} groups={STEP_GROUPS.SOFFIT} title="ข้อมูลที่ยังขาดในขั้นนี้"/>
+    </div>
+    <div hidden={step !== 'SIDE'}>
+    {!soffitSystem && <><LayoutCandidateEditor key={`candidate:${caseId}:${model.elementType}:${editorEpoch}`} model={model} sourcePending={candidateSourcePending} onPendingChange={setCandidatePending} onApply={applyCandidate}/><LayoutCandidateSummary model={model}/></>}
     {analysis.preview && <SideLayoutEditor key={`side:${caseId}:${model.elementType}:${editorEpoch}`} topology={analysis.preview.topology} layout={model.sideLayout ?? null} selections={model.selections} segmentedTie={model.sideTopology === 'SEGMENTED_TIE'} revisionId={model.revisionId} onApply={applySide} onPendingChange={setSidePending} onDraftChange={d => {pendingSide.current = d;}}/>}
-    {(model.elementType === 'BEAM' || model.elementType === 'SLAB') && <RinglockAssemblyEditor key={`assembly:${caseId}:${model.elementType}:${editorEpoch}`} assembly={model.ringlockAssembly ?? null}
+    {analysis.preview && <SideResults model={model} preview={analysis.preview}/>}
+    <OutstandingRegister blockers={analysis.preview?.blockers ?? []} groups={STEP_GROUPS.SIDE} title="ข้อมูลที่ยังขาดในขั้นนี้"/>
+    </div>
+    <div hidden={step !== 'SHORING'}>
+    {soffitSystem && <RinglockAssemblyEditor key={`assembly:${caseId}:${model.elementType}:${editorEpoch}`} assembly={model.ringlockAssembly ?? null}
       captureEnabled={!!analysis.preview?.loadPath && !geometryPending && !soffitPending && !sidePending && !framePending && !referencesPending && !supplierPending && !supportPending}
       onCapture={() => captureRinglockAssembly(model)} onApply={applyAssembly} onPendingChange={setAssemblyPending} onDraftChange={d => {pendingAssembly.current = d;}}/>}
     {<FrameLayoutEditor key={`frame:${caseId}:${model.elementType}:${editorEpoch}`} layout={model.frameLayout ?? null}
@@ -442,17 +463,22 @@ export default function WorkflowV07Panel({input, caseId, initialElementType, sto
       sideTieIds={model.sideLayout?.ties.map(t => t.id) ?? []}
       sideWalers={model.sideLayout?.faces.flatMap(f => f.walers.map(w => ({faceId: f.faceId, walerId: w.id}))) ?? []}
       onApply={applyFrame} onPendingChange={setFramePending} onDraftChange={d => {pendingFrame.current = d;}}/>}
+    {analysis.preview && <FrameResults model={model} preview={analysis.preview}/>}
+    {analysis.preview && <RinglockAssemblyResults model={model} preview={analysis.preview}/>}
+    {analysis.preview && <RinglockResearchSummary snapshot={model.ringlockResearch ?? null} summary={analysis.preview.ringlockReference}/>}
+    <OutstandingRegister blockers={analysis.preview?.blockers ?? []} groups={STEP_GROUPS.SHORING} title="ข้อมูลที่ยังขาดในขั้นนี้"/>
+    </div>
+    <div hidden={step !== 'SUPPORT'}>
     <SupportLayoutEditor key={`support:${caseId}:${model.elementType}:${editorEpoch}`} layout={model.supportLayout ?? null}
       baseIds={model.frameLayout?.nodes.filter(n => n.role === 'BASE').map(n => n.id) ?? []}
       frameWeightOwners={model.frameLayout?.additionalActions.filter(a => a.kind === 'SELF_WEIGHT').map(a => a.ownershipId) ?? []}
       captureEnabled={!!analysis.preview?.frame?.analysis && !geometryPending && !soffitPending && !sidePending && !framePending && !assemblyPending && !referencesPending && !supplierPending && !loadCasesPending && !stagePending && !coveragePending && !candidatePending}
       onCapture={() => {if (!analysis.preview?.frame) throw Error('ต้องมีผลเฟรมปัจจุบัน'); return captureSupportLayout(model, analysis.preview.frame);}}
       onApply={applySupport} onPendingChange={setSupportPending} onDraftChange={d => {pendingSupport.current = d;}}/>
-    {analysis.preview && <SoffitResults model={model} preview={analysis.preview}/>}
-    {analysis.preview && <SideResults model={model} preview={analysis.preview}/>}
-    {analysis.preview && <FrameResults model={model} preview={analysis.preview}/>}
     {analysis.preview && <SupportResults model={model} preview={analysis.preview}/>}
-    {analysis.preview && <RinglockAssemblyResults model={model} preview={analysis.preview}/>}
+    <OutstandingRegister blockers={analysis.preview?.blockers ?? []} groups={STEP_GROUPS.SUPPORT} title="ข้อมูลที่ยังขาดในขั้นนี้"/>
+    </div>
+    <div hidden={step !== 'CASES'}>
     <LoadCasesEditor key={`cases:${caseId}:${editorEpoch}`} book={model.loadCases ?? null} stages={[...new Set([model.soffitLayout?.stageId, model.sideLayout?.stageId, model.frameLayout?.stageId, model.supportLayout?.stageId, model.ringlockAssembly?.stageId].filter((s): s is string => !!s))]} onPendingChange={setLoadCasesPending} onApply={definition => {
       requireAppliedReferences();
       if (soffitPending || sidePending || framePending || supportPending || assemblyPending) throw Error('มีตำแหน่ง/เฟรม/การประกอบค้าง กรุณาวิเคราะห์หรือคืนค่าก่อนเก็บชุดกรณีโหลด');
@@ -466,13 +492,19 @@ export default function WorkflowV07Panel({input, caseId, initialElementType, sto
       onCopy={stageId => replaceStageEditor(copyToDraftStage(model, stageId))}
       onRemoveLayout={kind => replaceStageEditor(removeStageLayout(model, kind))}/>
     {analysis.preview && <StageStudyResults preview={analysis.preview}/>}
+    <OutstandingRegister blockers={analysis.preview?.blockers ?? []} groups={STEP_GROUPS.CASES} title="ข้อมูลที่ยังขาดในขั้นนี้"/>
+    </div>
+    <div hidden={step !== 'REVIEW'}>
     {analysis.preview && <CoverageReviewEditor key={`coverage:${caseId}:${model.elementType}:${editorEpoch}`} model={model} preview={analysis.preview} onPendingChange={setCoveragePending} onApply={definition => {
       requireAppliedReferences();
       if (soffitPending || sidePending || framePending || supportPending || assemblyPending || loadCasesPending || stagePending) throw Error('มีข้อมูลตำแหน่งหรือเฟรมค้าง กรุณาวิเคราะห์หรือคืนค่าก่อนเก็บแผนตัวแทน');
       setModel(applyCoverageReview(model, definition)); setError('');
     }}/>}
     {analysis.preview && <CoverageReviewResults model={model} preview={analysis.preview}/>}
-    {analysis.preview && <RinglockResearchSummary snapshot={model.ringlockResearch ?? null} summary={analysis.preview.ringlockReference}/>}
+    <OutstandingRegister blockers={analysis.preview?.blockers ?? (analysis.error ? [`ANALYSIS:${analysis.error}`] : [])}/>
+    {reviewActor && onReviewChange && <ReviewPanel record={review ?? emptyReviewRecord(reviewActor.projectId ?? '', caseId)} actor={reviewActor}
+      context={{contentHash: draftHash, engineVersion: WORKFLOW_VERSION, draftPending: anyPending || !!analysis.error || !draftHash}} blockers={analysis.preview?.blockers ?? [analysis.error ?? 'ANALYSIS_FAILED']} onChange={onReviewChange}/>}
+    </div>
     {(error || analysis.error) && <p className="warning" role="alert">{error || analysis.error}</p>}
     {geometryPending && <p role="status">มีพิกัดที่ยังไม่ได้นำไปใช้ กรุณาตรวจและใช้พิกัดก่อนสร้างร่าง</p>}
     {soffitPending && <p role="status">มีตำแหน่งแบบท้องที่ยังไม่วิเคราะห์ กรุณาตรวจตำแหน่งและวิเคราะห์แรงก่อนสร้างร่าง</p>}
