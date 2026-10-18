@@ -8,6 +8,9 @@ import {StdioServerTransport} from '@modelcontextprotocol/sdk/server/stdio.js';
 import * as z from 'zod';
 import {defaults,type Input} from '../src/domain/index.js';
 import {ENUMS,FIELD_DOC,ModelStore,NOTICE,alternatives,current,exportModel,summarize,toAppBackup} from './formwork-model.js';
+import {beamAdvice,beamDefaults,calculateBeam} from '../src/domain/beam.js';
+import {calculateSlab,slabAdvice,slabDefaults} from '../src/domain/slab.js';
+import {calculateWall,wallAdvice,wallDefaults} from '../src/domain/wall.js';
 
 // stdout carries the MCP protocol; route stray library logging to stderr.
 console.log=console.error;
@@ -71,6 +74,31 @@ server.registerTool('formwork_export_app_project',{title:'Export project file fo
     return {file,cases:models.map(m=>({id:m.id,name:m.name,kind:current(m).kind}))};
   }));
 
+// Beam / slab / wall: the same practical engines as the web app (stateless; inputs override the module defaults).
+const ELEMENT_ENGINES={
+  BEAM:{defaults:beamDefaults,calc:calculateBeam,advice:beamAdvice,key:'beam'},
+  SLAB:{defaults:slabDefaults,calc:calculateSlab,advice:slabAdvice,key:'slab'},
+  WALL:{defaults:wallDefaults,calc:calculateWall,advice:wallAdvice,key:'wall'},
+} as const;
+server.registerTool('formwork_element_check',{title:'Beam / slab / wall formwork check',
+  description:'Screen a BEAM (soffit + sides + shores), SLAB (plywood → joists → bearers → shores) or WALL (two-sided, ties + braces) with the web-app engines. Without input: returns the default input (mm, kPa, kN) to show the user. With input: values override the defaults; returns status (FAIL/INCOMPLETE, never PASS), checks, blockers, spacing advice and quantities. Never invent dimensions or manufacturer SWL values; ask the user. Optional project_name writes a web-app project file with this case (unconfirmed).',
+  inputSchema:{element:z.enum(['BEAM','SLAB','WALL']),input:z.record(z.string(),z.unknown()).optional().describe('Fields to override (see the defaults returned without input)'),
+    case_name:z.string().max(200).optional(),project_name:z.string().min(1).max(200).optional(),project_code:z.string().max(60).default(''),output_dir:z.string().optional()}},
+  run(async a=>{
+    const e=ELEMENT_ENGINES[a.element];
+    if(!a.input)return {notice:NOTICE,element:a.element,defaults:e.defaults,note:'Dimensions are mm. SWL fields = 0 mean unknown (INCOMPLETE). confirmed must stay false until the user confirms.'};
+    const input={...e.defaults,...a.input,confirmed:a.input.confirmed===true},r=e.calc(input);
+    const result={notice:NOTICE,element:a.element,engineVersion:r.engineVersion,status:r.status,input:r.input,
+      checks:r.checks.map(k=>({id:k.id,label:k.label,demand:k.demand,limit:k.limit,unit:k.unit,utilization:k.utilization,status:k.status})),
+      blockers:r.blockers,advice:e.advice(r.input as never),quantities:r.quantities};
+    if(!a.project_name)return result;
+    const dir=a.output_dir??path.join(store.dir,'exports'),file=path.join(dir,`${a.project_name.replace(/[^\w\u0E00-\u0E7F-]+/g,'_')}-project.json`);
+    await mkdir(dir,{recursive:true});
+    await writeFile(file,JSON.stringify({schemaVersion:3,app:'CMG Formwork MCP',project:{name:a.project_name,code:a.project_code,
+      cases:[{name:a.case_name??a.element,input:{...defaults},workflowElementType:a.element,[e.key]:{...r.input,confirmed:false}}]}},null,2),'utf8');
+    return {...result,file};
+  }));
+
 const IMAGES:Record<string,string>={'.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.gif':'image/gif'};
 server.registerTool('formwork_read_drawing',{title:'Read drawing file',
   description:'Read a drawing the user provides. PDF: text per page plus dimension/label candidates, and page images (scanned pages automatically, or all requested pages with render=true; max 3 images). Image file: returns the picture for visual reading. Always confirm the extracted dimensions with the user.',
@@ -118,9 +146,9 @@ server.registerPrompt('formwork_from_drawing',{title:'Model formwork from a draw
   argsSchema:{file:z.string().optional().describe('Absolute path of the drawing (PDF/PNG/JPG)')}},
   ({file})=>({messages:[{role:'user',content:{type:'text',text:[
     `Create formwork (ไม้แบบ) models from ${file?`the drawing at ${file}`:'the drawing I will provide'} using the cmg-formwork MCP tools.`,
-    '1. formwork_read_drawing, then list every footing/column with kind, shape, width, length, (L arms) and pour height in mm, citing where each value came from.',
+    '1. formwork_read_drawing, then list every footing/column/beam/slab/wall with kind and dimensions in mm (footing/column: shape, width, length, L arms, pour height; beam: b, span, total depth, slab thickness; slab: panel X, Y, thickness; wall: length, thickness, pour height), citing where each value came from.',
     '2. Ask me for any missing or ambiguous value. Do not guess dimensions.',
-    '3. formwork_create_model for each element (source = file/sheet), then show status, quantities, failing checks and blockers in a short table.',
+    '3. formwork_create_model for each footing/column (source = file/sheet); formwork_element_check for each beam/slab/wall (show its defaults first, never invent SWL values); then show status, quantities, failing checks and blockers in a short table.',
     '4. Let me request changes in conversation and apply them with formwork_update_model; when checks fail or I ask to make it pass, call formwork_alternatives, recommend one option with reasons and apply exactly its changes after I agree.',
     '5. When I ask, export obj/dxf for 3D review and formwork_export_app_project for the web app.',
     'All results are preliminary screening, not construction approval. Reply in Thai.'].join('\n')}}]}));

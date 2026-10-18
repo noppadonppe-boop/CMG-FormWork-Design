@@ -5,7 +5,7 @@ import {DrawingChat} from './DrawingChat';
 import {AI_PROVIDER_TIMEOUT_MS, AI_STEPS, type AiStage} from '../aiProgress';
 import {aiExtract, configured, deleteUpload, subscribeUploads, uploadPreviewUrl, uploadSource, type UploadRecord} from '../firebase';
 import {openSource, type PreparedSource, type SourceDocument} from '../sourceFiles';
-import {elementToInput, parseAiElements, type AiElement} from '../aiElements';
+import {AI_FIELD_LABEL, AI_KINDS, AI_KIND_LABEL, elementToCase, parseAiElements, type AiCase, type AiElement, type AiKind} from '../aiElements';
 import type {Input} from '../domain';
 import type {ModelChange} from '../domain/scene';
 
@@ -14,7 +14,7 @@ export type ResumeDrawing = {storagePath: string; name: string; url: string; dra
 type Props = {
   model?: Input;
   onApplyChanges?: (changes: ModelChange[], note: string) => string | null;
-  onCreateCases?: (cases: {name: string; input: Input}[]) => void;
+  onCreateCases?: (cases: AiCase[]) => void;
   resume?: ResumeDrawing | null;
   onDrawingChange?: (drawing: ResumeDrawing | null) => void;
   stockIds?: string[];
@@ -36,30 +36,34 @@ const labels: Record<Phase, string> = {
   uploading: 'กำลังอัปโหลดไฟล์…', analyzing: 'AI กำลังอ่านแบบ…',
 };
 
-function ElementPicker({draft, disabled, onCreate}: {draft: Record<string, unknown>; disabled: boolean; onCreate: (cases: {name: string; input: Input}[]) => void}) {
+function ElementPicker({draft, disabled, onCreate}: {draft: Record<string, unknown>; disabled: boolean; onCreate: (cases: AiCase[]) => void}) {
   let elements: AiElement[] = [];
   try {elements = parseAiElements(draft.elements);} catch {/* malformed legacy result: show the hint below */}
   const [selected, setSelected] = useState<number[]>([]);
-  const [kinds, setKinds] = useState<Record<number, 'FOOTING' | 'COLUMN'>>({});
-  if (!elements.length) return <p className="muted">ผลนี้ยังไม่ได้แยกรายการฐานราก/เสา กด “วิเคราะห์ด้วย AI” อีกครั้งเพื่อให้ AI สร้างรายการโมเดล</p>;
+  const [kinds, setKinds] = useState<Record<number, AiKind>>({});
+  if (!elements.length) return <p className="muted">ผลนี้ยังไม่ได้แยกรายการองค์อาคาร กด “วิเคราะห์ด้วย AI” อีกครั้งเพื่อให้ AI สร้างรายการโมเดล</p>;
   const rows = elements.map((e, i) => {
-    const kind = kinds[i] ?? (e.kind === 'COLUMN' ? 'COLUMN' : 'FOOTING');
-    try {return {e, kind, ...elementToInput(e, kind), invalid: ''};} catch (reason) {return {e, kind, input: null, missing: [], invalid: reason instanceof Error ? reason.message : 'มิติไม่ถูกต้อง'};}
+    const kind: AiKind = kinds[i] ?? (e.kind === 'UNKNOWN' ? 'FOOTING' : e.kind);
+    try {return {e, kind, ...elementToCase(e, kind), invalid: ''};} catch (reason) {return {e, kind, item: null, missing: [], invalid: reason instanceof Error ? reason.message : 'มิติไม่ถูกต้อง'};}
   });
-  const ready = selected.filter(i => rows[i]?.input);
+  const ready = selected.filter(i => rows[i]?.item);
   return <section className="ai-elements" aria-label="รายการที่ AI พบสำหรับสร้างโมเดล">
     <h4>รายการที่ AI พบ → สร้างโมเดลจำลอง</h4>
     <table><thead><tr><th/><th>รายการ</th><th>ชนิด</th><th>ขนาด</th><th>สถานะ</th></tr></thead><tbody>
-      {rows.map(({e, kind, input, missing, invalid}, i) => <tr key={i}>
-        <td><input type="checkbox" aria-label={`เลือก ${e.name}`} disabled={!input || disabled} checked={selected.includes(i)} onChange={ev => setSelected(s => ev.target.checked ? [...s, i] : s.filter(x => x !== i))}/></td>
-        <td><b>{e.name}</b>{e.quantity ? ` ×${e.quantity}` : ''}{e.note && <small className="help">{e.note}</small>}</td>
-        <td><select value={kind} disabled={disabled} onChange={ev => setKinds(k => ({...k, [i]: ev.target.value as 'FOOTING' | 'COLUMN'}))}><option value="FOOTING">ฐานราก</option><option value="COLUMN">เสา</option></select>{e.kind === 'UNKNOWN' && <small className="help">AI ไม่ระบุชนิด</small>}</td>
-        <td>{e.shape === 'L' ? 'L ' : ''}{[e.width, e.length, e.height].map(v => v ?? '?').join(' × ')} {e.unit === 'UNKNOWN' ? '(?)' : e.unit}</td>
-        <td>{input ? <span className="pill approved">พร้อมสร้าง</span> : <span className="pill amber">{invalid || 'ขาด ' + missing.join(', ')}</span>}</td>
-      </tr>)}
+      {rows.map(({e, kind, item, missing, invalid}, i) => {
+        const f = AI_FIELD_LABEL[kind];
+        return <tr key={i}>
+          <td><input type="checkbox" aria-label={`เลือก ${e.name}`} disabled={!item || disabled} checked={selected.includes(i)} onChange={ev => setSelected(s => ev.target.checked ? [...s, i] : s.filter(x => x !== i))}/></td>
+          <td><b>{e.name}</b>{e.quantity ? ` ×${e.quantity}` : ''}{e.note && <small className="help">{e.note}</small>}</td>
+          <td><select aria-label={`ชนิด ${e.name}`} value={kind} disabled={disabled} onChange={ev => setKinds(k => ({...k, [i]: ev.target.value as AiKind}))}>{AI_KINDS.map(k => <option key={k} value={k}>{AI_KIND_LABEL[k]}</option>)}</select>{e.kind === 'UNKNOWN' && <small className="help">AI ไม่ระบุชนิด</small>}</td>
+          <td>{e.shape === 'L' ? 'L ' : ''}{f.width} {e.width ?? '?'} × {f.length} {e.length ?? '?'} × {f.height} {e.height ?? '?'}{kind === 'BEAM' ? ` · พื้น ${e.slabThickness ?? '—'}` : ''} {e.unit === 'UNKNOWN' ? '(?)' : e.unit}
+            {item?.notes.map(n => <small key={n} className="help">{n}</small>)}</td>
+          <td>{item ? <span className="pill approved">พร้อมสร้าง</span> : <span className="pill amber">{invalid || 'ขาด ' + missing.join(', ')}</span>}</td>
+        </tr>;
+      })}
     </tbody></table>
-    <p className="notice">โมเดลที่สร้างใช้ค่าวัสดุอ้างอิงและระยะเริ่มต้นของแอป (แก้ไขได้ในเมนู Design Criteria) และยังไม่ยืนยันมิติ รายการที่ขาดมิติให้ถามใน “สนทนากับ AI” หรือป้อนเอง</p>
-    <button className="btn" disabled={disabled || !ready.length} onClick={() => onCreate(ready.map(i => ({name: `${rows[i].e.name}${rows[i].e.quantity && rows[i].e.quantity! > 1 ? ` (×${rows[i].e.quantity})` : ''} · ${rows[i].kind === 'COLUMN' ? 'เสา' : 'ฐานราก'}`, input: rows[i].input!})))}>
+    <p className="notice">โมเดลที่สร้างใช้ค่าวัสดุอ้างอิงและระยะเริ่มต้นของแอป (แก้ไขได้ในเมนู Design Criteria / จัดวางเบื้องต้น) และยังไม่ยืนยันมิติ รายการที่ขาดมิติให้ถามใน “สนทนากับ AI” หรือป้อนเอง</p>
+    <button className="btn" disabled={disabled || !ready.length} onClick={() => onCreate(ready.map(i => rows[i].item!))}>
       สร้างโมเดลจากรายการที่เลือก ({ready.length})</button>
   </section>;
 }

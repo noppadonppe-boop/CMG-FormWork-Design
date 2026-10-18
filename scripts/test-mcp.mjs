@@ -16,6 +16,12 @@ try{
   const updated=JSON.parse((await call('formwork_update_model',{id:created.id,changes:{height:1200},note:'raise'}))[0].text);
   console.log('model',created.id,'rev',updated.revision,'status',updated.status,'pressure',updated.geometry.pressure_kPa);
   console.log(JSON.parse((await call('formwork_export',{id:created.id,format:'obj'}))[0].text).files);
+  for(const [element,input] of [['BEAM',{b:300,h:600,length:6000}],['SLAB',{lx:6000,ly:4000,t:150}],['WALL',{length:6000,t:250,height:3000}]]){
+    const d=JSON.parse((await call('formwork_element_check',{element}))[0].text);
+    const r=JSON.parse((await call('formwork_element_check',{element,input,project_name:'smoke-'+element}))[0].text);
+    if(!d.defaults||!['FAIL','INCOMPLETE'].includes(r.status)||!r.checks.length||!r.file)throw Error('element check '+element);
+    console.log(element,r.status,r.checks.length,'checks',path.basename(r.file));
+  }
   if(process.argv[2]){const c=await call('formwork_read_drawing',{path:path.resolve(process.argv[2]),pages:[1]});
     console.log(c[0].text.slice(0,400),'\nimages:',c.slice(1).map(i=>i.mimeType+' '+Math.round(i.data.length*3/4/1024)+' KB'));}
 }finally{await client.close();await rm(dir,{recursive:true,force:true});}

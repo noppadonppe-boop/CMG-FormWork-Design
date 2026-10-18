@@ -179,11 +179,28 @@ describe('drawing upload and AI recovery', () => {
     await click('วิเคราะห์ด้วย AI');
     const boxes = host.querySelectorAll<HTMLInputElement>('.ai-elements input[type="checkbox"]');
     expect(boxes[1].disabled).toBe(true);
-    expect(host.querySelector('.ai-elements')?.textContent).toContain('ขาด สูง/ลึก');
+    expect(host.querySelector('.ai-elements')?.textContent).toContain('ขาด สูงเท');
     expect(button('สร้างโมเดลจากรายการที่เลือก (0)').disabled).toBe(true);
     await act(async () => boxes[0].click());
     await click('สร้างโมเดลจากรายการที่เลือก (1)');
-    expect(onCreateCases).toHaveBeenCalledWith([{name: 'F1 (×4) · ฐานราก', input: expect.objectContaining({kind: 'FOOTING', width: 1500, length: 2000, height: 600, confirmed: false})}]);
+    expect(onCreateCases).toHaveBeenCalledWith([expect.objectContaining({name: 'F1 (×4) · ฐานราก', workflowElementType: 'FOOTING', input: expect.objectContaining({kind: 'FOOTING', width: 1500, length: 2000, height: 600, confirmed: false})})]);
+  });
+
+  it('creates beam, slab and wall draft cases when the user picks those kinds', async () => {
+    const source = sourceDocument();
+    services.openSource.mockResolvedValue(source.document);
+    const beam = {name: 'B1', kind: 'BEAM', shape: 'UNKNOWN', width: 300, length: 6000, height: 600, armX: null, armY: null, slabThickness: 120, unit: 'mm', quantity: null, note: ''};
+    services.aiExtract.mockResolvedValue({draft: {report: 'พบคาน', elements: [beam, {...beam, name: 'W1', kind: 'UNKNOWN', width: 6000, length: 250, height: 3000, slabThickness: null}]}});
+    const onCreateCases = vi.fn();
+    await mount({...props, onCreateCases});
+    await chooseFile(source.raw);
+    await click('วิเคราะห์ด้วย AI');
+    const kind = host.querySelector<HTMLSelectElement>('select[aria-label="ชนิด W1"]')!;
+    await act(async () => {kind.value = 'WALL'; kind.dispatchEvent(new Event('change', {bubbles: true}));});
+    for (const box of host.querySelectorAll<HTMLInputElement>('.ai-elements input[type="checkbox"]')) await act(async () => box.click());
+    await click('สร้างโมเดลจากรายการที่เลือก (2)');
+    expect(onCreateCases).toHaveBeenCalledWith([expect.objectContaining({workflowElementType: 'BEAM', beam: expect.objectContaining({b: 300, h: 600, slabT: 120})}),
+      expect.objectContaining({name: 'W1 · ผนัง', workflowElementType: 'WALL', wall: expect.objectContaining({length: 6000, t: 250, height: 3000})})]);
   });
 
   it('resumes an uploaded drawing and its AI reading for a newly selected case', async () => {
