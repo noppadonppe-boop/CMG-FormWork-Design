@@ -1,0 +1,106 @@
+{
+  "schema_version": "public-reference-capture-1.0",
+  "checked_on": "2026-10-18",
+  "status": "REFERENCE_ONLY",
+  "construction_release": "NO_GO",
+  "automatic_import_into_app": false,
+  "purpose": "Public manufacturer data captured for owner review. Values remain unbound to project stock, stage, configuration and approval evidence.",
+  "sources": [
+    {
+      "id": "NOVOCON-FORMTIE-PUBLIC-2026-10-18",
+      "title": "Novocon Form Tie & Inner Unit product page",
+      "manufacturer_or_supplier": "Novocon Co., Ltd.",
+      "url": "https://www.novocon.co.th/formtieinner/",
+      "source_kind": "MANUFACTURER_OR_SUPPLIER_PUBLIC_PAGE",
+      "observed_scope": "Inner Unit B9 label with publisher tensile 20 kN; Inner Unit D12 label with publisher tensile 32 kN; Form Tie + Nut product length rows; washer dimensions and round-pipe clamp range.",
+      "limits": [
+        "No complete Inner–Outer–End connection–Nut–Plate assembly resistance was published on the inspected page.",
+        "No effective tensile area, stiffness area, thread pitch/tolerance, proof/breaking basis, safety factor or test report was published on the inspected page.",
+        "The page does not identify the project's batch, lot, revision or installed assembly."
+      ]
+    },
+    {
+      "id": "DOKA-RINGLOCK-BROCHURE-2020-11",
+      "title": "Doka Ringlock brochure, technical information page",
+      "manufacturer_or_supplier": "Doka",
+      "url": "https://www.doka.com/web/products/system-groups/doka-working-scaffold-systems/working-scaffolds/ringlock/Ringlock-Doka-Scaffold-Brochure-201119.pdf",
+      "source_kind": "MANUFACTURER_BROCHURE",
+      "edition": "11/2020",
+      "observed_scope": "Permissible standard axial loads by ledger spacing and 2.0 m lift-height diagonal bay-brace force table; brochure states γM=1.1 and γF=1.5.",
+      "limits": [
+        "The tables are product/configuration-specific and do not prove that the project's Thai stock is Doka Ringlock.",
+        "The table is not a complete shoring-tower, U-head, Jack Base, joint, foundation or second-order configuration rating.",
+        "No value is copied into the application's resistance fields by this capture."
+      ]
+    },
+    {
+      "id": "DOKA-RINGLOCK-TECH-2023-02",
+      "title": "Doka Ringlock technical information leaflet",
+      "manufacturer_or_supplier": "Doka",
+      "url": "https://www.doka.com/web/media/files/DOA_23_Leaflet_Ringlock_4p_en_230223ca_web.pdf",
+      "source_kind": "MANUFACTURER_LEAFLET",
+      "edition": "02/2023",
+      "observed_scope": "Tube OD 48.3 mm, wall thickness 3.2 mm, steel grade S355JOH, hot-dip galvanized; available standard and ledger lengths; DIBt Z-8.22-992 approval reference.",
+      "limits": [
+        "These identifiers are catalogue/system information and are not a project material certificate or installed configuration record.",
+        "The leaflet does not supply the complete project shoring resistance model."
+      ]
+    }
+  ],
+  "form_tie_public_values": [
+    {
+      "source_id": "NOVOCON-FORMTIE-PUBLIC-2026-10-18",
+      "product_label": "Inner Unit B9",
+      "publisher_value": 20,
+      "publisher_value_unit": "kN",
+      "publisher_value_label": "Tensile",
+      "assembly_capacity_kN": null,
+      "project_product_verified": false,
+      "status": "REFERENCE_ONLY_UNVERIFIED"
+    },
+    {
+      "source_id": "NOVOCON-FORMTIE-PUBLIC-2026-10-18",
+      "product_label": "Inner Unit D12",
+      "publisher_value": 32,
+      "publisher_value_unit": "kN",
+      "publisher_value_label": "Tensile",
+      "assembly_capacity_kN": null,
+      "project_product_verified": false,
+      "status": "REFERENCE_ONLY_UNVERIFIED"
+    }
+  ],
+  "ringlock_public_values": {
+    "source_id": "DOKA-RINGLOCK-BROCHURE-2020-11",
+    "demand_basis_label": "Permissible loads as printed in manufacturer brochure",
+    "stated_factors": {
+      "gamma_M": 1.1,
+      "gamma_F": 1.5
+    },
+    "standard_axial_loads": [
+      { "ledger_spacing_m": 0.5, "compression_kN": 62, "tension_kN": 56 },
+      { "ledger_spacing_m": 1.0, "compression_kN": 55, "tension_kN": 56 },
+      { "ledger_spacing_m": 1.5, "compression_kN": 43, "tension_kN": 56 },
+      { "ledger_spacing_m": 2.0, "compression_kN": 29, "tension_kN": 56 },
+      { "ledger_spacing_m": 2.5, "compression_kN": 19.2, "tension_kN": 56 },
+      { "ledger_spacing_m": 3.0, "compression_kN": 13, "tension_kN": 56 }
+    ],
+    "diagonal_bay_brace_2m_lift": [
+      { "bay_length_m": 0.73, "tension_kN": 12.2, "compression_kN": 11.9 },
+      { "bay_length_m": 1.09, "tension_kN": 12.2, "compression_kN": 11.9 },
+      { "bay_length_m": 1.4, "tension_kN": 12.2, "compression_kN": 11.8 },
+      { "bay_length_m": 1.57, "tension_kN": 12.2, "compression_kN": 11.6 },
+      { "bay_length_m": 2.07, "tension_kN": 12.2, "compression_kN": 11.1 },
+      { "bay_length_m": 2.57, "tension_kN": 12.2, "compression_kN": 9.2 },
+      { "bay_length_m": 3.07, "tension_kN": 12.2, "compression_kN": 7.7 }
+    ],
+    "project_system_verified": false,
+    "status": "REFERENCE_ONLY_UNVERIFIED"
+  },
+  "required_owner_confirmation_before_design_use": [
+    "actual manufacturer, system generation, product code and batch",
+    "complete Form Tie assembly drawing and capacity/test basis",
+    "Ringlock configuration rating covering standard, ledger, brace, node, U-head, Jack Base and joint behaviour",
+    "support/soil or young-slab Design Basis and serviceability limits",
+    "design code, load combinations and engineer review/approval scope"
+  ]
+}

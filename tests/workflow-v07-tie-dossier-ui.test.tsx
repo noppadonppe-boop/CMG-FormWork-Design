@@ -35,6 +35,17 @@ it('offers no stock capacity defaults, respects segmented topology and starts pr
     await click(host, 'เพิ่มช่วงก้านจริง'); await click(host, 'เพิ่มรอยต่อเกลียวจริง'); expect(changed.mock.lastCall![0].rodGauges[0].startMm).toBeNull(); expect(changed.mock.lastCall![0].threads[0].requiredEngagementMm).toBeNull();
   } finally {await act(async () => root.unmount());}
 });
+it('can seed the editable Inner product from captured public data without inventing a design basis', async () => {
+  setup(); const host = document.createElement('div'), root = createRoot(host), changed = vi.fn();
+  function Editor() {const [value, set] = useState<TieDossier | null>(null); return <TieDossierEditor value={value} legacy={null} enabled tieId="SYN" slotPrefix="STABLE" revisionId="UI-R" onChange={d => {set(d); changed(d);}} onBindContext={vi.fn()} onPendingChange={vi.fn()} templates={[]} onCopy={vi.fn()}/>;}
+  try {
+    await act(async () => root.render(<Editor/>)); await click(host, 'เริ่มทะเบียนชุด Inner/Outer ที่ระบุเอง');
+    const inner = product(host); await click(inner, 'เติม Inner Unit B9 · 20 kN');
+    const latest = changed.mock.lastCall![0] as TieDossier, record = latest.components.find(c => c.role === 'INNER')!;
+    expect(record.reference.productId).toBe('NOVOCON-INNER-UNIT-B9'); expect(record.reference.manufacturer).toBe('Novocon Co., Ltd.'); expect(record.reference.properties.capacityKN).toBe(20);
+    expect(record.reference.capacityBasis).toBeNull(); expect(record.edits).toHaveLength(0); expect(field(product(host), 'ผู้ผลิต').querySelector('input')!.value).toBe('Novocon Co., Ltd.');
+  } finally {await act(async () => root.unmount());}
+});
 it('records Custom reason/evidence/declared actor/time/revision, preserves original values, locks original fields and retains explicit null', async () => {
   setup(); const host = document.createElement('div'), root = createRoot(host), changed = vi.fn(), pending = vi.fn();
   function Editor() {const [value, set] = useState<TieDossier | null>(tieDossierFixture()); return <TieDossierEditor value={value} legacy={null} enabled tieId="SYN" slotPrefix="STABLE" revisionId="UI-R1" onChange={d => {set(d); changed(d);}} onBindContext={vi.fn()} onPendingChange={pending} templates={[]} onCopy={vi.fn()}/>;}

@@ -4,19 +4,48 @@ import {TIE_ROLES} from '../domain/workflowV07/assemblies';
 import type {SideTieDefinition} from '../domain/workflowV07/sideLayout';
 import {bindTieDossier, copyTieProductTemplate, editTieProduct, effectiveTieProduct, emptyRodGauge, emptyThreadInterface, emptyTieDossier, migrateLegacyTieAssembly, ROD_ROLES, TIE_PROPERTIES,
   type TieComponentRecord, type TieDossier, type TieProductRecord, type ThreadDescription, type tieGeometryContext, type evaluateTieDossier} from '../domain/workflowV07/tieDossier';
+import publicCaptureText from '../reference/workflow-v07/public-reference-capture-2026-10-18.json?raw';
 
 const labels = {capacityKN: 'กำลังต่อแรงไทร์เต็มเส้น · kN', tensileEffectiveAreaMm2: 'พื้นที่ดึงที่มีผล At · mm²', stiffnessAreaMm2: 'พื้นที่สำหรับ EA · mm²', E_MPa: 'E ของก้าน · MPa', steelLengthMm: 'ความยาวเหล็กตาม Datum · mm', orderLengthMm: 'ความยาวสั่งตามผู้ผลิต · mm', outerExposedLengthMm: 'ความยื่นภายนอก · mm', coneRecessMm: 'ระยะร่อง Cone · mm'};
 const strings = {productId: 'รหัสสินค้า/รายการอ้างอิง', manufacturer: 'ผู้ผลิต', model: 'รุ่น', lotRef: 'Lot/การตรวจสภาพ/ใช้ซ้ำ', threadMark: 'เครื่องหมายเกลียวตามสินค้า', materialRef: 'วัสดุและแหล่งสมบัติ', sourceVersion: 'ฉบับข้อมูลอ้างอิง', sourceRef: 'ที่มาของข้อมูลสินค้า', capacityScopeRef: 'ขอบเขต Rating/ฐานแรง', lengthDatumRef: 'รูป/นิยาม Datum ความยาว'};
 const num = (s: string) => s.trim() && Number.isFinite(Number(s)) ? Number(s) : null;
 const show = (n: number | null) => n === null ? 'UNKNOWN' : n.toLocaleString('en-US', {maximumFractionDigits: 6});
 const emptyCustom = () => ({field: '', value: '', reason: '', evidenceRef: '', actor: ''});
+const publicCapture = JSON.parse(publicCaptureText) as {
+  checked_on: string;
+  sources: {id: string; title: string; url: string}[];
+  form_tie_public_values: {product_label: string; publisher_value: number; publisher_value_unit: string; publisher_value_label: string}[];
+};
+const publicTiePresets = publicCapture.form_tie_public_values.map(row => {
+  const source = publicCapture.sources.find(s => s.id === 'NOVOCON-FORMTIE-PUBLIC-2026-10-18');
+  return {
+    label: row.product_label,
+    productId: `NOVOCON-${row.product_label.replace(/[^A-Za-z0-9]+/g, '-').replace(/-+$/, '').toUpperCase()}`,
+    manufacturer: 'Novocon Co., Ltd.',
+    model: row.product_label,
+    sourceVersion: `public-reference-capture-1.0@${publicCapture.checked_on}`,
+    sourceRef: source?.url ?? '',
+    capacityScopeRef: `${source?.title ?? 'Novocon public page'} · ${row.product_label} · ${row.publisher_value} ${row.publisher_value_unit} ${row.publisher_value_label}`,
+    capacityKN: row.publisher_value,
+  };
+});
 function TieProductEditor({value, slot, revisionId, onChange, onPendingChange}: {value: TieComponentRecord; slot: string; revisionId: string; onChange: (c: TieComponentRecord) => void; onPendingChange: (slot: string, pending: boolean) => void}) {
   const [custom, setCustom] = useState(emptyCustom), [error, setError] = useState(''); let effective: TieProductRecord | null = null; try {effective = effectiveTieProduct(value);} catch { /* imported malformed data is rejected by parent validation */ }
   useEffect(() => () => onPendingChange(slot, false), [slot, onPendingChange]);
   function changeCustom(p: Partial<typeof custom>) {const next = {...custom, ...p}; setCustom(next); setError(''); onPendingChange(slot, Object.values(next).some(v => v !== ''));}
   function discard() {setCustom(emptyCustom()); setError(''); onPendingChange(slot, false);}
+  function applyPublicPreset(preset: typeof publicTiePresets[number]) {
+    if (value.edits.length) return;
+    onChange({...value, reference: {...value.reference, productId: preset.productId, manufacturer: preset.manufacturer, model: preset.model,
+      sourceVersion: preset.sourceVersion, sourceRef: preset.sourceRef, capacityScopeRef: preset.capacityScopeRef,
+      properties: {...value.reference.properties, capacityKN: preset.capacityKN}}});
+  }
   return <details className="tie-product-editor" aria-label={`ผลิตภัณฑ์ ${value.role}`}><summary>{value.role} · {value.reference.productId || 'UNKNOWN'} · {value.edits.length ? 'Custom' : 'ข้อมูลอ้างอิงที่ระบุเอง'}</summary>
     <p>ช่องหน้าที่นี้ไม่ใช่จำนวนชิ้นใน BOM และไม่ทำให้ข้อมูลเป็นสินค้าที่รับรอง THREAD/WALER_LOCAL เป็นหน้าที่ตรวจซึ่งต้องอ้างผลิตภัณฑ์จริงที่เกี่ยวข้อง</p>
+    {value.role === 'INNER' && !value.edits.length && <fieldset><legend>เติมข้อมูลสาธารณะล่าสุด · Novocon</legend>
+      <p>เติมเฉพาะรหัส ผู้ผลิต รุ่น แหล่งข้อมูล และค่าที่ผู้เผยแพร่ระบุ ระบบยังไม่กำหนด basis เป็น Allowable/Design และไม่เติมพื้นที่ดึง เกลียว หรือกำลังชุดประกอบ</p>
+      <div className="supplier-actions">{publicTiePresets.map(preset => <button type="button" className="btn secondary" key={preset.productId} onClick={() => applyPublicPreset(preset)}>เติม {preset.label} · {preset.capacityKN} kN</button>)}</div>
+    </fieldset>}
     <div className="form-grid">{Object.entries(strings).map(([key, label]) => <label className="field" key={key}><span>{label}</span><input disabled={value.edits.length > 0} value={String(value.reference[key as keyof typeof strings])} onChange={e => onChange({...value, reference: {...value.reference, [key]: e.target.value}})}/></label>)}
       <label className="field"><span>ฐานค่ากำลังอ้างอิง</span><select disabled={value.edits.length > 0} value={value.reference.capacityBasis ?? ''} onChange={e => onChange({...value, reference: {...value.reference, capacityBasis: (e.target.value || null) as TieProductRecord['capacityBasis']}})}><option value="">ยังไม่ทราบ</option><option value="ALLOWABLE">ALLOWABLE ตามแหล่งที่ระบุ</option><option value="DESIGN">DESIGN ตามแหล่งที่ระบุ</option><option value="ULTIMATE_TEST">ULTIMATE_TEST · ไม่แปลงเป็นกำลังใช้งานเอง</option></select></label>
       {TIE_PROPERTIES.map(key => <label className="field" key={key}><span>ต้นฉบับ {labels[key]}</span><input disabled={value.edits.length > 0} type="number" min="0" step="any" value={value.reference.properties[key] ?? ''} onChange={e => onChange({...value, reference: {...value.reference, properties: {...value.reference.properties, [key]: num(e.target.value)}}})}/></label>)}
