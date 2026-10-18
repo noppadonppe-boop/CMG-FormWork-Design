@@ -5,6 +5,7 @@ import type {SideTieDefinition} from '../domain/workflowV07/sideLayout';
 import {bindTieDossier, copyTieProductTemplate, editTieProduct, effectiveTieProduct, emptyRodGauge, emptyThreadInterface, emptyTieDossier, migrateLegacyTieAssembly, ROD_ROLES, TIE_PROPERTIES,
   type TieComponentRecord, type TieDossier, type TieProductRecord, type ThreadDescription, type tieGeometryContext, type evaluateTieDossier} from '../domain/workflowV07/tieDossier';
 import publicCaptureText from '../reference/workflow-v07/public-reference-capture-2026-10-18.json?raw';
+import bookTieReferenceText from '../reference/workflow-v07/closure/baseline/formtie_v0.6.2/data/inner_unit_reference_presets.json?raw';
 
 const labels = {capacityKN: 'กำลังต่อแรงไทร์เต็มเส้น · kN', tensileEffectiveAreaMm2: 'พื้นที่ดึงที่มีผล At · mm²', stiffnessAreaMm2: 'พื้นที่สำหรับ EA · mm²', E_MPa: 'E ของก้าน · MPa', steelLengthMm: 'ความยาวเหล็กตาม Datum · mm', orderLengthMm: 'ความยาวสั่งตามผู้ผลิต · mm', outerExposedLengthMm: 'ความยื่นภายนอก · mm', coneRecessMm: 'ระยะร่อง Cone · mm'};
 const strings = {productId: 'รหัสสินค้า/รายการอ้างอิง', manufacturer: 'ผู้ผลิต', model: 'รุ่น', lotRef: 'Lot/การตรวจสภาพ/ใช้ซ้ำ', threadMark: 'เครื่องหมายเกลียวตามสินค้า', materialRef: 'วัสดุและแหล่งสมบัติ', sourceVersion: 'ฉบับข้อมูลอ้างอิง', sourceRef: 'ที่มาของข้อมูลสินค้า', capacityScopeRef: 'ขอบเขต Rating/ฐานแรง', lengthDatumRef: 'รูป/นิยาม Datum ความยาว'};
@@ -29,6 +30,12 @@ const publicTiePresets = publicCapture.form_tie_public_values.map(row => {
     capacityKN: row.publisher_value,
   };
 });
+type BookTiePreset = {
+  record_id: string; inner_type: string; thread_designation_as_printed: string; table_area_cm2: number;
+  breaking_kgf_interpretation: number; working_kgf_interpretation: number; breaking_kN_converted: number;
+  working_kN_converted: number; length_column_cm_as_printed: [number, number];
+};
+const bookTiePresets = (JSON.parse(bookTieReferenceText) as {legacy: BookTiePreset[]}).legacy;
 function TieProductEditor({value, slot, revisionId, onChange, onPendingChange}: {value: TieComponentRecord; slot: string; revisionId: string; onChange: (c: TieComponentRecord) => void; onPendingChange: (slot: string, pending: boolean) => void}) {
   const [custom, setCustom] = useState(emptyCustom), [error, setError] = useState(''); let effective: TieProductRecord | null = null; try {effective = effectiveTieProduct(value);} catch { /* imported malformed data is rejected by parent validation */ }
   useEffect(() => () => onPendingChange(slot, false), [slot, onPendingChange]);
@@ -40,11 +47,23 @@ function TieProductEditor({value, slot, revisionId, onChange, onPendingChange}: 
       sourceVersion: preset.sourceVersion, sourceRef: preset.sourceRef, capacityScopeRef: preset.capacityScopeRef,
       properties: {...value.reference.properties, capacityKN: preset.capacityKN}}});
   }
+  function applyBookPreset(preset: BookTiePreset) {
+    if (value.edits.length) return;
+    const sourceRef = 'Text Book/หนังสือ Design Form Work.pdf · Table 4.6 · printed p.114';
+    const scope = `Table 4.6 · Type ${preset.inner_type} · ${preset.thread_designation_as_printed} · area printed ${preset.table_area_cm2} cm²; breaking ${preset.breaking_kgf_interpretation} kgf (${preset.breaking_kN_converted} kN); working ${preset.working_kgf_interpretation} kgf (${preset.working_kN_converted} kN); printed length range ${preset.length_column_cm_as_printed[0]}–${preset.length_column_cm_as_printed[1]} cm is reference only, not cut/order length. Use only for this matching tie product; verify full end hardware and assembly.`;
+    onChange({...value, reference: {...value.reference, productId: preset.record_id, manufacturer: 'Design Form Work · historical book reference', model: `Form tie Type ${preset.inner_type}`, threadMark: preset.thread_designation_as_printed,
+      sourceVersion: 'Design Form Work · Table 4.6', sourceRef, capacityBasis: 'ALLOWABLE', capacityScopeRef: scope,
+      properties: {...value.reference.properties, capacityKN: preset.working_kN_converted}}});
+  }
   return <details className="tie-product-editor" aria-label={`ผลิตภัณฑ์ ${value.role}`}><summary>{value.role} · {value.reference.productId || 'UNKNOWN'} · {value.edits.length ? 'Custom' : 'ข้อมูลอ้างอิงที่ระบุเอง'}</summary>
     <p>ช่องหน้าที่นี้ไม่ใช่จำนวนชิ้นใน BOM และไม่ทำให้ข้อมูลเป็นสินค้าที่รับรอง THREAD/WALER_LOCAL เป็นหน้าที่ตรวจซึ่งต้องอ้างผลิตภัณฑ์จริงที่เกี่ยวข้อง</p>
     {value.role === 'INNER' && !value.edits.length && <fieldset><legend>เติมข้อมูลสาธารณะล่าสุด · Novocon</legend>
       <p>เติมเฉพาะรหัส ผู้ผลิต รุ่น แหล่งข้อมูล และค่าที่ผู้เผยแพร่ระบุ ระบบยังไม่กำหนด basis เป็น Allowable/Design และไม่เติมพื้นที่ดึง เกลียว หรือกำลังชุดประกอบ</p>
       <div className="supplier-actions">{publicTiePresets.map(preset => <button type="button" className="btn secondary" key={preset.productId} onClick={() => applyPublicPreset(preset)}>เติม {preset.label} · {preset.capacityKN} kN</button>)}</div>
+    </fieldset>}
+    {value.role === 'INNER' && !value.edits.length && <fieldset><legend>ข้อมูลจากหนังสืออ้างอิงที่ให้มา · Table 4.6 p.114</legend>
+      <p>เติมค่ากำลังใช้งานตามตารางและตั้งฐานเป็น ALLOWABLE; เก็บกำลังประลัยและข้อมูลหน้าตัดไว้ในขอบเขตอ้างอิง ไม่ใช้แทนกำลังของปลายเกลียว นัต แผ่นรอง หรือชุดประกอบทั้งเส้น</p>
+      <div className="supplier-actions">{bookTiePresets.map(preset => <button type="button" className="btn secondary" key={preset.record_id} onClick={() => applyBookPreset(preset)}>เติม Type {preset.inner_type} · working {preset.working_kgf_interpretation.toLocaleString('en-US')} kgf · {preset.working_kN_converted.toFixed(3)} kN</button>)}</div>
     </fieldset>}
     <div className="form-grid">{Object.entries(strings).map(([key, label]) => <label className="field" key={key}><span>{label}</span><input disabled={value.edits.length > 0} value={String(value.reference[key as keyof typeof strings])} onChange={e => onChange({...value, reference: {...value.reference, [key]: e.target.value}})}/></label>)}
       <label className="field"><span>ฐานค่ากำลังอ้างอิง</span><select disabled={value.edits.length > 0} value={value.reference.capacityBasis ?? ''} onChange={e => onChange({...value, reference: {...value.reference, capacityBasis: (e.target.value || null) as TieProductRecord['capacityBasis']}})}><option value="">ยังไม่ทราบ</option><option value="ALLOWABLE">ALLOWABLE ตามแหล่งที่ระบุ</option><option value="DESIGN">DESIGN ตามแหล่งที่ระบุ</option><option value="ULTIMATE_TEST">ULTIMATE_TEST · ไม่แปลงเป็นกำลังใช้งานเอง</option></select></label>

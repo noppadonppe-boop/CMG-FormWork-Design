@@ -10,6 +10,7 @@
     "loadCaseId": null
   },
   "inputs": {
+    "systemPresetId": null,
     "manufacturer": null,
     "system": null,
     "generation": null,

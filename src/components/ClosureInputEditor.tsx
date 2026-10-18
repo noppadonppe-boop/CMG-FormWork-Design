@@ -1,6 +1,8 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {canonical, clone} from '../domain/workflowV07/common';
 import {validateClosureInputTemplate, type ClosureAnalysisContext, type ClosureInputFormType, type ClosureProjectInputTemplate} from '../domain/workflowV07/closurePack';
+import {applyRinglockSystemPreset, RINGLOCK_SYSTEM_PRESETS, type RinglockSystemPresetId} from '../domain/workflowV07/ringlockSystemPresets';
+import {closureReferences} from '../closurePackReferences';
 
 const FORM_ORDER: ClosureInputFormType[] = ['ringlock_configuration', 'support_soil', 'support_slab', 'serviceability', 'stage_release'];
 const FORM_LABEL: Record<ClosureInputFormType, string> = {
@@ -8,6 +10,7 @@ const FORM_LABEL: Record<ClosureInputFormType, string> = {
   serviceability: 'เกณฑ์การใช้งานและการโก่งตัว', stage_release: 'ลำดับเทและอนุมัติแต่ละ Stage',
 };
 const FIELD_LABEL: Record<string, string> = {
+  systemPresetId: 'ระบบ Ringlock ตั้งต้น',
   manufacturer: 'ผู้ผลิต', system: 'ชื่อระบบ', generation: 'รุ่น / รุ่นผลิต', componentCodes: 'รหัสอุปกรณ์', bayX_mm: 'ระยะกริด X', bayY_mm: 'ระยะกริด Y',
   liftPattern_mm: 'ระยะชั้น (JSON array)', totalInstalledHeight_mm: 'ความสูงติดตั้งรวม', headExtension_mm: 'ระยะยื่น U-head', headEngagement_mm: 'ระยะสวม U-head',
   baseExtension_mm: 'ระยะยื่น Jack Base', baseEngagement_mm: 'ระยะสวม Jack Base', braceLayoutRef: 'หลักฐานผังค้ำยันทแยง', headBaseDetailRef: 'รายละเอียดหัวและฐาน',
@@ -44,6 +47,43 @@ function setInput(template: ClosureProjectInputTemplate, key: string, value: unk
   return {...template, inputs: {...template.inputs, [key]: value}};
 }
 
+function RinglockPresetReferences({presetId}: {presetId: unknown}) {
+  if (presetId === 'DOKA_RINGLOCK_2020') {
+    const records = closureReferences.ringlockSidecar.records;
+    const standards = records.filter(row => row.kind === 'STANDARD');
+    const braces = records.filter(row => row.kind === 'BRACE');
+    return <details className="ringlock-preset-reference">
+      <summary>ตารางอ้างอิง Doka · Component force · brochure p.31</summary>
+      <p>แสดงตามตัวเลือกในเอกสารผู้ผลิตเท่านั้น: ระยะ Ledger แนวดิ่งไม่ใช่ความสูงหอ; ค้ำยันใช้กับ Lift 2,000 mm และ Bay ที่ระบุตรงกันเท่านั้น</p>
+      <table><thead><tr><th>Standard · ระยะ Ledger แนวดิ่ง mm</th><th>Compression kN</th><th>Tension kN</th></tr></thead><tbody>{standards.map(row => <tr key={row.rating_id}><td>{String(row.selector.ledger_vertical_spacing_mm)}</td><td>{String(row.limits.compression_kN)}</td><td>{String(row.limits.tension_kN)}</td></tr>)}</tbody></table>
+      <table><thead><tr><th>Diagonal brace · Lift / Bay mm</th><th>Tension kN</th><th>Compression kN</th></tr></thead><tbody>{braces.map(row => <tr key={row.rating_id}><td>{String(row.selector.lift_mm)} / {String(row.selector.bay_mm)}</td><td>{String(row.limits.tension_kN)}</td><td>{String(row.limits.compression_kN)}</td></tr>)}</tbody></table>
+      <p>เอกสารระบุทั้งหัวข้อ “Maximum Design Forces” และหมายเหตุ “permissible loads, γM = 1.1, γF = 1.5”; ให้เลือกฐานโหลดกับวิศวกรและห้ามเทียบข้ามระบบ/รุ่นโดยอัตโนมัติ ตารางนี้ไม่ใช่กำลังหอค้ำยันทั้งชุด, U-head หรือ Jack Base</p>
+      <a href={RINGLOCK_SYSTEM_PRESETS.DOKA_RINGLOCK_2020.sourceUrl} target="_blank" rel="noreferrer">เปิด Doka brochure</a>
+      {' · '}<a href={RINGLOCK_SYSTEM_PRESETS.DOKA_RINGLOCK_2020.technicalSourceUrl} target="_blank" rel="noreferrer">เปิด technical leaflet</a>
+    </details>;
+  }
+  if (presetId === 'TCB_RINGLOCK') {
+    const data = RINGLOCK_SYSTEM_PRESETS.TCB_RINGLOCK;
+    return <details className="ringlock-preset-reference">
+      <summary>ข้อมูลชิ้นส่วน T.C.B. จากหน้าแคตตาล็อก</summary>
+      <ul>{(data.values.componentCodes as string[]).map(row => <li key={row}>{row}</li>)}</ul>
+      <p>หน้าแคตตาล็อกแสดงข้อมูลชิ้นส่วนและ Plank; ไม่พบกำลังเสา, ค้ำยัน หรือ configuration รวม จึงเว้นค่ากำลังไว้ให้กรอกจากเอกสารผลิตภัณฑ์จริง</p>
+      <a href={data.sourceUrl} target="_blank" rel="noreferrer">เปิดหน้า T.C.B. Home Center</a>
+    </details>;
+  }
+  if (presetId === 'CORONET_RINGLOCK_2024') {
+    const data = RINGLOCK_SYSTEM_PRESETS.CORONET_RINGLOCK_2024;
+    return <details className="ringlock-preset-reference">
+      <summary>ตาราง Safe Axial Load ของ Standard · Technical Manual p.17</summary>
+      <p>ตัวเลขเป็นค่าชิ้นส่วน Standard ตามความยาวในตารางผู้ผลิต ไม่ใช่กำลังหอค้ำยันหรือกำลังต่อขารับแบบรวม</p>
+      <table><thead><tr><th>Standard length mm</th><th>Safe Axial Load kN</th></tr></thead><tbody>{data.standardRatings?.map(row => <tr key={row.lengthMm}><td>{row.lengthMm}</td><td>{row.safeAxialLoadKN}</td></tr>)}</tbody></table>
+      <p>{String(data.values.configurationRatingRef)}</p>
+      <a href={data.sourceUrl} target="_blank" rel="noreferrer">เปิด Coronet Technical Manual 08/2024</a>
+    </details>;
+  }
+  return null;
+}
+
 export function ClosureInputEditor({templates, baselines, context, currentRevisionId, onSave, onRebind}: {
   templates: ClosureProjectInputTemplate[];
   baselines: Record<ClosureInputFormType, ClosureProjectInputTemplate>;
@@ -55,7 +95,8 @@ export function ClosureInputEditor({templates, baselines, context, currentRevisi
   const savedKey = canonical(templates), fileRef = useRef<HTMLInputElement>(null), importTarget = useRef<ClosureInputFormType | null>(null);
   const makeDrafts = () => Object.fromEntries(FORM_ORDER.map(type => {
     const saved = templates.find(template => template.form_type === type);
-    return [type, clone(saved ?? baselines[type])];
+    const base = clone(baselines[type]);
+    return [type, saved ? {...clone(saved), inputs: {...base.inputs, ...clone(saved.inputs)}} : base];
   })) as Record<ClosureInputFormType, ClosureProjectInputTemplate>;
   const [drafts, setDrafts] = useState<Record<ClosureInputFormType, ClosureProjectInputTemplate>>(makeDrafts);
   const [message, setMessage] = useState('');
@@ -67,7 +108,10 @@ export function ClosureInputEditor({templates, baselines, context, currentRevisi
   }
   async function importFile(file: File, type: ClosureInputFormType) {
     try {
-      const parsed = validateClosureInputTemplate(JSON.parse(await file.text()), baselines[type]);
+      const raw = JSON.parse(await file.text()) as Record<string, unknown>;
+      const compatible = type === 'ringlock_configuration' && raw.inputs && typeof raw.inputs === 'object' && !Array.isArray(raw.inputs)
+        ? {...raw, inputs: {systemPresetId: null, ...raw.inputs as Record<string, unknown>}} : raw;
+      const parsed = validateClosureInputTemplate(compatible, baselines[type]);
       update(type, parsed); setMessage(`นำเข้าแบบ ${FORM_LABEL[type]} แล้ว · กดบันทึกข้อมูลเพื่อแนบกับ Case`);
     } catch (error) {setMessage(`นำเข้าไม่สำเร็จ: ${(error as Error).message}`);}
   }
@@ -84,12 +128,33 @@ export function ClosureInputEditor({templates, baselines, context, currentRevisi
       const bound = template.context.revisionId === currentRevisionId && (context.projectId === null || template.context.projectId === context.projectId);
       const validated = (() => {try {validateClosureInputTemplate(template, baseline); return true;} catch {return false;}})();
       const inputValues = template.inputs as Record<string, unknown>;
-      const updateField = (key: string, value: unknown) => update(type, setInput(template, key, value));
+      const updateField = (key: string, value: unknown) => {
+        let next = setInput(template, key, value);
+        if (type === 'ringlock_configuration' && key !== 'systemPresetId' && inputValues.systemPresetId !== null && inputValues.systemPresetId !== 'CUSTOM') {
+          next = setInput(next, 'systemPresetId', 'CUSTOM');
+        }
+        update(type, next);
+      };
       return <details key={type} className="closure-input-form">
         <summary>{FORM_LABEL[type]} · {saved ? bound ? 'ผูก Revision ปัจจุบัน' : 'Revision เก่า' : 'ยังไม่บันทึก'}</summary>
         <p className={bound ? 'muted' : 'warning'}>Revision: {template.context.revisionId || 'ยังไม่ผูก'} · {template.review.trustedVerificationStatus} · confirmed=false · NO_GO</p>
+        {type === 'ringlock_configuration' && <>
+          <label className="field"><span>เลือกข้อมูลระบบ Ringlock ตั้งต้น</span><select aria-label="เลือกระบบ Ringlock ตั้งต้น" value={String(inputValues.systemPresetId ?? '')} onChange={event => {
+            const selected = (event.target.value || null) as RinglockSystemPresetId | null;
+            update(type, {...template, inputs: applyRinglockSystemPreset(inputValues, selected)});
+          }}>
+            <option value="">เลือก preset หรือกรอก Custom</option>
+            <option value="DOKA_RINGLOCK_2020">{RINGLOCK_SYSTEM_PRESETS.DOKA_RINGLOCK_2020.label}</option>
+            <option value="CORONET_RINGLOCK_2024">{RINGLOCK_SYSTEM_PRESETS.CORONET_RINGLOCK_2024.label}</option>
+            <option value="TCB_RINGLOCK">{RINGLOCK_SYSTEM_PRESETS.TCB_RINGLOCK.label}</option>
+            <option value="CUSTOM">Custom · ใช้ระบบของโครงการและแก้ข้อมูลด้านล่าง</option>
+          </select></label>
+          <p>เลือก preset เพื่อเติมข้อมูลที่ผู้ผลิต/ผู้จำหน่ายเผยแพร่ แล้วแก้ไขให้ตรงรุ่นและของจริงได้ทุกช่อง หรือเลือก Custom เพื่อกรอกระบบอื่น ค่ากำลังที่ยังไม่มีหลักฐานจะคงว่าง</p>
+          <RinglockPresetReferences presetId={inputValues.systemPresetId}/>
+        </>}
         <div className="closure-input-grid">
           {Object.keys(baseline.inputs).map(key => {
+            if (type === 'ringlock_configuration' && key === 'systemPresetId') return null;
             const original = (baseline.inputs as Record<string, unknown>)[key], value = inputValues[key];
             const isNumber = typeof original === 'number' || (original === null && NUMERIC_KEY.test(key));
             const label = FIELD_LABEL[key] ?? key;

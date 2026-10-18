@@ -50,6 +50,32 @@ describe('project evidence input editor', () => {
     } finally {await act(async () => root.unmount()); host.remove();}
   });
 
+  it('offers two sourced Ringlock profiles and switches edited preset values to Custom without importing a capacity', async () => {
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    const host = document.createElement('div'), root = createRoot(host); document.body.append(host);
+    try {
+      await act(async () => root.render(<ClosureInputEditor templates={[]} baselines={baselines} context={context} currentRevisionId="REV-1" onSave={vi.fn()} onRebind={vi.fn()}/>));
+      const ringlock = Array.from(host.querySelectorAll('details.closure-input-form')).find(row => row.querySelector('summary')?.textContent?.includes('Ringlock'))!;
+      const preset = ringlock.querySelector<HTMLSelectElement>('select[aria-label="เลือกระบบ Ringlock ตั้งต้น"]')!;
+      await act(async () => {preset.value = 'DOKA_RINGLOCK_2020'; preset.dispatchEvent(new Event('change', {bubbles: true}));});
+      expect((ringlock.querySelector('input[aria-label="ผู้ผลิต"]') as HTMLInputElement).value).toBe('Doka / AT-PAC');
+      expect(ringlock.textContent).toContain('Compression kN'); expect(ringlock.textContent).toContain('62');
+      expect((ringlock.querySelector('textarea[aria-label="กำลังต่อจุด (JSON array)"]') as HTMLTextAreaElement).value).toBe('[]');
+      await act(async () => {preset.value = 'CORONET_RINGLOCK_2024'; preset.dispatchEvent(new Event('change', {bubbles: true}));});
+      expect((ringlock.querySelector('input[aria-label="ผู้ผลิต"]') as HTMLInputElement).value).toBe('Coronet Scaffold');
+      expect(ringlock.textContent).toContain('Safe Axial Load kN'); expect(ringlock.textContent).toContain('65'); expect(ringlock.textContent).toContain('28');
+      expect((ringlock.querySelector('textarea[aria-label="กำลังต่อจุด (JSON array)"]') as HTMLTextAreaElement).value).toBe('[]');
+      await act(async () => {preset.value = 'TCB_RINGLOCK'; preset.dispatchEvent(new Event('change', {bubbles: true}));});
+      expect((ringlock.querySelector('input[aria-label="ผู้ผลิต"]') as HTMLInputElement).value).toBe('T.C.B. Home Center Co., Ltd.');
+      expect(ringlock.textContent).toContain('OD 48.3 x 2.75 mm'); expect(ringlock.textContent).toContain('ไม่พบกำลังเสา');
+      const manufacturer = ringlock.querySelector<HTMLInputElement>('input[aria-label="ผู้ผลิต"]')!;
+      await act(async () => {Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(manufacturer, 'Project Custom System'); manufacturer.dispatchEvent(new Event('input', {bubbles: true}));});
+      expect(preset.value).toBe('CUSTOM');
+      expect((ringlock.querySelector('input[aria-label="ผู้ผลิต"]') as HTMLInputElement).value).toBe('Project Custom System');
+      expect((ringlock.querySelector('textarea[aria-label="กำลังต่อจุด (JSON array)"]') as HTMLTextAreaElement).value).toBe('[]');
+    } finally {await act(async () => root.unmount()); host.remove();}
+  });
+
   it('keeps a saved project packet visibly stale after the design revision changes', async () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     const saved: ClosureProjectInputTemplate = {...structuredClone(baselines.support_slab), context};
