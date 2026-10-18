@@ -35,6 +35,10 @@
 - AI drawing reading for all five systems: `src/aiElements.ts` (`AiElement.kind` FOOTING/COLUMN/BEAM/SLAB/WALL, `slabThickness` for beams; field meaning per kind in `AI_FIELD_LABEL` and the Functions SYSTEM_PROMPT/GEOMETRY_SCHEMA). `elementToCase` drafts unconfirmed cases (beam without a stated slab = no slab, never guessed); `createCases` in main keeps `workflowElementType` + beam/slab/wall. The upload page shows for every element. MCP: `formwork_element_check` runs the beam/slab/wall engines statelessly and can write an importable project file.
 - Avoid editing TS template literals through bash heredocs/`node -e` (backticks/`\d` get mangled); use the edit tool.
 
+## Identity (rules)
+- Some production Google accounts have NO email in Firebase Auth. Their profile key is the lowercased UID (client `emailKey(user.email ?? user.uid)`, Functions `managedProfile`). Firestore/Storage rules use `email() = token.get('email', uid).lower()` and reject anonymous sessions; keep it a single expression (rules evaluation budget). Test: "admits Google sessions without an email claim" in `tests/rules.test.ts`.
+- Rules tests: ports 8080/9199 and 8180 may be held by other emulators; run `firebase emulators:exec --config <temp config with free ports> --project demo-cmg-formwork --only firestore,storage "npx vitest run --config vitest.rules.config.ts"`.
+
 ## MCP server (`mcp/`)
 - `mcp/formwork-model.ts`: model store/revisions, 3D scene, OBJ/DXF/app-backup export; `mcp/server.ts`: MCP tools + prompt.
 - Compiled with `tsconfig.mcp.json` (NodeNext) to `mcp/dist/mcp/server.js`; rebuild after changing `mcp/` or `src/domain/`.

@@ -1,10 +1,12 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    // Same identity as firestore.rules: email claim when present, otherwise the lowercased UID (profile key of
+    // Google sessions without an email claim). Anonymous sessions are never accepted.
     function hasEmail() {
-      return request.auth != null && request.auth.token.email is string && request.auth.token.email.size() > 0;
+      return request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
-    function email() { return request.auth.token.email.lower(); }
+    function email() { return request.auth.token.get('email', request.auth.uid).lower(); }
     function profilePath() { return /databases/(default)/documents/RC-FormWork-App/root/users/$(email()); }
     function profile() { return firestore.get(profilePath()).data; }
     function approved() {

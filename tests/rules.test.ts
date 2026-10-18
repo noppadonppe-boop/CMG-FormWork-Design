@@ -121,6 +121,23 @@ describe('Approval and identity gates', () => {
     await assertFails(getBytes(ref(context('someone-else', 'staff@example.com').storage(), seededUpload)));
   });
 
+  it('admits Google sessions without an email claim through their lowercased-UID profile only', async () => {
+    // Production case: Google accounts whose Auth record has no email. The client keys their profile by the lowercased UID.
+    const uid = 'GoogleUid0123ABCdef', key = uid.toLowerCase();
+    await env.withSecurityRulesDisabled(async admin => {await setDoc(doc(admin.firestore(), `${root}/users/${key}`), profile(uid, {email: key, role: ['MasterAdmin'], assignedProjects: []}));});
+    const google = (id: string, provider = 'google.com') => env.authenticatedContext(id, {firebase: {sign_in_provider: provider}});
+    await assertSucceeds(getDoc(doc(google(uid).firestore(), `${root}/users/${key}`)));
+    await assertSucceeds(getDoc(doc(google(uid).firestore(), projectPath('p1'))));
+    await assertSucceeds(getDocs(collection(google(uid).firestore(), `${root}/projects`)));
+    await assertSucceeds(getBytes(ref(google(uid).storage(), seededUpload)));
+    await assertSucceeds(setDoc(doc(google(uid).firestore(), `${root}/activityLogs/login-1`), {uid, email: key, action: 'LOGIN', createdAt: serverTimestamp(), details: {}}));
+    // Another UID differing only in case, an anonymous session with the same UID, and an email session for another account are refused.
+    await assertFails(getDoc(doc(google(key).firestore(), projectPath('p1'))));
+    await assertFails(getDoc(doc(google(uid, 'anonymous').firestore(), projectPath('p1'))));
+    await assertFails(getBytes(ref(google(uid, 'anonymous').storage(), seededUpload)));
+    await assertFails(getDoc(doc(env.authenticatedContext(uid, {email: 'other@example.com'}).firestore(), projectPath('p1'))));
+  });
+
   it('denies paths outside the application and nested documents', async () => {
     const db = context('master').firestore();
     for (const path of ['other/root', `${root}/unknown/doc`, `${root}/projects/p1/private/secret`]) {
