@@ -1,6 +1,7 @@
+import {validateBeamInput,type BeamInput} from './beam.js';
 import {upgradeInput,validateInput,type Input} from './index.js';
 import type {ElementType} from './workflowV07/common.js';
-export interface BackupProject{id:string;name:string;code:string;cases:{id:string;name:string;input:Input;workflowElementType?:ElementType}[]}
+export interface BackupProject{id:string;name:string;code:string;cases:{id:string;name:string;input:Input;workflowElementType?:ElementType;beam?:BeamInput}[]}
 const ELEMENTS:readonly string[]=['FOOTING','COLUMN','WALL','BEAM','SLAB'];
 export function parseProjectBackup(text:string,makeId:()=>string=()=>crypto.randomUUID()):BackupProject{
   if(text.length>2*1024*1024)throw Error('ไฟล์โครงการใหญ่เกินขอบเขต');
@@ -10,6 +11,7 @@ export function parseProjectBackup(text:string,makeId:()=>string=()=>crypto.rand
     if(!item||typeof item!=='object'||!('name' in item)||typeof item.name!=='string'||item.name.length<1||item.name.length>200||!('input' in item))throw Error('รายการแบบไม่ถูกต้อง');
     const element='workflowElementType' in item?item.workflowElementType:undefined;
     if(element!==undefined&&!ELEMENTS.includes(String(element)))throw Error('ประเภทองค์อาคารในไฟล์โครงการไม่ถูกต้อง');
-    return {id:makeId(),name:item.name,input:{...(raw.schemaVersion===3?validateInput(item.input):upgradeInput(item.input,raw.schemaVersion)),confirmed:false},...(element!==undefined?{workflowElementType:element as ElementType}:{})};
+    const beam='beam' in item&&item.beam!=null?{...validateBeamInput(item.beam),confirmed:false}:undefined;
+    return {id:makeId(),name:item.name,input:{...(raw.schemaVersion===3?validateInput(item.input):upgradeInput(item.input,raw.schemaVersion)),confirmed:false},...(element!==undefined?{workflowElementType:element as ElementType}:{}),...(beam?{beam}:{})};
   })};
 }

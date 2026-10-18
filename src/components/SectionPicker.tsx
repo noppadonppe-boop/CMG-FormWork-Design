@@ -3,16 +3,16 @@ import type {Input} from '../domain';
 import {FAMILY_LABEL, SECTION_SOURCES, TIMBER_GRADES, catalogueProperties, sectionById, sectionsFor, type StockFamily, type StockRole, type StockSection} from '../domain/sectionStock';
 import {sectionProperties} from '../domain/mechanics';
 
-const STUD_FAMILIES: StockFamily[] = ['TIMBER', 'SHS', 'RHS'];
-const WALER_FAMILIES: StockFamily[] = ['RHS', 'SHS', 'L', 'C_LIP', 'C', 'CHS'];
+export const STUD_FAMILIES: StockFamily[] = ['TIMBER', 'SHS', 'RHS'];
+export const WALER_FAMILIES: StockFamily[] = ['RHS', 'SHS', 'L', 'C_LIP', 'C', 'CHS'];
 const fmt = (v: number, d = 1) => v.toLocaleString('en-US', {maximumFractionDigits: d, minimumFractionDigits: d});
 
 /** Section closest to the current stiffness inside a family: lightest with I ≥ current, else the stiffest available. */
-function closest(role: StockRole, family: StockFamily, I: number) {
+export function closest(role: StockRole, family: StockFamily, I: number) {
   const list = sectionsFor(role, family).map(s => ({s, p: catalogueProperties(s)})).sort((a, b) => a.p.area - b.p.area);
   return (list.find(v => v.p.I >= I) ?? list.sort((a, b) => b.p.I - a.p.I)[0])?.s;
 }
-function Props({s, pair}: {s: StockSection | undefined; pair?: boolean}) {
+export function Props({s, pair}: {s: StockSection | undefined; pair?: boolean}) {
   if (!s) return <p className="muted">หน้าตัดกำหนดเอง (คำนวณจาก B × H × t มุมคม) · เลือกจากตารางเหล็กเพื่อใช้ค่าที่ผู้ผลิตเผยแพร่</p>;
   const src = SECTION_SOURCES.find(x => x.source_id === s.source);
   return <p className="section-props">

@@ -78,12 +78,20 @@ const SHEETS: {code: string; title: string; draw: (c: Ctx) => ReactElement}[] = 
 
 export function DrawingSet({result, project, code, caseName, titleBlock: info, canEdit = true, onTitleBlockChange}: {result: Result; project: string; code: string; caseName: string; titleBlock: TitleBlock; canEdit?: boolean; onTitleBlockChange: (tb: TitleBlock) => void}) {
   const base = useMemo(() => {try {return {L: buildFormworkLayout(result), r: result, scene: buildScene(result)};} catch {return null;}}, [result]);
-  const ctx: Ctx | null = base && {...base, tb: info};
+  if (!base) return <div className="warning">ข้อมูลไม่ครบหรือไม่ถูกต้อง จึงสร้างแบบไม่ได้ · ตรวจมิติและระยะก่อน</div>;
+  const ctx: Ctx = {...base, tb: info};
+  return <A3Set sheets={SHEETS.map(s => ({code: s.code, title: s.title, body: s.draw(ctx)}))} project={project} code={code} caseName={caseName}
+    elementLabel={ctx.L.kind === 'COLUMN' ? 'แบบหล่อเสา' : 'แบบหล่อฐานราก'} confirmed={ctx.L.confirmed} titleBlock={info} canEdit={canEdit} onTitleBlockChange={onTitleBlockChange}/>;
+}
+
+/** A3 sheet set with shared title block, revision log, SVG export and A3 print controls. */
+export function A3Set({sheets, project, code, caseName, elementLabel, confirmed, titleBlock: info, canEdit = true, onTitleBlockChange}: {sheets: {code: string; title: string; body: ReactElement}[];
+  project: string; code: string; caseName: string; elementLabel: string; confirmed: boolean; titleBlock: TitleBlock; canEdit?: boolean; onTitleBlockChange: (tb: TitleBlock) => void}) {
+  const SHEETS = sheets;
   const [note, setNote] = useState('');
   const svgs = useRef<(SVGSVGElement | null)[]>([]);
   useEffect(() => () => document.body.classList.remove('print-a3'), []);
-  if (!ctx) return <div className="warning">ข้อมูลไม่ครบหรือไม่ถูกต้อง จึงสร้างแบบไม่ได้ · ตรวจมิติและระยะก่อน</div>;
-  const title: TitleInfo = {company: 'CMG ENGINEERING & CONSTRUCTION', project, code, caseName, elementLabel: ctx.L.kind === 'COLUMN' ? 'แบบหล่อเสา' : 'แบบหล่อฐานราก',
+  const title: TitleInfo = {company: 'CMG ENGINEERING & CONSTRUCTION', project, code, caseName, elementLabel,
     rev: info.rev, date: info.date, designedBy: info.designedBy, drawnBy: info.drawnBy, checkedBy: info.checkedBy, approvedBy: info.approvedBy};
   const nextRev = (r: string) => /^[A-Y]$/.test(r) ? String.fromCharCode(r.charCodeAt(0) + 1) : /^\d+$/.test(r) ? String(Number(r) + 1) : r + '1';
   function addRevision() {
@@ -113,11 +121,11 @@ export function DrawingSet({result, project, code, caseName, titleBlock: info, c
         <button className="btn secondary" disabled={!canEdit || !note.trim()} onClick={addRevision}>เพิ่ม Rev</button></div>
       <p className="muted">ข้อมูลกรอบชื่อแบบและประวัติการแก้ไขบันทึกไปกับแบบนี้ในโครงการ และใช้ร่วมกับรายการคำนวณ</p>
       <div className="a3-index">{SHEETS.map((s, i) => <a key={s.code} href={`#sheet-${s.code}`}>{s.code} · {s.title}</a>)}</div>
-      {!ctx.L.confirmed && <div className="warning">ยังไม่ยืนยันมิติจากแบบต้นฉบับ · แบบชุดนี้เป็นร่างเพื่อตรวจทานเท่านั้น</div>}
+      {!confirmed && <div className="warning">ยังไม่ยืนยันมิติจากแบบต้นฉบับ · แบบชุดนี้เป็นร่างเพื่อตรวจทานเท่านั้น</div>}
     </section>
     {SHEETS.map((s, i) => <div className="a3-page" id={`sheet-${s.code}`} key={s.code}>
       <div className="a3-toolbar"><b>{s.code} · {s.title}</b><button className="btn secondary" onClick={() => saveSvg(i)}><Download size={14}/>SVG</button></div>
-      <Sheet no={i + 1} total={SHEETS.length} code={s.code} title={s.title} info={title} svgRef={el => {svgs.current[i] = el;}}>{s.draw(ctx)}</Sheet>
+      <Sheet no={i + 1} total={SHEETS.length} code={s.code} title={s.title} info={title} svgRef={el => {svgs.current[i] = el;}}>{s.body}</Sheet>
     </div>)}
   </div>;
 }

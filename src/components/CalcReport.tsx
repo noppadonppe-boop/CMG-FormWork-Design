@@ -13,7 +13,7 @@ import {ACI_REFERENCE, type PressureModel} from '../domain/pressure';
 import {PLYWOOD_GRADE_LABEL} from '../domain/plywoodGrades';
 
 const n = (v: number | null, d = 2) => v === null ? '—' : v.toLocaleString('en-US', {minimumFractionDigits: d, maximumFractionDigits: d});
-function Fig({w, h, no, caption, children}: {w: number; h: number; no?: number; caption: string; children: ReactNode}) {
+export function Fig({w, h, no, caption, children}: {w: number; h: number; no?: number; caption: string; children: ReactNode}) {
   return <figure className="rp-fig"><svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label={caption}><Defs/>{children}</svg><figcaption>{no ? `รูปที่ ${no} · ` : ''}{caption}</figcaption></figure>;
 }
 export function RatioBar({ratio}: {ratio: number | null}) {
@@ -26,7 +26,7 @@ export function RatioBar({ratio}: {ratio: number | null}) {
   </svg>;
 }
 /** Lateral pressure envelope (Fig. 4.2.2 of ACI 347R-14): hydrostatic to hcap, then constant pmax; dashed = full hydrostatic. */
-function PressureDiagram({m}: {m: PressureModel}) {
+export function PressureDiagram({m}: {m: PressureModel}) {
   const x0 = 30, y0 = 12, h = 80, w = 70, k = w / m.hydrostatic, wp = m.pmax * k, yc = y0 + h * Math.min(1, m.hcap / m.H);
   return <g>
     <rect x={x0 - 8} y={y0} width={8} height={h} fill="url(#h-concrete)" stroke="#111" strokeWidth={LW.med}/>
@@ -42,7 +42,7 @@ function PressureDiagram({m}: {m: PressureModel}) {
     <Txt x={x0 - 12} y={y0 + h / 2} s={2.8} a="middle" rot={-90}>H = {m.H.toLocaleString('en-US')} mm · ρ = {n(m.rho, 0)} kg/m³</Txt>
   </g>;
 }
-function BeamDiagram({L, w, title, unit = 'N/mm'}: {L: number; w: number; title: string; unit?: string}) {
+export function BeamDiagram({L, w, title, unit = 'N/mm'}: {L: number; w: number; title: string; unit?: string}) {
   const x0 = 15, x1 = 135, y = 26, M = w * L * L / 8, V = w * L / 2;
   return <g>
     <Txt x={75} y={6} s={3} a="middle" b>{title}</Txt>
@@ -59,7 +59,7 @@ function BeamDiagram({L, w, title, unit = 'N/mm'}: {L: number; w: number; title:
     <Txt x={x1} y={y + 36} s={2.4} a="end" fill="#444">V = wL/2 = {n(V / 1000, 3)} kN</Txt>
   </g>;
 }
-function CheckCard({c, no}: {c: Check; no: string}) {
+export function CheckCard({c, no}: {c: Check; no: string}) {
   return <section className="rp-check">
     <h4><span>{no}</span> {c.label} <em className={'pill ' + (c.status === 'FAIL' ? 'red' : 'amber')}>{c.status}</em></h4>
     <ol className="rp-steps">

@@ -1,0 +1,265 @@
+/** Practical beam formwork screening: soffit (plywood → transverse joists → longitudinal bearers → shores) and
+ * side forms (plywood → vertical studs → optional tie rows with twin walers). Units: mm, N, MPa, kPa, kN.
+ * Results are screening only: status is FAIL or INCOMPLETE, never PASS. */
+import {CC_VALUES,lateralPressure,type PressureMethod,type PressureModel} from './pressure.js';
+import {FACE_GRAINS,PLYWOOD_GRADES,PLYWOOD_SPANS,plywoodDesign,type FaceGrain,type PlywoodDesign,type PlywoodGrade,type PlywoodSpans} from './plywoodGrades.js';
+import {catalogueProperties,isTimber,sectionById,timberGrade,type StockSection} from './sectionStock.js';
+import {equalPositions} from './mechanics.js';
+import type {Check,Status} from './index.js';
+
+export const BEAM_ENGINE_VERSION = 'beam-0.1.0-screening';
+export const ACI_LOADS_REFERENCE = 'ACI PRC-347-14(21) §4.2.1 (น้ำหนักบรรทุกแนวดิ่ง) และ §4.2.3.2 (แรงด้านข้างของแบบหล่อพื้นยก)';
+export interface BeamInput {
+  /** Beam width b, total depth h (top of slab to soffit), slab thickness, clear length, floor-to-soffit height (mm). */
+  b: number; h: number; slabT: number; length: number; soffitHeight: number;
+  /** Number of sides with a slab framing in (0 = isolated beam, 1 = edge beam, 2 = interior beam). */
+  slabSides: 0 | 1 | 2;
+  /** Slab strip widths (mm) beside the beam carried by this beam's joists (must lie between the bearer lines). */
+  slabLeft: number; slabRight: number;
+  confirmed: boolean;
+  gamma: number; formDead: number; liveLoad: number; motorized: boolean; deflectionRatio: number;
+  pressureMethod: PressureMethod; pourRate: number; concreteTemp: number; slump: number; vibrationDepth: number; chemistryCc: number;
+  plywood: number; plywoodGrade: PlywoodGrade; plywoodSpans: PlywoodSpans; plywoodFaceGrain: FaceGrain; plywoodE: number; plywoodFb: number;
+  timberGrade: string; steelFy: number; steelE: number; steelOmegaB: number; steelOmegaShear: number;
+  /** Soffit: transverse joists at joistSpacing along the beam, spanning shoreWidth between two bearer lines. */
+  joistSectionId: string; joistSpacing: number;
+  /** Bearers run along the beam on the shore heads; bearerCount members per line share the load equally. */
+  bearerSectionId: string; bearerCount: 1 | 2; shoreSpacing: number; shoreWidth: number;
+  /** Shore safe working load at the actual extension (kN, manufacturer data). 0 = unknown → INCOMPLETE. */
+  shoreSWL: number; shoreReference: string;
+  /** Side forms: vertical studs at studSpacing; tieRows rows of through ties at tieSpacing with twin walers. */
+  studSectionId: string; studSpacing: number; tieRows: number; tieSpacing: number; tieDiameter: number;
+  /** Tie assembly safe working load (kN, manufacturer data incl. ACI Table 4.4 SF 2.0). 0 = unknown → INCOMPLETE. */
+  tieSWL: number; walerSectionId: string;
+}
+export const beamDefaults: BeamInput = {
+  b: 300, h: 600, slabT: 120, length: 6000, soffitHeight: 3000, slabSides: 2, slabLeft: 0, slabRight: 0, confirmed: false,
+  gamma: 24, formDead: 0.5, liveLoad: 2.4, motorized: false, deflectionRatio: 360,
+  pressureMethod: 'HYDROSTATIC', pourRate: 2, concreteTemp: 30, slump: 100, vibrationDepth: 1, chemistryCc: 1.2,
+  plywood: 20, plywoodGrade: 'PLYFORM_I', plywoodSpans: 'AUTO', plywoodFaceGrain: 'ACROSS', plywoodE: 4800, plywoodFb: 5.3,
+  timberGrade: 'TIMBER-BOOK-SOFT', steelFy: 245, steelE: 200000, steelOmegaB: 1.67, steelOmegaShear: 1.67,
+  joistSectionId: 'PAP-TIS107-SHS-50x50x2.3', joistSpacing: 300,
+  bearerSectionId: 'PAP-TIS107-RHS-100x50x3.2', bearerCount: 1, shoreSpacing: 1200, shoreWidth: 900,
+  shoreSWL: 0, shoreReference: '',
+  studSectionId: 'PAP-TIS107-SHS-50x50x2.3', studSpacing: 300, tieRows: 0, tieSpacing: 600, tieDiameter: 12,
+  tieSWL: 0, walerSectionId: 'PAP-TIS107-SHS-50x50x2.3',
+};
+const TEXT_KEYS = ['confirmed', 'motorized', 'pressureMethod', 'plywoodGrade', 'plywoodSpans', 'plywoodFaceGrain', 'timberGrade', 'joistSectionId', 'bearerSectionId',
+  'studSectionId', 'walerSectionId', 'shoreReference', 'slabSides', 'bearerCount'] as const;
+const NON_NEGATIVE = ['slabT', 'slabLeft', 'slabRight', 'shoreSWL', 'tieSWL', 'tieRows', 'formDead'] as const;
+
+export function validateBeamInput(v: unknown): BeamInput {
+  if (!v || typeof v !== 'object') throw Error('ข้อมูลคานไม่ถูกต้อง');
+  const q = v as Record<string, unknown>, keys = Object.keys(beamDefaults) as (keyof BeamInput)[];
+  if (Object.keys(q).some(k => !keys.includes(k as keyof BeamInput))) throw Error('มีช่องข้อมูลคานที่ไม่รองรับ');
+  for (const k of keys.filter(k => !(TEXT_KEYS as readonly string[]).includes(k))) {
+    const n = q[k], min = (NON_NEGATIVE as readonly string[]).includes(k) ? 0 : Number.MIN_VALUE;
+    if (typeof n !== 'number' || !Number.isFinite(n) || n < min) throw Error((min === 0 ? 'ค่าต้องไม่ติดลบ: ' : 'ค่าต้องเป็นจำนวนบวก: ') + k);
+  }
+  const x = q as unknown as BeamInput;
+  if (typeof x.confirmed !== 'boolean' || typeof x.motorized !== 'boolean') throw Error('สถานะยืนยันไม่ถูกต้อง');
+  if (![0, 1, 2].includes(x.slabSides) || ![1, 2].includes(x.bearerCount) || ![0, 1, 2, 3].includes(x.tieRows)) throw Error('จำนวนด้านพื้น จำนวนคานรับ หรือแถว Tie ไม่ถูกต้อง');
+  if (!PLYWOOD_GRADES.includes(x.plywoodGrade) || !PLYWOOD_SPANS.includes(x.plywoodSpans) || !FACE_GRAINS.includes(x.plywoodFaceGrain)) throw Error('ชนิด จำนวนช่วง หรือทิศลายไม้อัดไม่ถูกต้อง');
+  if (!['HYDROSTATIC', 'ACI347'].includes(x.pressureMethod) || !CC_VALUES.includes(x.chemistryCc as typeof CC_VALUES[number])) throw Error('วิธีคำนวณแรงดันหรือค่า Cc ไม่ถูกต้อง');
+  if (typeof x.timberGrade !== 'string' || !timberGrade(x.timberGrade)) throw Error('ชั้นไม้ไม่ถูกต้อง');
+  if (typeof x.shoreReference !== 'string' || x.shoreReference.length > 300) throw Error('แหล่งอ้างอิงค้ำยันไม่ถูกต้อง');
+  for (const [k, role] of [['joistSectionId', 'stud'], ['studSectionId', 'stud'], ['bearerSectionId', 'waler'], ['walerSectionId', 'waler']] as const) {
+    const s = typeof x[k] === 'string' ? sectionById(x[k]) : undefined;
+    if (!s || !s.roles.includes(role)) throw Error('ไม่พบหน้าตัดในตารางเหล็ก/ไม้: ' + k);
+  }
+  if (x.b > 3000 || x.h > 4000 || x.length > 30000 || x.soffitHeight > 20000 || x.gamma > 40 || x.plywood > 100) throw Error('ขนาดคานอยู่นอกขอบเขต');
+  if (x.slabSides === 0 ? x.slabT !== 0 : x.slabT <= 0 || x.slabT >= x.h) throw Error(x.slabSides === 0 ? 'คานไม่มีพื้นต่อ ความหนาพื้นต้องเป็น 0' : 'ความหนาพื้นต้องมากกว่า 0 และน้อยกว่าความลึกคาน');
+  if (x.slabSides === 0 && (x.slabLeft > 0 || x.slabRight > 0)) throw Error('คานไม่มีพื้นต่อ ไม่มีแถบพื้นที่รับ');
+  if (x.slabSides === 1 && x.slabLeft > 0) throw Error('คานขอบ: พื้นอยู่ด้านขวา แถบพื้นด้านซ้ายต้องเป็น 0');
+  if (x.slabLeft + x.b + x.slabRight > x.shoreWidth || x.b + 2 * Math.max(x.slabLeft, x.slabRight) > x.shoreWidth) throw Error('ความกว้างคาน + แถบพื้น ต้องอยู่ระหว่างแนวคานรับทั้งสอง (ระยะค้ำยันตามขวาง)');
+  if (x.deflectionRatio > 2000 || x.steelFy > 1000 || x.steelE > 300000 || [x.steelOmegaB, x.steelOmegaShear].some(o => o < 1 || o > 10)) throw Error('พารามิเตอร์วัสดุอยู่นอกขอบเขต');
+  if (x.pourRate > 20 || x.concreteTemp < 5 || x.concreteTemp > 45 || x.slump > 300 || x.vibrationDepth > 10) throw Error('อัตราการเท อุณหภูมิ ค่ายุบตัว หรือความลึกเครื่องจี้อยู่นอกขอบเขต');
+  if (x.joistSpacing > x.length || x.shoreSpacing > x.length || x.studSpacing > x.length || x.tieSpacing > x.length) throw Error('ระยะสมาชิกมากกว่าความยาวคาน');
+  return Object.fromEntries(keys.map(k => [k, x[k]])) as unknown as BeamInput;
+}
+
+/** Stored beam input, or a draft seeded from a beam case footprint (X = length, Y = width, height = depth); never confirmed. */
+export function beamFromCase(stored: unknown, footprint?: {width: number; length: number; height: number}): BeamInput {
+  if (stored != null) {try {return validateBeamInput(stored);} catch { /* unreadable → seed below */ }}
+  if (footprint) {
+    const b = footprint.length, h = footprint.height;
+    try {return validateBeamInput({...beamDefaults, b, h, length: footprint.width, slabT: Math.min(beamDefaults.slabT, h / 2), shoreWidth: Math.max(beamDefaults.shoreWidth, b + 600), confirmed: false});} catch { /* fall through */ }
+  }
+  return {...beamDefaults};
+}
+
+/** Simply supported span L with uniform patches w (N/mm) on [a, c]. Exact Macaulay moment/deflection, sampled for the maxima. */
+export function patchBeam(L: number, patches: {a: number; c: number; w: number}[], E: number, I: number) {
+  if ([L, E, I].some(v => !Number.isFinite(v) || v <= 0) || patches.some(p => p.a < 0 || p.c > L + 1e-9 || p.c <= p.a || p.w < 0)) throw Error('Invalid patch beam');
+  const B = (x: number, a: number) => Math.max(0, x - a);
+  const total = patches.reduce((s, p) => s + p.w * (p.c - p.a), 0), RB = patches.reduce((s, p) => s + p.w * (p.c - p.a) * (p.a + p.c) / 2, 0) / L, RA = total - RB;
+  const M = (x: number) => RA * x - patches.reduce((s, p) => s + p.w * (B(x, p.a) ** 2 - B(x, p.c) ** 2) / 2, 0);
+  const C = (RA * L ** 3 / 6 - patches.reduce((s, p) => s + p.w * (B(L, p.a) ** 4 - B(L, p.c) ** 4) / 24, 0)) / L;
+  const d = (x: number) => (C * x - RA * x ** 3 / 6 + patches.reduce((s, p) => s + p.w * (B(x, p.a) ** 4 - B(x, p.c) ** 4) / 24, 0)) / (E * I);
+  let Mmax = 0, xM = 0, dmax = 0;
+  for (let i = 0; i <= 2000; i++) {const x = L * i / 2000, m = M(x), y = d(x); if (m > Mmax) {Mmax = m; xM = x;} if (y > dmax) dmax = y;}
+  return {RA, RB, total, Mmax, xM, Vmax: Math.max(RA, RB), dmax};
+}
+
+export interface MemberMaterial {name: string; section: StockSection; timber: boolean; E: number; S: number; I: number; A: number; shearArea: number;
+  Fb: number; Fv: number | null; source: string}
+function material(id: string, x: BeamInput): MemberMaterial {
+  const s = sectionById(id)!, p = catalogueProperties(s), timber = isTimber(s), g = timberGrade(x.timberGrade)!;
+  return {name: s.designation, section: s, timber, E: timber ? g.E : x.steelE, S: p.S, I: p.I, A: p.area, shearArea: p.shearArea,
+    Fb: timber ? g.Fb : x.steelFy / x.steelOmegaB, Fv: timber ? g.Fv : x.steelFy / (Math.sqrt(3) * x.steelOmegaShear),
+    source: timber ? 'หนังสือ Design Form Work ตาราง 3.4 (อ้าง ว.ส.ท.) · ' + g.label + ' · ค่าอ้างอิงเดิม ต้องยืนยันชนิดไม้/ความชื้น'
+      : s.designation + ' ค่า gross จาก ' + s.source + ' · Fy ' + x.steelFy + ' MPa / Ω (AISC 360 ASD) · ไม่ตรวจ local/lateral-torsional buckling และจุดต่อ'};
+}
+
+export interface BeamLoads {concrete: number; formDead: number; liveUsed: number; liveMin: number; totalMin: number; beam: number; slab: number; steps: string[]}
+/** Vertical design loads per ACI PRC-347-14(21) §4.2.1 (kPa). */
+export function beamLoads(x: BeamInput): BeamLoads {
+  const liveMin = x.motorized ? 3.6 : 2.4, totalMin = x.motorized ? 6.0 : 4.8, liveUsed = Math.max(x.liveLoad, liveMin);
+  const concrete = x.gamma * x.h / 1000, slabC = x.gamma * x.slabT / 1000;
+  const beam = Math.max(concrete + x.formDead + liveUsed, totalMin), slab = x.slabT > 0 ? Math.max(slabC + x.formDead + liveUsed, totalMin) : 0;
+  const f = (v: number) => v.toFixed(2);
+  const steps = [
+    `คอนกรีต + เหล็กเสริมเหนือท้องคาน γh = ${f(x.gamma)} × ${f(x.h / 1000)} = ${f(concrete)} kPa`,
+    `น้ำหนักแบบหล่อ (ค่าที่ผู้ใช้กำหนด) = ${f(x.formDead)} kPa`,
+    `น้ำหนักจรขณะก่อสร้าง ใช้ max(${f(x.liveLoad)}, ${f(liveMin)}) = ${f(liveUsed)} kPa (ACI §4.2.1: ไม่น้อยกว่า ${liveMin} kPa${x.motorized ? ' เมื่อใช้รถเข็นติดเครื่องยนต์' : ''})`,
+    `ท้องคาน q = max(${f(concrete)} + ${f(x.formDead)} + ${f(liveUsed)}, ${f(totalMin)}) = ${f(beam)} kPa (รวม D+L ไม่น้อยกว่า ${totalMin} kPa)`,
+    ...(x.slabT > 0 && (x.slabLeft > 0 || x.slabRight > 0) ? [`แถบพื้นข้างคาน q = max(${f(x.gamma)} × ${f(x.slabT / 1000)} + ${f(x.formDead)} + ${f(liveUsed)}, ${f(totalMin)}) = ${f(slab)} kPa`] : []),
+  ];
+  return {concrete, formDead: x.formDead, liveUsed, liveMin, totalMin, beam, slab, steps};
+}
+
+export interface BeamQuantity {item: string; spec: string; qty: number; unit: string; note: string}
+export interface BeamResult {
+  engineVersion: string; input: BeamInput; status: Status; checks: Check[]; blockers: string[];
+  loads: BeamLoads; pressureModel: PressureModel; soffitPlywood: PlywoodDesign; sidePlywood: PlywoodDesign;
+  joist: MemberMaterial; bearer: MemberMaterial; stud: MemberMaterial; waler: MemberMaterial;
+  /** Stations along the beam (mm from the beam start). */
+  joists: number[]; shores: number[]; studs: number[]; ties: number[];
+  /** Side form heights (mm): [left, right]; tie row levels measured up from the soffit. */
+  sideHeights: [number, number]; tieLevels: number[];
+  /** Transverse layout (mm from the left bearer line): beam and slab strips. */
+  beamStart: number; joistReaction: number; bearerLine: number; shoreLoad: number; studSpan: number; tieForce: number | null;
+  kickerForcePerM: number; lateralPerM: number; shoreLength: number; volume: number; quantities: BeamQuantity[];
+}
+const fx = (v: number, d = 2) => v.toFixed(d);
+
+export function calculateBeam(raw: unknown): BeamResult {
+  const x = validateBeamInput(raw), loads = beamLoads(x), checks: Check[] = [];
+  const add = (id: string, label: string, demand: number | null, limit: number | null, unit: string, formula: string, substitution: string, note: string, source: string) =>
+    checks.push({id, label, demand, limit, unit, utilization: demand === null || limit === null ? null : demand / limit,
+      status: demand !== null && limit !== null && demand > limit ? 'FAIL' : 'INCOMPLETE', formula, substitution, source, note});
+  const member = (prefix: string, title: string, m: MemberMaterial, count: number, M: number, V: number, d: number, span: number, sub: string) => {
+    const share = count > 1 ? ` · แบ่งแรงเท่ากัน ${count} ตัว` : '';
+    add(prefix + '-b', title + ': หน่วยแรงดัด', M / count / m.S, m.Fb, 'MPa', 'fb = M / (n S) ≤ Fb', `${sub}; M = ${fx(M / 1e6, 3)} kN·m; S = ${fx(m.S, 0)} mm³; n = ${count}; Fb = ${fx(m.Fb)} MPa${share}`,
+      m.timber ? 'ต้องยืนยันชนิดไม้ ขนาดจริงหลังไส และความชื้น' : 'ค่า gross ไม่ลดตาม local buckling; ไม่ตรวจ LTB/จุดต่อ', m.source);
+    const fv = m.timber ? 1.5 * V / count / m.A : V / count / m.shearArea;
+    add(prefix + '-v', title + ': หน่วยแรงเฉือน', fv, m.Fv, 'MPa', m.timber ? 'fv = 1.5 V / (n A) ≤ Fv' : 'τ = V / (n Av) ≤ Fy/(√3 Ωv)',
+      `V = ${fx(V / 1000, 3)} kN; ${m.timber ? 'A = ' + fx(m.A, 0) : 'Av = ' + fx(m.shearArea, 0)} mm²${m.Fv === null ? '; ไม่มีค่า Fv ในตาราง' : ''}`, 'ไม่ลดแรงเฉือนใกล้จุดรองรับ', m.source);
+    add(prefix + '-d', title + ': การโก่ง', d / count, span / x.deflectionRatio, 'mm', 'δ ≤ L/' + x.deflectionRatio, `L = ${fx(span, 0)} mm; E = ${fx(m.E, 0)} MPa; I = ${fx(m.I, 0)} mm⁴`,
+      'โมเดลช่วงเดี่ยว (ปลอดภัยกว่าคานต่อเนื่อง) ภายใต้น้ำหนักรวม', m.source);
+  };
+  const plyCommon = {grade: x.plywoodGrade, t: x.plywood, faceGrain: x.plywoodFaceGrain, spans: x.plywoodSpans, deflectionRatio: x.deflectionRatio,
+    sheetAcross: x.plywoodFaceGrain === 'ACROSS' ? 2440 : 1220, custom: {E: x.plywoodE, Fb: x.plywoodFb}};
+  const plySource = x.plywoodGrade === 'CUSTOM' ? 'ค่าไม้อัดที่ผู้ใช้กำหนด ต้องมีใบรับรองผู้ผลิต' : 'APA Concrete Forming Design/Construction Guide V345 (2012) Table 12–13 · ต้องยืนยันว่าแผ่นที่ใช้มีคุณสมบัติเทียบเท่า';
+  const joist = material(x.joistSectionId, x), bearer = material(x.bearerSectionId, x), stud = material(x.studSectionId, x), waler = material(x.walerSectionId, x);
+
+  // Soffit plywood spans along the beam between joists.
+  const joists = equalPositions(x.length, x.joistSpacing), sj = x.length / (joists.length - 1);
+  const soffitPlywood = plywoodDesign({...plyCommon, pressure: loads.beam, spacing: sj, studWidth: joist.section.B});
+  for (const k of soffitPlywood.checks) add('sof-' + k.id, 'ท้องคาน · ' + k.label, k.demand, k.limit, k.unit, k.formula, k.substitution + `; q = ${fx(loads.beam)} kPa`, k.note, plySource);
+
+  // Joist: simple span between the bearer lines, beam strip centred, slab strips beside it.
+  const L = x.shoreWidth, beamStart = (L - x.b) / 2, mm = (kPa: number) => kPa / 1000 * sj;
+  const patches = [{a: beamStart, c: beamStart + x.b, w: mm(loads.beam)},
+    ...(x.slabLeft > 0 ? [{a: beamStart - x.slabLeft, c: beamStart, w: mm(loads.slab)}] : []),
+    ...(x.slabRight > 0 ? [{a: beamStart + x.b, c: beamStart + x.b + x.slabRight, w: mm(loads.slab)}] : [])];
+  const jb = patchBeam(L, patches, joist.E, joist.I);
+  member('joist', 'คร่าวท้องคาน (ตามขวาง)', joist, 1, jb.Mmax, jb.Vmax, jb.dmax, L,
+    `ช่วง L = ${fx(L, 0)} mm; แถบคาน b = ${x.b} mm กลางช่วง w = q × sj = ${fx(loads.beam)} × ${fx(sj, 0)} / 1000 = ${fx(mm(loads.beam), 3)} N/mm` +
+    (x.slabLeft + x.slabRight > 0 ? `; แถบพื้น ${x.slabLeft}/${x.slabRight} mm w = ${fx(mm(loads.slab), 3)} N/mm` : '') + `; RA = ${fx(jb.RA / 1000, 3)} kN, RB = ${fx(jb.RB / 1000, 3)} kN`);
+
+  // Bearer: line load from joist reactions, simple span between shores.
+  const shores = equalPositions(x.length, x.shoreSpacing), ss = x.length / (shores.length - 1), bearerLine = jb.Vmax / sj;
+  member('bearer', 'คานรับท้อง (ตามยาว)', bearer, x.bearerCount, bearerLine * ss ** 2 / 8, bearerLine * ss / 2, 5 * bearerLine * ss ** 4 / (384 * bearer.E * bearer.I), ss,
+    `w = Rmax / sj = ${fx(jb.Vmax / 1000, 3)} kN / ${fx(sj, 0)} mm = ${fx(bearerLine, 3)} N/mm; L = ${fx(ss, 0)} mm; M = wL²/8, V = wL/2, δ = 5wL⁴/(384EI)`);
+  const shoreLoad = bearerLine * ss / 1000;
+  add('shore-p', 'ค้ำยัน: แรงอัดต่อต้น', shoreLoad, x.shoreSWL > 0 ? x.shoreSWL : null, 'kN', 'P = w × ss ≤ SWL (ผู้ผลิต)', `P = ${fx(bearerLine, 3)} N/mm × ${fx(ss, 0)} mm = ${fx(shoreLoad, 2)} kN` +
+    (x.shoreSWL > 0 ? `; SWL = ${fx(x.shoreSWL)} kN` : '; ยังไม่มี SWL ของค้ำยันที่ความยาวใช้งาน'), 'แรงจากช่วงเดี่ยว ไม่รวมผลคานต่อเนื่อง (ต้นภายในอาจเพิ่ม ~25%); ต้องยืนยันความยาวยืด ความเอียง และฐานรองรับ',
+    x.shoreSWL > 0 ? 'ค่าผู้ผลิต: ' + (x.shoreReference || 'ไม่ระบุแหล่งอ้างอิง') : 'ACI PRC-347-14(21) §4.3: ใช้ค่ารับน้ำหนักที่ผู้ผลิตแนะนำพร้อมผลทดสอบ');
+  const DLperM = (loads.concrete + x.formDead) * x.b / 1000 + (x.slabLeft + x.slabRight) / 1000 * (x.gamma * x.slabT / 1000 + x.formDead), lateralPerM = Math.max(1.5, 0.02 * DLperM);
+  add('lateral', 'แรงด้านข้างที่ต้องค้ำ (ACI §4.2.3.2)', lateralPerM, null, 'kN/m', 'H = max(1.5 kN/m, 2% DL)', `DL = ${fx(DLperM, 3)} kN/m ต่อความยาวคาน → H = max(1.5, ${fx(0.02 * DLperM, 3)}) = ${fx(lateralPerM, 3)} kN/m`,
+    'ต้องออกแบบค้ำยันทแยง/ledger ให้รับแรงนี้ (ยังไม่มีวิธีตรวจใน engine)', ACI_LOADS_REFERENCE);
+
+  // Side forms: pressure on depth h; plywood spans between vertical studs; studs span between soffit kicker, tie rows and top restraint.
+  const pressureModel = lateralPressure({pressureMethod: x.pressureMethod, gamma: x.gamma, height: x.h, width: x.b, length: x.length, pourRate: x.pourRate,
+    concreteTemp: x.concreteTemp, slump: x.slump, vibrationDepth: x.vibrationDepth, chemistryCc: x.chemistryCc}), p = pressureModel.pmax;
+  // Edge beam: the slab frames in on the right; the left (outer) side form runs the full depth.
+  const inner = x.slabSides > 0 ? x.h - x.slabT : x.h, sideHeights: [number, number] = [x.slabSides === 1 ? x.h : inner, inner], hSide = Math.max(...sideHeights);
+  const studs = equalPositions(x.length, x.studSpacing), st = x.length / (studs.length - 1);
+  const sidePlywood = plywoodDesign({...plyCommon, pressure: p, spacing: st, studWidth: stud.section.B});
+  for (const k of sidePlywood.checks) add('side-' + k.id, 'แบบข้าง · ' + k.label, k.demand, k.limit, k.unit, k.formula, k.substitution + `; pmax = ${fx(p)} kPa`, k.note, plySource);
+  const studSpan = hSide / (x.tieRows + 1), ws = p / 1000 * st;
+  member('stud', 'คร่าวแบบข้าง (แนวตั้ง)', stud, 1, ws * studSpan ** 2 / 8, ws * studSpan / 2, 5 * ws * studSpan ** 4 / (384 * stud.E * stud.I), studSpan,
+    `w = pmax × s = ${fx(p)} × ${fx(st, 0)} / 1000 = ${fx(ws, 3)} N/mm; L = hข้าง/(แถว Tie + 1) = ${fx(hSide, 0)} / ${x.tieRows + 1} = ${fx(studSpan, 0)} mm`);
+  const kickerForcePerM = p * studSpan / 2 / 1000;
+  add('kicker', 'แรงที่ไม้กันตีน/จุดยึดล่างแบบข้าง', kickerForcePerM, null, 'kN/m', 'R = pmax × L / 2', `R = ${fx(p)} × ${fx(studSpan, 0)} / 2 / 1000 = ${fx(kickerForcePerM, 3)} kN/m`,
+    'ต้องออกแบบไม้กันตีน ตะปู/สกรู และการยึดกับคร่าวท้องคาน (ยังไม่มีวิธีตรวจใน engine)', 'สมดุลแรง');
+  let ties: number[] = [], tieLevels: number[] = [], tieForce: number | null = null;
+  if (x.tieRows > 0) {
+    ties = equalPositions(x.length, x.tieSpacing); const stt = x.length / (ties.length - 1), ww = p / 1000 * studSpan;
+    tieLevels = Array.from({length: x.tieRows}, (_, i) => studSpan * (i + 1));
+    member('waler', 'คานคู่แบบข้าง (ต่อ 1 แถว Tie)', waler, 2, ww * stt ** 2 / 8, ww * stt / 2, 5 * ww * stt ** 4 / (384 * waler.E * waler.I), stt,
+      `w = pmax × L_stud = ${fx(p)} × ${fx(studSpan, 0)} / 1000 = ${fx(ww, 3)} N/mm; ช่วง Tie = ${fx(stt, 0)} mm`);
+    tieForce = ww * stt / 1000;
+    add('tie-t', 'Tie ทะลุคาน: แรงดึง', tieForce, x.tieSWL > 0 ? x.tieSWL : null, 'kN', 'T = pmax × L_stud × s_tie ≤ SWL', `T = ${fx(ww, 3)} × ${fx(stt, 0)} / 1000 = ${fx(tieForce, 2)} kN; Ø${x.tieDiameter} mm` +
+      (x.tieSWL > 0 ? `; SWL = ${fx(x.tieSWL)} kN` : '; ยังไม่มี SWL ชุด Tie'), 'ACI Table 4.4 ต้องมีส่วนปลอดภัย ≥ 2.0 เทียบกำลังประลัย; ต้องตรวจแผ่นรองและนัต', 'ACI PRC-347-14(21) Table 4.4 · ค่าผู้ผลิต');
+  }
+
+  const stack = x.plywood + joist.section.H + bearer.section.H, shoreLength = x.soffitHeight - stack;
+  const blockers = [
+    ...(!x.confirmed ? ['ยังไม่ยืนยันมิติคานจากแบบต้นฉบับ'] : []),
+    ...(x.shoreSWL > 0 ? [] : ['ต้องกรอก SWL ค้ำยันที่ความยาวใช้งาน (ข้อมูลผู้ผลิต)']),
+    ...(x.tieRows > 0 && !(x.tieSWL > 0) ? ['ต้องกรอก SWL ชุด Tie (ข้อมูลผู้ผลิต)'] : []),
+    'ออกแบบค้ำยันทแยง/ledger ให้รับแรงด้านข้าง ' + fx(lateralPerM) + ' kN/m และตรวจเสถียรภาพนั่งร้าน',
+    'ออกแบบไม้กันตีน/จุดยึดล่างแบบข้าง และการยึดหัวค้ำ (U-head) กับคานรับ',
+    ...(x.slabSides === 1 ? ['คานขอบ (พื้นด้านเดียว): ต้องป้องกันการหมุนของแบบคาน (ACI §4.1.4c)'] : []),
+    ...(shoreLength <= 0 ? ['ความสูงใต้ท้องคานน้อยกว่าความสูงชุดแบบหล่อ'] : []),
+    'ตรวจกำลังรับน้ำหนักของพื้น/ดินใต้ค้ำยัน และแผ่นรองฐาน',
+  ];
+  const sheet = 1.22 * 2.44, sideArea = (sideHeights[0] + sideHeights[1]) * x.length / 1e6, soffitArea = x.b * x.length / 1e6;
+  const studH = (k: number) => sideHeights[k] + x.plywood;
+  const quantities: BeamQuantity[] = [
+    {item: 'ไม้อัดท้องคาน', spec: `${x.plywood} mm · ${x.plywoodGrade}`, qty: Math.ceil(soffitArea / sheet * 1.1), unit: 'แผ่น', note: `${fx(soffitArea)} m² + เผื่อตัด 10%`},
+    {item: 'ไม้อัดแบบข้าง', spec: `${x.plywood} mm · ${x.plywoodGrade}`, qty: Math.ceil(sideArea / sheet * 1.1), unit: 'แผ่น', note: `${fx(sideArea)} m² (สองด้าน) + เผื่อตัด 10%`},
+    {item: 'คร่าวท้องคาน', spec: joist.name, qty: joists.length, unit: 'ท่อน', note: `ยาว ${fx(L + 2 * bearer.section.B, 0)} mm @ ${fx(sj, 0)} mm`},
+    {item: 'คานรับท้อง', spec: bearer.name + (x.bearerCount > 1 ? ' (คู่)' : ''), qty: 2 * x.bearerCount, unit: 'เส้น', note: `ยาว ${fx(x.length, 0)} mm (ต่อทาบเหนือหัวค้ำ)`},
+    {item: 'ค้ำยัน + U-head + แผ่นฐาน', spec: x.shoreReference || 'ระบุรุ่นจากผู้ผลิต', qty: 2 * shores.length, unit: 'ต้น', note: `ยาวใช้งาน ${fx(shoreLength, 0)} mm @ ${fx(ss, 0)} mm`},
+    {item: 'คร่าวแบบข้าง', spec: stud.name, qty: 2 * studs.length, unit: 'ท่อน', note: `ยาว ${fx(studH(0), 0)}/${fx(studH(1), 0)} mm @ ${fx(st, 0)} mm`},
+    ...(x.tieRows > 0 ? [
+      {item: 'คานคู่แบบข้าง', spec: waler.name + ' (คู่)', qty: 2 * 2 * x.tieRows, unit: 'เส้น', note: `ยาว ${fx(x.length, 0)} mm, ${x.tieRows} แถว/ด้าน`},
+      {item: 'Tie ทะลุคาน + ปลอก + นัต/แผ่นรอง', spec: `Ø${x.tieDiameter} mm`, qty: x.tieRows * ties.length, unit: 'ชุด', note: `ยาว ≈ ${fx(x.b + 2 * (x.plywood + stud.section.H + waler.section.H + 60), 0)} mm`},
+    ] : []),
+  ];
+  const status: Status = checks.some(k => k.status === 'FAIL') ? 'FAIL' : 'INCOMPLETE';
+  return {engineVersion: BEAM_ENGINE_VERSION, input: x, status, checks, blockers, loads, pressureModel, soffitPlywood, sidePlywood, joist, bearer, stud, waler,
+    joists, shores, studs, ties, sideHeights, tieLevels, beamStart, joistReaction: jb.Vmax, bearerLine, shoreLoad, studSpan, tieForce, kickerForcePerM, lateralPerM,
+    shoreLength, volume: x.b * x.h * x.length / 1e9, quantities};
+}
+
+/** Largest requested spacing (25 mm steps) for which the members it governs have no FAIL. Never changes sections. */
+export const BEAM_SPACINGS = [
+  {key: 'joistSpacing', label: 'ระยะคร่าวท้องคาน', prefixes: ['sof-', 'joist-']},
+  {key: 'shoreSpacing', label: 'ระยะค้ำยันตามยาว', prefixes: ['bearer-', 'shore-']},
+  {key: 'studSpacing', label: 'ระยะคร่าวแบบข้าง', prefixes: ['side-', 'stud-']},
+  {key: 'tieSpacing', label: 'ระยะ Tie ตามยาว', prefixes: ['waler-', 'tie-']},
+] as const;
+export function beamAdvice(x: BeamInput) {
+  return BEAM_SPACINGS.filter(s => s.key !== 'tieSpacing' || x.tieRows > 0).map(s => {
+    const ok = (v: number) => {try {return !calculateBeam({...x, [s.key]: v}).checks.some(k => s.prefixes.some(p => k.id.startsWith(p)) && k.status === 'FAIL');} catch {return false;}};
+    let best: number | null = null;
+    for (let v = Math.min(x.length, 3000); v >= 100; v -= 25) if (ok(v)) {best = v; break;}
+    // Checks in this group without a capacity (e.g. shore/tie SWL not entered) did not limit the spacing.
+    const unchecked = calculateBeam(x).checks.filter(k => s.prefixes.some(p => k.id.startsWith(p)) && k.limit === null).map(k => k.label);
+    return {key: s.key, label: s.label, current: x[s.key], max: best, unchecked};
+  });
+}
