@@ -53,6 +53,20 @@ describe('wall workspace, drawings and report', () => {
     act(() => root.unmount());
   });
 
+  it('renders single-sided walls with strongbacks and anchors instead of ties', () => {
+    const r = calculateWall({...wallDefaults, system: 'SINGLE_SIDED', braceSpacing: 1500});
+    const layout = renderToStaticMarkup(<WallPanel tab="layout" x={r.input} r={r} error={null} canEdit onChange={() => {}} onTab={() => {}}/>);
+    expect(layout).toContain('ขนาดStrongback');
+    expect(layout).not.toContain('ระยะ Tie สูงสุด');
+    const sheets = renderToStaticMarkup(<WallDrawingSet r={r} project="P" code="C" caseName="W1" titleBlock={tb} canEdit onTitleBlockChange={() => {}}/>);
+    expect(sheets).toContain('ดิน / ผนังเดิม');
+    expect(sheets).toContain('แบบด้านเดียว');
+    const report = renderToStaticMarkup(<WallReport r={r} project="P" code="C" caseName="W1" caseId="w1" titleBlock={tb}/>);
+    expect(report).toContain('Strongback และพุกฐาน');
+    expect(report).toContain('§4.1.4d');
+    expect(report.match(/class="rp-check"/g)?.length).toBe(r.checks.length);
+  });
+
   it('survives backup import', () => {
     const text = JSON.stringify({schemaVersion: 3, project: {name: 'P', code: 'C', cases: [{name: 'W01', input: defaults, workflowElementType: 'WALL', wall: {...wallDefaults, t: 300, confirmed: true}}]}});
     const project = parseProjectBackup(text, () => 'id');

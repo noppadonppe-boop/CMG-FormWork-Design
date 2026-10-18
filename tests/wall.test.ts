@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {WALL_SPACINGS, calculateWall, validateWallInput, wallAdvice, wallDefaults, wallFromCase} from '../src/domain/wall';
+import {WALL_SPACINGS, calculateWall, proppedOverhang, validateWallInput, wallAdvice, wallDefaults, wallFromCase} from '../src/domain/wall';
 
 describe('wall formwork engine', () => {
   it('traces the default wall by hand: pressure → plywood → studs → twin walers → ties', () => {
@@ -42,6 +42,40 @@ describe('wall formwork engine', () => {
     const seeded = wallFromCase(null, {width: 8000, length: 300, height: 4000});
     expect([seeded.length, seeded.t, seeded.height, seeded.braceHeight, seeded.confirmed]).toEqual([8000, 300, 4000, 2000, false]);
     expect(wallFromCase({broken: true})).toEqual(wallDefaults);
+  });
+
+  it('propped member with overhang matches closed-form results', () => {
+    const w = 5, L = 3000, a = 2000, E = 200000, I = 2e6, r = proppedOverhang(w, L, a, E, I), c = L - a;
+    expect(r.Ra).toBeCloseTo(w * L * L / (2 * a), 9);
+    expect(r.R0).toBeCloseTo(w * L - w * L * L / (2 * a), 9);
+    expect(r.Mmax).toBeCloseTo(Math.max(r.R0 ** 2 / (2 * w), w * c * c / 2), 6);
+    // Without overhang it is a simple span: 5wL⁴/384EI.
+    expect(proppedOverhang(w, L, L, E, I).span).toBeCloseTo(5 * w * L ** 4 / (384 * E * I), 3);
+    // Free end of the overhang under full UDL (AISC Manual beam case 24, span l = a, overhang c): Δ = w c (4c²l − l³ + 3c³) / (24EI).
+    expect(r.tip).toBeCloseTo(Math.abs(w * c * (4 * c * c * a - a ** 3 + 3 * c ** 3) / (24 * E * I)), 3);
+  });
+
+  it('single-sided walls carry the full pressure through strongbacks, braces and base anchors', () => {
+    const x = {...wallDefaults, system: 'SINGLE_SIDED' as const, height: 3000, braceHeight: 2000, braceSpacing: 1500, braceAngle: 60};
+    const r = calculateWall(x), p = 72, sb = 1500, w = p / 1000 * sb;
+    expect(r.ties).toEqual([]);
+    expect(r.checks.some(k => k.id.startsWith('tie-'))).toBe(false);
+    expect(r.strongbackBrace).toBeCloseTo(w * 3000 ** 2 / (2 * 2000) / 1000, 9);
+    expect(r.strongbackBase).toBeCloseTo(w * 3000 / 1000 - w * 3000 ** 2 / (2 * 2000) / 1000, 9);
+    const lateral = Math.max(1.5 * 3, 0.72 * 9 / 2) * 1.5 / (2 * Math.cos(Math.PI / 3));
+    expect(r.braceForce).toBeCloseTo(r.strongbackBrace! / Math.cos(Math.PI / 3) + lateral, 9);
+    expect(r.anchorUplift).toBeCloseTo(r.braceForce * Math.sin(Math.PI / 3), 9);
+    expect(r.checks.find(k => k.id === 'waler-b')!.substitution).toContain('ระยะ strongback 1500');
+    expect(r.checks.find(k => k.id === 'anchor')!.status).toBe('INCOMPLETE');
+    expect(r.formArea).toBeCloseTo(6 * 3, 9);
+    expect(r.quantities.some(q => q.item.startsWith('Strongback'))).toBe(true);
+    expect(wallAdvice(x).map(a => a.key)).toEqual(['studSpacing', 'walerSpacing', 'braceSpacing']);
+  });
+
+  it('keeps walls saved before the single-sided option two-sided and unchanged', () => {
+    const {system: _s, strongbackSectionId: _b, strongbackCount: _c, anchorSWL: _a, ...old} = wallDefaults;
+    expect(validateWallInput(old).system).toBe('TWO_SIDED');
+    expect(calculateWall(old).checks).toEqual(calculateWall(wallDefaults).checks);
   });
 
   it('advises the largest spacing without failures in the governed members', () => {

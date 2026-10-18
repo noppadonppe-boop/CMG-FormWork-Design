@@ -19,7 +19,8 @@ export function wallNotes(r: WallResult) {
     'หน่วยเป็นมิลลิเมตร เว้นแต่ระบุเป็นอื่น ห้ามวัดขนาดจากแบบ ให้ใช้ตัวเลขที่ระบุ',
     `แบบชุดนี้สร้างจากผลคัดกรองเบื้องต้น (${r.engineVersion}) สถานะ ${r.status}${x.confirmed ? '' : ' และยังไม่ยืนยันมิติจากแบบต้นฉบับ'} ห้ามใช้ก่อสร้างจนกว่าวิศวกรตรวจและอนุมัติ`,
     pm.method === 'ACI347' ? `แรงดันคอนกรีตสดตาม ACI PRC-347-14(21) สมการ ${pm.equation}: pmax = ${n(pm.pmax, 1)} kPa (เทไม่เร็วกว่า ${x.pourRate} m/h, T ${x.concreteTemp} °C)` : `แรงดันคอนกรีตสดแบบของเหลว ρgh = ${n(pm.pmax, 1)} kPa เทจากด้านบน`,
-    `Tie รับ ${n(r.tieForce)} kN/ตัว ${x.tieSWL > 0 ? `(SWL ${x.tieSWL} kN)` : '· ต้องใช้ชุด Tie ที่มี SWL รับรองจากผู้ผลิต'}`,
+    r.strongback ? `แบบด้านเดียว: strongback ${r.strongback.name} ที่ทุกสถานีค้ำยัน · พุกฐานรับแรงยก ${n(r.anchorUplift)} kN/สถานี ${x.anchorSWL > 0 ? `(SWL ${x.anchorSWL} kN)` : '· ต้องใช้พุกที่มี SWL รับรอง'}`
+      : `Tie รับ ${n(r.tieForce)} kN/ตัว ${x.tieSWL > 0 ? `(SWL ${x.tieSWL} kN)` : '· ต้องใช้ชุด Tie ที่มี SWL รับรองจากผู้ผลิต'}`,
     `ค้ำยันเอียงรับ ${n(r.braceForce)} kN/ตัว (${r.braceGoverning}) ${x.braceSWL > 0 ? `SWL ${x.braceSWL} kN ${x.braceReference}` : '· ต้องเลือกรุ่นที่มี SWL รับรอง'}`,
     'ต้องมีชุดยึดมุม/ปลายผนัง และ Tie มุมตามรายละเอียดผู้ผลิต รอยต่อแผ่นและคานคู่ต้องอยู่เหนือจุดรองรับ',
     'ตรวจแนว ดิ่ง และความแน่นของแบบหล่อทุกครั้งก่อนเท ห้ามเทเร็วกว่าอัตราที่ใช้ออกแบบ',
@@ -48,7 +49,7 @@ export function WallDrawingSet({r, project, code, caseName, titleBlock, canEdit,
       <Table x={23} y={76} title="ข้อมูลออกแบบ (DESIGN DATA)" rh={5.4} s={2.1} cols={[{t: 'รายการ', w: 50}, {t: 'ค่า', w: 70}]} rows={[
         ['ผนัง ยาว × หนา × สูงเท', `${x.length} × ${x.t} × ${x.height} mm`], ['แรงดันสูงสุด pmax', `${n(r.pressureModel.pmax, 1)} kPa`],
         ['ไม้อัด', `${x.plywood} mm · ${PLYWOOD_GRADE_LABEL[x.plywoodGrade]}`], ['คร่าว / ระยะ', `${r.stud.name} @ ${n(sp(x.length, r.studs), 0)}`],
-        ['คานคู่ / ระยะ', `2×${r.waler.name} @ ${n(sp(x.height, r.levels), 0)}`], ['Tie / ระยะ', `Ø${x.tieDiameter} @ ${n(sp(x.length, r.ties), 0)} · SWL ${x.tieSWL || '—'} kN`],
+        ['คานคู่ / ระยะ', `2×${r.waler.name} @ ${n(sp(x.height, r.levels), 0)}`], r.strongback ? ['Strongback / พุก', `${x.strongbackCount > 1 ? '2×' : ''}${r.strongback.name} · พุก SWL ${x.anchorSWL || '—'} kN`] : ['Tie / ระยะ', `Ø${x.tieDiameter} @ ${n(sp(x.length, r.ties), 0)} · SWL ${x.tieSWL || '—'} kN`],
         ['ค้ำยัน', `@ ${n(sp(x.length, r.braces), 0)} · hb ${x.braceHeight} · ${x.braceAngle}° · SWL ${x.braceSWL || '—'} kN`], ['สถานะระบบ', `${r.status} · ${r.engineVersion}`],
       ]}/>
       <Table x={146} y={76} title="สรุปผลตรวจคัดกรอง (CHECK SUMMARY)" rh={5.4} s={2} cols={[{t: 'รายการ', w: 78}, {t: 'ผล', w: 28, a: 'end'}, {t: 'เกณฑ์', w: 28, a: 'end'}, {t: 'Ratio', w: 15, a: 'end'}, {t: 'สถานะ', w: 22, a: 'middle'}]}
@@ -64,21 +65,22 @@ const SECTIONS = ['ขอบเขตและเกณฑ์การออก�
 
 export function WallReport({r, project, code, caseName, caseId, titleBlock: tb}: {r: WallResult; project: string; code: string; caseName: string; caseId: string; titleBlock: TitleBlock}) {
   const x = r.input, pm = r.pressureModel, advice = useMemo(() => wallAdvice(x), [x]), fails = r.checks.filter(c => c.status === 'FAIL');
-  const docNo = `CAL-${code || 'CMG'}-${caseId.replace(/[^\w]/g, '').slice(0, 6).toUpperCase()}`, st = sp(x.length, r.studs), sw = sp(x.height, r.levels), stt = sp(x.length, r.ties);
+  const docNo = `CAL-${code || 'CMG'}-${caseId.replace(/[^\w]/g, '').slice(0, 6).toUpperCase()}`, st = sp(x.length, r.studs), sw = sp(x.height, r.levels), stt = r.ties.length ? sp(x.length, r.ties) : 0, walerSpan = r.strongback ? sp(x.length, r.braces) : stt;
   const group = (no: string, title: string, prefixes: string[], fig?: ReactElement) => <div className="rp-group" key={no}><h3>{no} {title}</h3>{fig}
     {r.checks.filter(c => prefixes.some(p => c.id.startsWith(p))).map((c, i) => <CheckCard key={c.id} c={c} no={`${no}.${i + 1}`}/>)}</div>;
   return <article className="calc-report">
-    <ReportCover title="รายการคำนวณออกแบบแบบหล่อผนัง" subtitle="WALL FORMWORK DESIGN CALCULATION" project={project} code={code} element={`${caseName} · แบบหล่อผนัง (สองด้าน)`} docNo={docNo}
+    <ReportCover title="รายการคำนวณออกแบบแบบหล่อผนัง" subtitle="WALL FORMWORK DESIGN CALCULATION" project={project} code={code} element={`${caseName} · แบบหล่อผนัง (${r.strongback ? 'ด้านเดียว' : 'สองด้าน'})`} docNo={docNo}
       size={`ยาว ${x.length} × หนา ${x.t} × สูงเท ${x.height} mm`} status={r.status} fails={fails.length} sheets="WF-01 ถึง WF-03 (A3)" tb={tb} sections={SECTIONS}
       figure={<Fig w={190} h={120} caption="รูปตัดแบบหล่อผนัง (อ้างอิงแบบ WF-02)"><WallSectionView r={r} box={{x: 0, y: 0, w: 190, h: 120}} titled={false}/></Fig>}/>
     <section className="rp-sec"><h2>1. {SECTIONS[0]}</h2>
-      <p>รายการคำนวณนี้คัดกรองแบบหล่อผนังสองด้านด้วยวิธียืดหยุ่นเบื้องต้น (engine {r.engineVersion}) เส้นทางแรง: แรงดันคอนกรีตสด → ไม้อัด (คานต่อเนื่องตาม APA V345) → คร่าวแนวตั้ง → คานคู่แนวนอน → Tie ทะลุผนัง และแรงด้านข้างตาม ACI §4.2.3 → ค้ำยันเอียง คร่าวและคานคู่เป็นคานช่วงเดี่ยวภายใต้แรงดันสูงสุดคงที่ ผลลัพธ์ใช้คัดกรองเท่านั้น</p>
+      <p>รายการคำนวณนี้คัดกรองแบบหล่อผนัง{r.strongback ? 'ด้านเดียว (เทชนดิน/ผนังเดิม)' : 'สองด้าน'}ด้วยวิธียืดหยุ่นเบื้องต้น (engine {r.engineVersion}) เส้นทางแรง: แรงดันคอนกรีตสด → ไม้อัด (คานต่อเนื่องตาม APA V345) → คร่าวแนวตั้ง → คานคู่แนวนอน → {r.strongback ? 'strongback แนวตั้ง (ฐานเป็นจุดหมุน รองรับที่ค้ำยัน) → ค้ำยันเอียงและพุกฐาน รวมแรงด้านข้างตาม ACI §4.2.3' : 'Tie ทะลุผนัง และแรงด้านข้างตาม ACI §4.2.3 → ค้ำยันเอียง'} คร่าวและคานคู่เป็นคานช่วงเดี่ยวภายใต้แรงดันสูงสุดคงที่ ผลลัพธ์ใช้คัดกรองเท่านั้น</p>
       <table className="rp-tab"><thead><tr><th>รายการ</th><th>ค่า</th><th>สถานะข้อมูล</th></tr></thead><tbody>
         <tr><td>น้ำหนักคอนกรีต γ</td><td>{x.gamma} kN/m³ (ρ = {n(pm.rho, 0)} kg/m³)</td><td>สมมติฐานโครงการ</td></tr>
         <tr><td>แรงดันด้านข้าง</td><td>{pm.method === 'ACI347' ? `ACI PRC-347-14(21) · R ${x.pourRate} m/h · T ${x.concreteTemp} °C · ยุบตัว ${x.slump} mm · Cc ${x.chemistryCc}` : 'แรงดันของเหลว ρgh เต็มความสูง'}</td><td>{pm.method === 'ACI347' ? 'ต้องยืนยันวิธีเทหน้างาน' : 'ปลอดภัยเสมอ'}</td></tr>
         <tr><td>ไม้อัด</td><td>{x.plywood} mm · {PLYWOOD_GRADE_LABEL[x.plywoodGrade]}</td><td>{x.plywoodGrade === 'CUSTOM' ? 'ผู้ใช้กำหนด ต้องมีใบรับรอง' : 'APA V345 ตาราง 12–13'}</td></tr>
         <tr><td>คร่าว / คานคู่</td><td>{r.stud.name} / 2×{r.waler.name}</td><td>ตารางเหล็ก มอก. / ว.ส.ท. ต้องยืนยันใบรับรอง</td></tr>
-        <tr><td>Tie</td><td>Ø{x.tieDiameter} · Fy {x.tieFy} MPa · Ω {x.tieOmega} · SWL {x.tieSWL > 0 ? x.tieSWL + ' kN' : 'ยังไม่ระบุ'}</td><td>{x.tieSWL > 0 ? 'ค่าผู้ผลิต' : 'ยังไม่ครบ'}</td></tr>
+        {r.strongback ? <tr><td>Strongback / พุกฐาน</td><td>{x.strongbackCount > 1 ? '2×' : ''}{r.strongback.name} · พุก SWL {x.anchorSWL > 0 ? x.anchorSWL + ' kN' : 'ยังไม่ระบุ'}</td><td>{x.anchorSWL > 0 ? 'ค่าผู้ผลิต' : 'ยังไม่ครบ'}</td></tr>
+          : <tr><td>Tie</td><td>Ø{x.tieDiameter} · Fy {x.tieFy} MPa · Ω {x.tieOmega} · SWL {x.tieSWL > 0 ? x.tieSWL + ' kN' : 'ยังไม่ระบุ'}</td><td>{x.tieSWL > 0 ? 'ค่าผู้ผลิต' : 'ยังไม่ครบ'}</td></tr>}
         <tr><td>ค้ำยันเอียง</td><td>@ {n(sp(x.length, r.braces), 0)} mm · hb {x.braceHeight} mm · {x.braceAngle}° · SWL {x.braceSWL > 0 ? x.braceSWL + ' kN' : 'ยังไม่ระบุ'}</td><td>{x.braceSWL > 0 ? 'ค่าผู้ผลิต' : 'ยังไม่ครบ'}</td></tr>
         <tr><td>เหล็ก Fy / E / Ωb / Ωv · เกณฑ์โก่ง</td><td>{x.steelFy} / {x.steelE} MPa / {x.steelOmegaB} / {x.steelOmegaShear} · L/{x.deflectionRatio}</td><td>AISC 360 ASD (คัดกรอง)</td></tr>
       </tbody></table></section>
@@ -87,7 +89,7 @@ export function WallReport({r, project, code, caseName, caseId, titleBlock: tb}:
         <Fig no={1} w={150} h={110} caption="รูปด้านแบบหล่อผนัง (WF-01)"><WallElevationView r={r} box={{x: 0, y: 0, w: 150, h: 110}} titled={false}/></Fig>
         <Fig no={2} w={150} h={110} caption="แปลนที่ระดับคานคู่ (WF-02)"><WallPlanView r={r} box={{x: 0, y: 0, w: 150, h: 110}} titled={false}/></Fig>
       </div>
-      <p>คร่าว {r.studs.length} ตัว/ด้าน @ {n(st, 0)} mm · คานคู่ {r.levels.length} ระดับ @ {n(sw, 0)} mm · Tie {r.ties.length} ตัว/ระดับ @ {n(stt, 0)} mm (รวม {r.ties.length * r.levels.length} ชุด) · ค้ำยัน {r.braces.length} ตัว (ระยะเท่ากันไม่เกินค่าที่กำหนด)</p></section>
+      <p>คร่าว {r.studs.length} ตัว/ด้าน @ {n(st, 0)} mm · คานคู่ {r.levels.length} ระดับ @ {n(sw, 0)} mm · {r.strongback ? `strongback ${r.braces.length} สถานี` : `Tie ${r.ties.length} ตัว/ระดับ @ ${n(stt, 0)} mm (รวม ${r.ties.length * r.levels.length} ชุด)`} · ค้ำยัน {r.braces.length} ตัว (ระยะเท่ากันไม่เกินค่าที่กำหนด)</p></section>
     <section className="rp-sec"><h2>3. {SECTIONS[2]}</h2>
       <p>{pm.method === 'ACI347' ? <>ตาม {ACI_REFERENCE}</> : <>ใช้แรงดันแบบของเหลว p = ρgh ตลอดความสูงเท</>}</p>
       <div className="rp-check rp-derive"><ol className="rp-steps">{pm.steps.map((t, i) => <li key={i}><div className="equation">{t}</div></li>)}
@@ -96,8 +98,8 @@ export function WallReport({r, project, code, caseName, caseId, titleBlock: tb}:
     <section className="rp-sec"><h2>4. {SECTIONS[3]}</h2>
       {group('4.1', 'ไม้อัด', ['ply-'], <Fig no={4} w={150} h={68} caption={`ไม้อัดแถบ 1 m พาดระหว่างคร่าว @ ${n(st, 0)} mm (${r.plywood.spans === 1 ? 'ช่วงเดี่ยว' : `ต่อเนื่อง ${r.plywood.spans} ช่วง ตาม APA V345`}) · รับได้ ${n(r.plywood.allowablePressure, 1)} kPa`}><BeamDiagram L={st} w={pm.pmax} title="ไม้อัดแถบ 1 m"/></Fig>)}
       {group('4.2', 'คร่าว (แนวตั้ง)', ['stud-'], <Fig no={5} w={150} h={68} caption={`คร่าวพาดระหว่างคานคู่ @ ${n(sw, 0)} mm`}><BeamDiagram L={sw} w={r.studLine} title={`คร่าว ${r.stud.name}`}/></Fig>)}
-      {group('4.3', 'คานคู่ (แนวนอน)', ['waler-'], <Fig no={6} w={150} h={68} caption={`คานคู่พาดระหว่าง Tie @ ${n(stt, 0)} mm (แบ่งแรงสองตัว)`}><BeamDiagram L={stt} w={r.walerLine} title={`คานคู่ 2×${r.waler.name}`}/></Fig>)}
-      {group('4.4', 'Tie ทะลุผนัง', ['tie-'])}</section>
+      {group('4.3', 'คานคู่ (แนวนอน)', ['waler-'], <Fig no={6} w={150} h={68} caption={`คานคู่พาดระหว่าง${r.strongback ? ' strongback' : ' Tie'} @ ${n(walerSpan, 0)} mm (แบ่งแรงสองตัว)`}><BeamDiagram L={walerSpan} w={r.walerLine} title={`คานคู่ 2×${r.waler.name}`}/></Fig>)}
+      {r.strongback ? group('4.4', 'Strongback และพุกฐาน', ['strongback', 'anchor']) : group('4.4', 'Tie ทะลุผนัง', ['tie-'])}</section>
     <section className="rp-sec"><h2>5. {SECTIONS[4]}</h2>
       <p>ตาม {ACI_BRACING_REFERENCE}: โมเมนต์พลิกต่อเมตร M = max(1.5 kN/m × H, 0.72 kPa × H²/2) = {n(r.braceMoment, 3)} kN·m/m ({r.braceGoverning}) ฐานแบบถือเป็นจุดหมุน</p>
       {group('5.1', 'ค้ำยันเอียง', ['brace-'])}</section>
