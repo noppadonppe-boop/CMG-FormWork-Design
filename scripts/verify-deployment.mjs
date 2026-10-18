@@ -20,6 +20,15 @@ if (scriptMatch) {
     const output = await outputResponse.text();
     checks.push(['Workflow v0.7 A3 drawing chunk in deployed bundle', outputResponse.ok && ['GEOMETRY / OPPOSING FACE MAP', 'SOFFIT / SHORING PLAN', 'FRAME ELEVATION', 'BASE TO SUPPORT CONTACT', 'SNAPSHOT SHA-256', 'NOT FOR CONSTRUCTION'].every(label => output.includes(label))]);
   } else checks.push(['Workflow v0.7 A3 drawing chunk discoverable', false]);
+  const panelChunk = bundle.match(/assets\/(WorkflowV07Panel-[A-Za-z0-9_-]+\.js)/)?.[1];
+  if (panelChunk) {
+    const panelResponse = await fetch(new URL(`/assets/${panelChunk}`, response.url));
+    const panel = await panelResponse.text();
+    checks.push(['Editable project evidence forms in deployed bundle', panelResponse.ok && [
+      'ข้อมูลวิศวกรรมโครงการ', 'บันทึกร่างกับ Case นี้', 'ผูกกับ Revision ปัจจุบัน', 'นำเข้า JSON', 'ดาวน์โหลด JSON',
+      'Ringlock และการค้ำยัน', 'ดิน ฐานราก และแผ่นรอง', 'พื้นคอนกรีตที่รองรับ', 'เกณฑ์การใช้งานและการโก่งตัว', 'ลำดับเทและอนุมัติแต่ละ Stage',
+    ].every(label => panel.includes(label))]);
+  } else checks.push(['Workflow v0.7 panel chunk discoverable', false]);
   checks.push(['Workflow element menus in deployed bundle', ['ฐานราก', 'เสา', 'ผนัง', 'คาน', 'พื้น'].every(label => bundle.includes(label))]);
   checks.push(['Connections menu in deployed bundle', bundle.includes('จุดต่อและค้ำยัน')]);
   checks.push(['Audit menu in deployed bundle', bundle.includes('Audit & Settings')]);

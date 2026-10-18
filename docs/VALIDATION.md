@@ -4,8 +4,8 @@
 - `npm run typecheck` and `npm run build`: **PASS** after adding the editable Closure Pack project-input forms. Vite still reports the existing large-bundle advisory.
 - `npm run test:visual`: **PASS** — 21 legacy/v0.7 A3 sheets rasterized with `@napi-rs/canvas`; this includes the eight-sheet Workflow v0.7 draft arrangement (geometry, each physical side, soffit/shoring, frame and support contacts) from one frozen Snapshot. Tahoma registered from `C:/Windows/Fonts/tahoma.ttf`.
 - `npm run typecheck` and `npm run build`: **PASS**; bundle-size warning remains informational.
-- Production `verify:deployment`: **PASS (13 checks)** for HTTP/SPA, five element menus, Connections, Audit, public Ringlock/Form Tie DRAFT import, NO_GO gate, sidebar scroll rule, and the deployed v0.7 A3 drawing chunk.
-- Firebase release audit: **PASS** for Hosting version `592b723a1cbe091e` (release `1792340126451000`, finalized `2026-10-18T16:15:26.451Z`), ten Node 22 Functions (including `saveReviewRecord`), and Firestore/Storage rule hash matches.
+- Production `verify:deployment`: **PASS (14 checks)** for HTTP/SPA, five element menus, Connections, Audit, public Ringlock/Form Tie DRAFT import, editable project evidence forms, NO_GO gate, sidebar scroll rule, and the deployed v0.7 A3 drawing chunk.
+- Firebase release audit: **PASS** for Hosting version `07524d0006e9ac26` (release `1792355437793000`), ten Node 22 Functions (including `saveReviewRecord`), and Firestore/Storage rule hash matches. The release deploys `984bde8f986298875c245fcba1c1094865efb792`.
 - Functions emulator audit: **PASS** — 12 checks, including server-side Review transition acceptance and forged-history rejection.
 - Reconciliation template audit: **PASS** with `npm run audit:reconciliation`; `--ready` mode correctly remains blocked until Owner decisions, approval metadata and a new pre-write backup are filled.
 - Audit & Settings now includes an explicit per-Case reconciliation form, non-mutating JSON import/export, and readiness check; `applyToProduction` is always `false` until a separate reviewed write process is approved.

@@ -28,9 +28,9 @@ requirements matrix ต่อจากนี้ ข้อกำหนดด้�
 ทุกระบบ: แรงที่แมปต้องอนุรักษ์ผลรวมแรงและโมเมนต์ของแรงดัน ใช้พิกัดจริงของสมาชิกและจุดรองรับ
 ไม่ตัดช่วงปลาย ไม่ใช้ค่าเฉลี่ยแทนแรงจริง และกำลังรับแรงทุกค่ามาจากหลักฐานที่รีวิวแล้วเท่านั้น
 
-## สถานะต่อระบบ (ประเมินใหม่ 2026-10-18 · v0.7 `0.7.0-preview.32` · legacy ฐานราก/เสา `0.3.0-screening`)
+## สถานะต่อระบบ (ประเมินใหม่ 2026-10-19 · v0.7 `0.7.0-preview.32` · legacy ฐานราก/เสา `0.3.0-screening`)
 
-ตรวจเทียบกับโค้ดและเทสต์ใน working tree หลังรอบปรับ Workflow (full suite 865 tests ผ่าน; typecheck และ build ผ่าน)
+ตรวจเทียบกับโค้ดและเทสต์ใน working tree หลังรอบปรับ Workflow (full suite 100 files / 870 tests ผ่าน; typecheck และ build ผ่าน). Production Hosting version `07524d0006e9ac26` (Firebase release `1792355437793000`) deploy จาก commit `984bde8f986298875c245fcba1c1094865efb792` แล้ว; สถานะผลิตยังคง `DRAFT / INCOMPLETE / NO_GO`.
 รายละเอียดงานแต่ละ Phase ดู `docs/ROADMAP.md`
 
 | ระบบ | ส่วนที่ทำแล้ว | ช่องว่างหลัก |
@@ -58,7 +58,7 @@ requirements matrix ต่อจากนี้ ข้อกำหนดด้�
 
 รอบตรวจล่าสุดเพิ่มเมนูองค์อาคารหลักสำหรับฐานราก/เสา/ผนัง/คาน/พื้น, ตารางเตือนความสัมพันธ์ของ Design Case (ประเภท, ร่าง v0.7, ข้อมูลคำนวณ, id/ชื่อซ้ำ), ปุ่มแก้ความขัดแย้งแบบยืนยันโดยผู้ใช้, และแสดง Design Revision กับ review hash เดียวกันบนแบบ A3 และรายงาน A4. เพิ่ม checklist และ emulator audit ports เพื่อทำ backup, ตรวจ release และทดสอบซ้ำโดยไม่แตะ Production.
 
-หลักฐานการตรวจซ้ำ 2026-10-18: `npm test -- --maxWorkers=1` ผ่าน 99 files / 865 tests; `npm run test:visual` raster ผ่าน 21 sheets พร้อม Tahoma; typecheck/build/MCP build, Closure Pack 77 tests, Rules 84 tests และ Functions audit 12 checks ผ่าน. Browser acceptance บน emulator ผ่านการบันทึกร่างและแสดงแบบ A3 แปดแผ่นของ Beam/Slab/Wall. Production `verify:deployment` ผ่าน 13 checks รวม chunk แบบ v0.7 A3; `verify:release` ยืนยัน Hosting version `592b723a1cbe091e` / release `1792340126451000` FINALIZED เวลา `2026-10-18T16:15:26.451Z`; Functions ตรงกัน 10 exports บน Node 22 และ Firestore/Storage Rules hash ตรง source (`59c750f4f8402d9295e5737c0fcc4421ff8cffb94cbbebca1f62564bb63bf143`, `9b806d81d995abdd9fc091a5e2a4496be047d4e8c361572b632111cabf4c5826`). Registry ยังนำเข้า public และ Closure Pack Ringlock/Form Tie เป็น DRAFT โดยไม่สร้างขีดจำกัดอัตโนมัติ.
+หลักฐานการตรวจซ้ำ 2026-10-19: `npm test -- --maxWorkers=1` ผ่าน 100 files / 870 tests; `npm run test:visual` raster ผ่าน 21 sheets พร้อม Tahoma; typecheck/build/MCP build, Closure Pack 77 tests, Rules 84 tests และ Functions audit 12 checks ผ่าน. Browser acceptance บน emulator ผ่านการบันทึกร่างและแสดงแบบ A3 แปดแผ่นของ Beam/Slab/Wall. Production `verify:deployment` ผ่าน 14 checks รวมฟอร์มข้อมูลโครงการที่แก้ไข/นำเข้า/ส่งออกได้และ chunk แบบ v0.7 A3; `verify:release` ยืนยัน Hosting version `07524d0006e9ac26` / release `1792355437793000`; Functions ตรงกัน 10 exports บน Node 22 และ Firestore/Storage Rules hash ตรง source. Registry ยังนำเข้า public และ Closure Pack Ringlock/Form Tie เป็น DRAFT โดยไม่สร้างขีดจำกัดอัตโนมัติ.
 Manual browser smoke บน local `127.0.0.1:5196` แสดงเมนู ELEMENT WORKFLOW ครบ 5 ระบบ, แสดง warning ของ Case ที่ชนิดไม่ตรง และ export backup ได้จริง. Browser acceptance บน emulator ชุดแยก `firebase.emulators-browser.json` ทำซ้ำได้ด้วย `scripts/seed-browser-emulator.mjs` และ `scripts/test-browser-acceptance.mjs`: สร้าง mock-up 10 Case แล้วตรวจเมนูทั้งห้า, เปิด Beam/Slab/Wall, ยืนยันปุ่มนำเข้า Registry และยืนยันรายละเอียด v0.7 เป็น `DRAFT / NO_GO`; Playwright run นี้เป็นการตรวจ emulator เท่านั้นและไม่แตะ Production.
 Production release ล่าสุดตรวจผ่าน `verify:deployment` และ `verify:release`: หน้าเว็บและ deployed A3 chunk อยู่ครบ, functions/rules identities ตรง source. Emulator Playwright ผ่านเมนูหลักทั้งห้า, Audit และ A3 8 แผ่นของ Beam/Slab/Wall; การคลิกพิมพ์ PDF จริงยังไม่ได้รับ acceptance. ข้อมูล CMG-002 ที่ต้อง reconcile ยังคงอยู่ (เช่น dropdown `F01 · ฐานราก` แต่หัวข้อแสดง `ผนัง`, และชื่อ F03/W02/B02 ซ้ำ). เมื่อ Case มีร่าง v0.7 ผลคำนวณ/แบบ/รายงานใช้ Snapshot เดียวกันและแสดง hash.
 ข้อเสนอ reconcile ที่ไม่เขียน Production ถูกจัดทำไว้ใน `docs/CMG-002_RECONCILIATION_PROPOSAL.md` และ audit ที่ทำซ้ำได้อยู่ใน `scripts/audit-project-backup.mjs`.

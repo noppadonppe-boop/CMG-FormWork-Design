@@ -1,6 +1,6 @@
 # Capability matrix — v0.3
 
-ตรวจซ้ำล่าสุด 2026-10-19: full suite 100 files / 870 tests, `npm run typecheck` และ `npm run build` ผ่าน. Production Hosting version ที่ตรวจล่าสุดคือ `592b723a1cbe091e` (2026-10-18); source ใน Workspace มีการแก้ไขใหม่และยังไม่ได้ deploy. ผลคำนวณ รายงาน และชุดแบบ A3 v0.7 ใช้ frozen Snapshot/Design Revision เดียวกัน; Playwright acceptance เปิดแบบร่าง 8 แผ่นของคาน/พื้น/ผนังได้. สถานะ `DRAFT / INCOMPLETE / NO_GO` ยังคงเป็น gate ทางวิศวกรรม.
+ตรวจซ้ำล่าสุด 2026-10-19: full suite 100 files / 870 tests, `npm run typecheck` และ `npm run build` ผ่าน. Production Hosting version ที่ตรวจล่าสุดคือ `07524d0006e9ac26` (Firebase release `1792355437793000`); source ที่ตรวจและ commit แล้ว deploy สำเร็จ. ผลคำนวณ รายงาน และชุดแบบ A3 v0.7 ใช้ frozen Snapshot/Design Revision เดียวกัน; Playwright acceptance เปิดแบบร่าง 8 แผ่นของคาน/พื้น/ผนังได้. สถานะ `DRAFT / INCOMPLETE / NO_GO` ยังคงเป็น gate ทางวิศวกรรม.
 
 | Capability | State | Limits |
 |---|---|---|
