@@ -38,5 +38,16 @@ describe('beam workflow inside the app (offline)', () => {
     expect(document.body.textContent).not.toContain('รายการคำนวณ legacy ไม่รองรับชนิดนี้');
     const saved = JSON.parse(localStorage.getItem('cmg-formwork-demo-v1') || '[]');
     expect(saved.length).toBeGreaterThan(0);
+    // Slab: same menus, slab screens.
+    await act(async () => {button('พื้น', document.querySelector('.element-menu')!).click(); await wait();});
+    await act(async () => {button('รูปทรงและมิติ', document.querySelector('nav')!).click(); await wait();});
+    // The demo footing (2.5 m deep) is outside the slab range, so the slab draft falls back to the defaults.
+    expect((document.querySelector('input[aria-label="ความหนาพื้น"]') as HTMLInputElement).value).toBe('150');
+    await act(async () => {button('รายการคำนวณ', document.querySelector('nav')!).click(); await wait();});
+    expect(document.body.textContent).toContain('ไม้อัดท้องพื้น');
+    await act(async () => {button('แปลนและรูปตัด', document.querySelector('nav')!).click(); await wait();});
+    expect(document.body.textContent).toContain('SF-02');
+    await act(async () => {button('รายงาน PDF', document.querySelector('nav')!).click(); await wait();});
+    expect(document.body.textContent).toContain('รายการคำนวณออกแบบแบบหล่อพื้น');
   });
 });

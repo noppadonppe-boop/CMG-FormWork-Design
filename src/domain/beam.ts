@@ -3,7 +3,9 @@
  * Results are screening only: status is FAIL or INCOMPLETE, never PASS. */
 import {CC_VALUES,lateralPressure,type PressureMethod,type PressureModel} from './pressure.js';
 import {FACE_GRAINS,PLYWOOD_GRADES,PLYWOOD_SPANS,plywoodDesign,type FaceGrain,type PlywoodDesign,type PlywoodGrade,type PlywoodSpans} from './plywoodGrades.js';
-import {catalogueProperties,isTimber,sectionById,timberGrade,type StockSection} from './sectionStock.js';
+import {sectionById,timberGrade} from './sectionStock.js';
+import {checker,fx,liveMinimums,material,plywoodOptions,plywoodSource,type MemberMaterial} from './members.js';
+export type {MemberMaterial} from './members.js';
 import {equalPositions} from './mechanics.js';
 import type {Check,Status} from './index.js';
 
@@ -101,20 +103,10 @@ export function patchBeam(L: number, patches: {a: number; c: number; w: number}[
   return {RA, RB, total, Mmax, xM, Vmax: Math.max(RA, RB), dmax};
 }
 
-export interface MemberMaterial {name: string; section: StockSection; timber: boolean; E: number; S: number; I: number; A: number; shearArea: number;
-  Fb: number; Fv: number | null; source: string}
-function material(id: string, x: BeamInput): MemberMaterial {
-  const s = sectionById(id)!, p = catalogueProperties(s), timber = isTimber(s), g = timberGrade(x.timberGrade)!;
-  return {name: s.designation, section: s, timber, E: timber ? g.E : x.steelE, S: p.S, I: p.I, A: p.area, shearArea: p.shearArea,
-    Fb: timber ? g.Fb : x.steelFy / x.steelOmegaB, Fv: timber ? g.Fv : x.steelFy / (Math.sqrt(3) * x.steelOmegaShear),
-    source: timber ? 'หนังสือ Design Form Work ตาราง 3.4 (อ้าง ว.ส.ท.) · ' + g.label + ' · ค่าอ้างอิงเดิม ต้องยืนยันชนิดไม้/ความชื้น'
-      : s.designation + ' ค่า gross จาก ' + s.source + ' · Fy ' + x.steelFy + ' MPa / Ω (AISC 360 ASD) · ไม่ตรวจ local/lateral-torsional buckling และจุดต่อ'};
-}
-
 export interface BeamLoads {concrete: number; formDead: number; liveUsed: number; liveMin: number; totalMin: number; beam: number; slab: number; steps: string[]}
 /** Vertical design loads per ACI PRC-347-14(21) §4.2.1 (kPa). */
 export function beamLoads(x: BeamInput): BeamLoads {
-  const liveMin = x.motorized ? 3.6 : 2.4, totalMin = x.motorized ? 6.0 : 4.8, liveUsed = Math.max(x.liveLoad, liveMin);
+  const {liveMin, totalMin} = liveMinimums(x.motorized), liveUsed = Math.max(x.liveLoad, liveMin);
   const concrete = x.gamma * x.h / 1000, slabC = x.gamma * x.slabT / 1000;
   const beam = Math.max(concrete + x.formDead + liveUsed, totalMin), slab = x.slabT > 0 ? Math.max(slabC + x.formDead + liveUsed, totalMin) : 0;
   const f = (v: number) => v.toFixed(2);
@@ -141,26 +133,11 @@ export interface BeamResult {
   beamStart: number; joistReaction: number; bearerLine: number; shoreLoad: number; studSpan: number; tieForce: number | null;
   kickerForcePerM: number; lateralPerM: number; shoreLength: number; volume: number; quantities: BeamQuantity[];
 }
-const fx = (v: number, d = 2) => v.toFixed(d);
 
 export function calculateBeam(raw: unknown): BeamResult {
-  const x = validateBeamInput(raw), loads = beamLoads(x), checks: Check[] = [];
-  const add = (id: string, label: string, demand: number | null, limit: number | null, unit: string, formula: string, substitution: string, note: string, source: string) =>
-    checks.push({id, label, demand, limit, unit, utilization: demand === null || limit === null ? null : demand / limit,
-      status: demand !== null && limit !== null && demand > limit ? 'FAIL' : 'INCOMPLETE', formula, substitution, source, note});
-  const member = (prefix: string, title: string, m: MemberMaterial, count: number, M: number, V: number, d: number, span: number, sub: string) => {
-    const share = count > 1 ? ` · แบ่งแรงเท่ากัน ${count} ตัว` : '';
-    add(prefix + '-b', title + ': หน่วยแรงดัด', M / count / m.S, m.Fb, 'MPa', 'fb = M / (n S) ≤ Fb', `${sub}; M = ${fx(M / 1e6, 3)} kN·m; S = ${fx(m.S, 0)} mm³; n = ${count}; Fb = ${fx(m.Fb)} MPa${share}`,
-      m.timber ? 'ต้องยืนยันชนิดไม้ ขนาดจริงหลังไส และความชื้น' : 'ค่า gross ไม่ลดตาม local buckling; ไม่ตรวจ LTB/จุดต่อ', m.source);
-    const fv = m.timber ? 1.5 * V / count / m.A : V / count / m.shearArea;
-    add(prefix + '-v', title + ': หน่วยแรงเฉือน', fv, m.Fv, 'MPa', m.timber ? 'fv = 1.5 V / (n A) ≤ Fv' : 'τ = V / (n Av) ≤ Fy/(√3 Ωv)',
-      `V = ${fx(V / 1000, 3)} kN; ${m.timber ? 'A = ' + fx(m.A, 0) : 'Av = ' + fx(m.shearArea, 0)} mm²${m.Fv === null ? '; ไม่มีค่า Fv ในตาราง' : ''}`, 'ไม่ลดแรงเฉือนใกล้จุดรองรับ', m.source);
-    add(prefix + '-d', title + ': การโก่ง', d / count, span / x.deflectionRatio, 'mm', 'δ ≤ L/' + x.deflectionRatio, `L = ${fx(span, 0)} mm; E = ${fx(m.E, 0)} MPa; I = ${fx(m.I, 0)} mm⁴`,
-      'โมเดลช่วงเดี่ยว (ปลอดภัยกว่าคานต่อเนื่อง) ภายใต้น้ำหนักรวม', m.source);
-  };
-  const plyCommon = {grade: x.plywoodGrade, t: x.plywood, faceGrain: x.plywoodFaceGrain, spans: x.plywoodSpans, deflectionRatio: x.deflectionRatio,
-    sheetAcross: x.plywoodFaceGrain === 'ACROSS' ? 2440 : 1220, custom: {E: x.plywoodE, Fb: x.plywoodFb}};
-  const plySource = x.plywoodGrade === 'CUSTOM' ? 'ค่าไม้อัดที่ผู้ใช้กำหนด ต้องมีใบรับรองผู้ผลิต' : 'APA Concrete Forming Design/Construction Guide V345 (2012) Table 12–13 · ต้องยืนยันว่าแผ่นที่ใช้มีคุณสมบัติเทียบเท่า';
+  const x = validateBeamInput(raw), loads = beamLoads(x), {checks, add, member} = checker(x.deflectionRatio);
+  const plyCommon = plywoodOptions(x);
+  const plySource = plywoodSource(x.plywoodGrade);
   const joist = material(x.joistSectionId, x), bearer = material(x.bearerSectionId, x), stud = material(x.studSectionId, x), waler = material(x.walerSectionId, x);
 
   // Soffit plywood spans along the beam between joists.

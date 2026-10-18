@@ -36,11 +36,14 @@ import {ClipboardCheck} from 'lucide-react';
 import {beamDefaults,beamFromCase,calculateBeam,type BeamInput} from './domain/beam';
 import {BeamPanel,type BeamTab} from './components/BeamWorkspace';
 import {BeamDrawingSet,BeamReport} from './components/BeamDocs';
+import {calculateSlab,slabDefaults,slabFromCase,type SlabInput} from './domain/slab';
+import {SlabPanel,type SlabTab} from './components/SlabWorkspace';
+import {SlabDrawingSet,SlabReport} from './components/SlabDocs';
 import {Library} from 'lucide-react';
 import './style.css';
 
 const WorkflowV07Panel=React.lazy(()=>import('./components/WorkflowV07Panel'));
-type Case={id:string;name:string;input:Input;workflowElementType?:ElementType;titleBlock?:TitleBlock;workflowV07?:StoredWorkflowDraft;review?:ReviewRecord;beam?:BeamInput};
+type Case={id:string;name:string;input:Input;workflowElementType?:ElementType;titleBlock?:TitleBlock;workflowV07?:StoredWorkflowDraft;review?:ReviewRecord;beam?:BeamInput;slab?:SlabInput};
 type Project={id:string;name:string;code:string;cases:Case[];sectionStock?:string[]};
 const ELEMENT_TYPES: {id: ElementType; label: string}[] = [
  {id:'FOOTING',label:'ฐานราก'}, {id:'COLUMN',label:'เสา'}, {id:'WALL',label:'ผนัง'}, {id:'BEAM',label:'คาน'}, {id:'SLAB',label:'พื้น'},
@@ -66,7 +69,7 @@ function hydrate(raw:unknown[]):Project[]{
     // An unreadable v0.7 draft is dropped (reported as missing), never repaired or guessed.
     let workflowV07:StoredWorkflowDraft|undefined;try{if(c.workflowV07!=null)workflowV07=parseStoredWorkflowDraft(c.workflowV07);}catch{workflowV07=undefined;}
     let review:ReviewRecord|undefined;try{if(c.review!=null){validateReviewRecord(c.review);review=c.review;}}catch{review=undefined;}
-    return [{id:c.id,name:c.name,input:{...defaults,...(rawInput&&typeof rawInput==='object'&&!('plywoodGrade' in rawInput)?{plywoodGrade:'CUSTOM' as const}:{}),...(rawInput&&typeof rawInput==='object'&&!('plywoodSpans' in rawInput)?{plywoodSpans:'SINGLE' as const,plywoodFaceGrain:'PARALLEL' as const}:{}),...rawInput,...(!c.input||typeof c.input!=='object'||!('walerType' in c.input)?{...extensionDefaults,confirmed:false}:!('columnModel' in c.input)?{...columnDefaults,confirmed:false}:{})},...(workflowElementType?{workflowElementType}:{}),...(parseTitleBlock((c as Partial<Case>).titleBlock)?{titleBlock:parseTitleBlock((c as Partial<Case>).titleBlock)!}:{}),...(workflowV07?{workflowV07}:{}),...(review?{review}:{}),...(c.beam!=null?{beam:beamFromCase(c.beam)}:{})}];
+    return [{id:c.id,name:c.name,input:{...defaults,...(rawInput&&typeof rawInput==='object'&&!('plywoodGrade' in rawInput)?{plywoodGrade:'CUSTOM' as const}:{}),...(rawInput&&typeof rawInput==='object'&&!('plywoodSpans' in rawInput)?{plywoodSpans:'SINGLE' as const,plywoodFaceGrain:'PARALLEL' as const}:{}),...rawInput,...(!c.input||typeof c.input!=='object'||!('walerType' in c.input)?{...extensionDefaults,confirmed:false}:!('columnModel' in c.input)?{...columnDefaults,confirmed:false}:{})},...(workflowElementType?{workflowElementType}:{}),...(parseTitleBlock((c as Partial<Case>).titleBlock)?{titleBlock:parseTitleBlock((c as Partial<Case>).titleBlock)!}:{}),...(workflowV07?{workflowV07}:{}),...(review?{review}:{}),...(c.beam!=null?{beam:beamFromCase(c.beam)}:{}),...(c.slab!=null?{slab:slabFromCase(c.slab)}:{})}];
    }
    catch{return []}
   });
@@ -154,6 +157,9 @@ function App(){
  // Beam cases keep their own input; a case without one is seeded (unconfirmed) from its footprint.
  const beamInput=useMemo(()=>c.beam??beamFromCase(null,{width:c.input.width,length:c.input.length,height:c.input.height}),[c.beam,c.input]);
  const beamAnalysis=useMemo(()=>{try{return {r:calculateBeam(beamInput),error:null};}catch(e){return {r:null,error:(e as Error).message};}},[beamInput]);
+ const slabInput=useMemo(()=>c.slab??slabFromCase(null,{width:c.input.width,length:c.input.length,height:c.input.height}),[c.slab,c.input]);
+ const slabAnalysis=useMemo(()=>{try{return {r:calculateSlab(slabInput),error:null};}catch(e){return {r:null,error:(e as Error).message};}},[slabInput]);
+ function setSlab(v:SlabInput){if(canEditCurrentProject)setProjects(ps=>ps.map(q=>q.id!==p.id?q:{...q,cases:q.cases.map(z=>z.id!==c.id?z:{...z,slab:v})}));}
  function setBeam(v:BeamInput){if(canEditCurrentProject)setProjects(ps=>ps.map(q=>q.id!==p.id?q:{...q,cases:q.cases.map(z=>z.id!==c.id?z:{...z,beam:v})}));}
  useEffect(()=>{if(!configured)localStorage.setItem(KEY,JSON.stringify(projects));},[projects]);
  useEffect(()=>{
@@ -294,7 +300,7 @@ function App(){
     const name=window.prompt('ชื่อแบบ / หมายเลข',`${prefix}02 · ${suggested}`);
    if(!name)return;
     const id=crypto.randomUUID(),legacyKind: Input['kind'] = kind==='COLUMN'?'COLUMN':'FOOTING';
-    const beam=kind==='BEAM'?{beam:{...beamDefaults}}:{};
+    const beam=kind==='BEAM'?{beam:{...beamDefaults}}:kind==='SLAB'?{slab:{...slabDefaults}}:{};
     const v:Input=legacyKind==='COLUMN'?{...defaults,kind:legacyKind,width:1000,length:1000,height:8000,armX:500,armY:500}:{...defaults,kind:legacyKind};
     const next:Project={...p,cases:[...p.cases,{id,name,input:v,workflowElementType:kind,...beam}]};
     setProjects(ps=>ps.map(q=>q.id!==p.id?q:next));setCaseId(id);setWorkflowElementType(kind);setTab('overview');
@@ -308,7 +314,7 @@ function App(){
     setWorkflowElementType(kind);
     setProjects(ps=>ps.map(q=>q.id!==p.id?q:{...q,cases:q.cases.map(z=>z.id===c.id?{...z,workflowElementType:kind}:z)}));
     setTab('overview');
-    setMessage(kind==='BEAM'?'คาน · กรอกมิติ Design Criteria และจัดวางได้จากเมนูด้านซ้าย (โหมดละเอียด v0.7 อยู่ในหน้าภาพรวม)':`${ELEMENT_TYPES.find(t=>t.id===kind)?.label??kind} · เปิดเป็น Draft Workflow v0.7 แล้ว`);
+    setMessage(kind==='BEAM'||kind==='SLAB'?`${kind==='BEAM'?'คาน':'พื้น'} · กรอกมิติ Design Criteria และจัดวางได้จากเมนูด้านซ้าย (โหมดละเอียด v0.7 อยู่ในหน้าภาพรวม)`:`${ELEMENT_TYPES.find(t=>t.id===kind)?.label??kind} · เปิดเป็น Draft Workflow v0.7 แล้ว`);
   }
  function field(k:keyof Input,label:string,unit='mm',help=''){return <label className="field"><span>{label}<small>{unit}</small></span><input type="number" min="0" step="any" disabled={['tieFy','tieFu'].includes(k)&&x.tieGrade!=='CUSTOM'} value={String(x[k])} onChange={e=>edit(k,Number(e.target.value))}/>{help&&<small className="help">{help}</small>}</label>;}
  function applyAI(aiDraft:Record<string,unknown>){
@@ -325,6 +331,7 @@ function App(){
    const v07Enabled=workflowV07Enabled(import.meta.env.VITE_WORKFLOW_V07_ENABLED,configured,usingEmulators,import.meta.env.VITE_WORKFLOW_V07_ALLOW_PRODUCTION);
    const v07OnProduction=v07Enabled&&configured&&!usingEmulators;
    const legacyElement=workflowElementType==='FOOTING'||workflowElementType==='COLUMN';
+   const slabElement=workflowElementType==='SLAB',practical=workflowElementType==='BEAM'||slabElement;
    const beamElement=workflowElementType==='BEAM',beamTabs=['overview','geometry','criteria','layout','results','drawings','report'];
   const save=async()=>{try{if(configured){if(!canEditCurrentProject){setMessage('โครงการนี้เป็นสิทธิ์ดูอย่างเดียว ไม่สามารถบันทึกหรือแก้ไขข้อมูลได้');return;}const category=MENU_CATEGORIES.includes(tab as MenuCategory)?tab as MenuCategory:'overview';await saveProject(p,category,c.id);lastAutoSaved.current=JSON.stringify(p);setMessage('บันทึกข้อมูลไป Firebase แล้ว · หมวด '+category);}else setMessage('บันทึกร่างในเบราว์เซอร์แล้ว · ยังไม่ใช่ฐานข้อมูล Firebase');}catch(e){setMessage((e as Error).message);}};
  return <div className="shell">
@@ -344,6 +351,9 @@ function App(){
  {tab==='designbook'&&<DesignBook input={x}/>}
  {beamElement&&['overview','geometry','criteria','layout','results'].includes(tab)&&<BeamPanel tab={tab as BeamTab} x={beamInput} r={beamAnalysis.r} error={beamAnalysis.error} canEdit={canEditCurrentProject} stockIds={p.sectionStock} onChange={setBeam} onTab={setTab}/>}
  {beamElement&&tab==='drawings'&&(beamAnalysis.r?<BeamDrawingSet r={beamAnalysis.r} project={p.name} code={p.code} caseName={c.name} titleBlock={titleBlock} canEdit={canEditCurrentProject} onTitleBlockChange={setTitleBlock}/>:<div className="warning">{beamAnalysis.error}</div>)}
+ {slabElement&&['overview','geometry','criteria','layout','results'].includes(tab)&&<SlabPanel tab={tab as SlabTab} x={slabInput} r={slabAnalysis.r} error={slabAnalysis.error} canEdit={canEditCurrentProject} stockIds={p.sectionStock} onChange={setSlab} onTab={setTab}/>}
+ {slabElement&&tab==='drawings'&&(slabAnalysis.r?<SlabDrawingSet r={slabAnalysis.r} project={p.name} code={p.code} caseName={c.name} titleBlock={titleBlock} canEdit={canEditCurrentProject} onTitleBlockChange={setTitleBlock}/>:<div className="warning">{slabAnalysis.error}</div>)}
+ {slabElement&&tab==='report'&&slabAnalysis.r&&<><div className="report-tools"><p>รายการคำนวณแบบหล่อพื้น A4 · ใช้รูปชุดเดียวกับแบบ A3</p><button className="btn" onClick={()=>window.print()}><Download size={17}/>พิมพ์ / บันทึก PDF (A4)</button></div><SlabReport r={slabAnalysis.r} project={p.name} code={p.code} caseName={c.name} caseId={c.id} titleBlock={titleBlock}/></>}
  {beamElement&&tab==='report'&&beamAnalysis.r&&<><div className="report-tools"><p>รายการคำนวณแบบหล่อคาน A4 · ใช้รูปชุดเดียวกับแบบ A3</p><button className="btn" onClick={()=>window.print()}><Download size={17}/>พิมพ์ / บันทึก PDF (A4)</button></div><BeamReport r={beamAnalysis.r} project={p.name} code={p.code} caseName={c.name} caseId={c.id} titleBlock={titleBlock}/></>}
  {tab==='review'&&<ReviewQueue rows={p.cases.map(z=>({caseId:z.id,name:z.name,elementType:z.workflowElementType??z.input.kind,record:z.review??null,
    stale:z.review&&z.review.state!=='DRAFT'?(z.workflowV07?(z.review.engineVersion!==WORKFLOW_VERSION||z.review.engineVersion!==z.workflowV07.engineVersion?true:null):null):null}))}
@@ -361,11 +371,11 @@ function App(){
  {tab==='drawings'&&legacyElement&&<details className="card legacy-sketches"><summary>ภาพร่างเดิม (v0.3) และตารางระยะติดตั้ง</summary><div className="notice">ภาพร่างจากมิติจริง · แนวประกอบยังไม่ตรวจจุดต่อครบ · ห้ามใช้เป็นแบบติดตั้งที่อนุมัติ</div><div className="grid two"><section className="card"><Plan input={x} result={r} large/></section><section className="card"><Section x={x}/></section></div><section className="card"><h3>รายละเอียดองค์ประกอบแบบหล่อ</h3><AssemblyDetail x={x}/></section>{r&&<ColumnYokeDetails r={r}/>}<section className="card"><h3>ระยะติดตั้งตามด้าน</h3><table><thead><tr><th>ด้าน</th><th>ความยาว</th><th>จำนวนช่วงคร่าว</th><th>ระยะจริง</th><th>แรงดันรวม</th></tr></thead><tbody>{r?.faces.map(face=>{const ps=positions(face.length,x.studSpacing);return <tr key={face.id}><td>{face.id}</td><td>{f(face.length,0)} mm</td><td>{ps.length-1}</td><td>{f(face.length/(ps.length-1))} mm</td><td>{f(face.force)} kN</td></tr>;})}</tbody></table></section></details>}
  {tab==='report'&&legacyElement&&r&&<><div className="report-tools"><p>รายการคำนวณ A4 · ใช้รูปชุดเดียวกับแบบ A3 · กรอบชื่อ/Rev แก้ได้ที่เมนูแปลนและรูปตัด</p><button className="btn" onClick={()=>window.print()}><Download size={17}/>พิมพ์ / บันทึก PDF (A4)</button><button className="btn secondary" onClick={()=>{const b=new Blob([JSON.stringify({project:p.code,case:c.name,result:r},null,2)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=c.id+'-screening.json';a.click();URL.revokeObjectURL(u);}}>Export JSON</button></div><CalcReport r={r} project={p.name} code={p.code} caseName={c.name} caseId={c.id} titleBlock={titleBlock}/></>}
   </>)}
-  {tab==='overview'&&!legacyElement&&!beamElement&&!v07Enabled&&<section className="card workflow-menu-blocked"><h3>Workflow v0.7 · {ELEMENT_TYPES.find(type=>type.id===workflowElementType)?.label}</h3><p>เมนูนี้พร้อมใช้งานในโหมดร่าง แต่ Workflow v0.7 ถูกปิดไว้จนกว่าจะเปิด `VITE_WORKFLOW_V07_ENABLED=true` ในโหมดออฟไลน์หรือ emulator ตามข้อกำหนดของระบบ</p><p className="muted">ยังไม่มีการคำนวณกำลังสมาชิกจริงจากเมนูนี้ และสถานะยังเป็น NO_GO</p></section>}
-  {tab!=='overview'&&tab!=='users'&&!legacyElement&&!(beamElement&&beamTabs.includes(tab))&&<section className="card workflow-menu-blocked"><h3>Workflow v0.7 · {ELEMENT_TYPES.find(type=>type.id===workflowElementType)?.label}</h3><p>เลือกเมนูภาพรวมเพื่อเปิดร่าง Workflow v0.7 ขององค์อาคารนี้ รายการคำนวณ legacy ไม่รองรับชนิดนี้</p></section>}
+  {tab==='overview'&&!legacyElement&&!practical&&!v07Enabled&&<section className="card workflow-menu-blocked"><h3>Workflow v0.7 · {ELEMENT_TYPES.find(type=>type.id===workflowElementType)?.label}</h3><p>เมนูนี้พร้อมใช้งานในโหมดร่าง แต่ Workflow v0.7 ถูกปิดไว้จนกว่าจะเปิด `VITE_WORKFLOW_V07_ENABLED=true` ในโหมดออฟไลน์หรือ emulator ตามข้อกำหนดของระบบ</p><p className="muted">ยังไม่มีการคำนวณกำลังสมาชิกจริงจากเมนูนี้ และสถานะยังเป็น NO_GO</p></section>}
+  {tab!=='overview'&&tab!=='users'&&!legacyElement&&!(practical&&beamTabs.includes(tab))&&<section className="card workflow-menu-blocked"><h3>Workflow v0.7 · {ELEMENT_TYPES.find(type=>type.id===workflowElementType)?.label}</h3><p>เลือกเมนูภาพรวมเพื่อเปิดร่าง Workflow v0.7 ขององค์อาคารนี้ รายการคำนวณ legacy ไม่รองรับชนิดนี้</p></section>}
   {tab==='overview'&&v07OnProduction&&<div className="warning" role="alert"><AlertTriangle size={18}/><p>Workflow v0.7 เปิดบน Firebase production (VITE_WORKFLOW_V07_ALLOW_PRODUCTION=true) · ผลทั้งหมดเป็นร่าง DRAFT / NO_GO / NOT FOR CONSTRUCTION ห้ามใช้ก่อสร้าง</p></div>}
-  {tab==='overview'&&v07Enabled&&beamElement&&!showV07&&<section className="card"><h3>โหมดละเอียด Workflow v0.7 (ขั้นสูง)</h3><p className="muted">แบบจำลองพิกัดจริง เฟรม 3D หลักฐานผลิตภัณฑ์ และขั้นตอนตรวจ/อนุมัติ · แยกจากการคำนวณคานข้างต้น</p><button className="btn secondary" onClick={()=>setShowV07(true)}>เปิดโหมดละเอียด</button></section>}
-  {tab==='overview'&&v07Enabled&&(!beamElement||showV07)&&<RegistryProvider value={{registry,reviewerName}}><React.Suspense fallback={<p>กำลังโหลด Workflow v0.7…</p>}><WorkflowV07Panel key={p.id+':'+c.id+':'+workflowElementType} input={x} caseId={c.id} initialElementType={workflowElementType} stored={c.workflowV07??null} canPersist={canEditCurrentProject} onPersist={draft=>persistWorkflowDraft(p.id,c.id,draft)} review={c.review??null} reviewActor={reviewActor} onReviewChange={canEditCurrentProject?persistReview:undefined}/></React.Suspense></RegistryProvider>}
+  {tab==='overview'&&v07Enabled&&practical&&!showV07&&<section className="card"><h3>โหมดละเอียด Workflow v0.7 (ขั้นสูง)</h3><p className="muted">แบบจำลองพิกัดจริง เฟรม 3D หลักฐานผลิตภัณฑ์ และขั้นตอนตรวจ/อนุมัติ · แยกจากการคำนวณข้างต้น</p><button className="btn secondary" onClick={()=>setShowV07(true)}>เปิดโหมดละเอียด</button></section>}
+  {tab==='overview'&&v07Enabled&&(!practical||showV07)&&<RegistryProvider value={{registry,reviewerName}}><React.Suspense fallback={<p>กำลังโหลด Workflow v0.7…</p>}><WorkflowV07Panel key={p.id+':'+c.id+':'+workflowElementType} input={x} caseId={c.id} initialElementType={workflowElementType} stored={c.workflowV07??null} canPersist={canEditCurrentProject} onPersist={draft=>persistWorkflowDraft(p.id,c.id,draft)} review={c.review??null} reviewActor={reviewActor} onReviewChange={canEditCurrentProject?persistReview:undefined}/></React.Suspense></RegistryProvider>}
  <footer className="app-footer"><span>CMG ENGINEERING & CONSTRUCTION</span><span>v0.3 · Column yoke screening · แยกผลคัดกรองจากการอนุมัติ</span><button onClick={()=>{if(window.confirm('คืนค่าข้อมูลสาธิตในเบราว์เซอร์? ไม่ลบข้อมูล Firebase')){setProjects(initial);setProjectId(initial[0].id);setCaseId(initial[0].cases[0].id);}}}><RotateCcw size={12}/>Reset demo</button></footer>
  </main></div>;
 }

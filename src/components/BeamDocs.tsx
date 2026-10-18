@@ -61,6 +61,30 @@ export function BeamDrawingSet({r, project, code, caseName, titleBlock, canEdit,
   return <A3Set sheets={sheets} project={project} code={code} caseName={caseName} elementLabel="แบบหล่อคาน" confirmed={x.confirmed} titleBlock={titleBlock} canEdit={canEdit} onTitleBlockChange={onTitleBlockChange}/>;
 }
 
+/** Cover page, signatures and contents shared by the soffit-system reports. */
+export function ReportCover({title, subtitle, project, code, element, docNo, size, status, fails, sheets, tb, sections, figure}: {title: string; subtitle: string; project: string; code: string;
+  element: string; docNo: string; size: string; status: string; fails: number; sheets: string; tb: TitleBlock; sections: string[]; figure: ReactElement}) {
+  return <>
+    <section className="rp-page rp-cover">
+      <div className="rp-brand"><span className="brand-square">CMG</span><div><b>CMG ENGINEERING & CONSTRUCTION</b><small>FORMWORK DESIGN DEPARTMENT</small></div></div>
+      <div className="rp-stamp">แบบร่างเบื้องต้น · ห้ามใช้ก่อสร้าง<br/><small>PRELIMINARY – NOT FOR CONSTRUCTION</small></div>
+      <h1>{title}</h1><h2>{subtitle}</h2>
+      <table className="rp-meta"><tbody>
+        <tr><th>โครงการ</th><td>{project}</td><th>รหัสโครงการ</th><td>{code}</td></tr>
+        <tr><th>องค์อาคาร</th><td>{element}</td><th>เลขที่เอกสาร</th><td>{docNo}</td></tr>
+        <tr><th>ขนาด</th><td>{size}</td><th>Rev / วันที่</th><td>{tb.rev} / {tb.date}</td></tr>
+        <tr><th>สถานะผลคัดกรอง</th><td>{status} · {fails ? `${fails} รายการเกินเกณฑ์` : 'ไม่มีรายการเกินเกณฑ์คัดกรอง'}</td><th>แบบประกอบ</th><td>{sheets}</td></tr>
+      </tbody></table>
+      {figure}
+      <table className="rp-sign"><thead><tr><th/><th>ชื่อ</th><th>ลายมือชื่อ</th><th>วันที่</th></tr></thead><tbody>
+        {[['ออกแบบ / Designed', tb.designedBy], ['ตรวจสอบ / Checked', tb.checkedBy], ['อนุมัติ / Approved', tb.approvedBy]].map(([k, v]) => <tr key={k}><th>{k}</th><td>{v || ' '}</td><td/><td/></tr>)}
+      </tbody></table>
+    </section>
+    <section className="rp-page rp-toc"><h2>สารบัญ (CONTENTS)</h2><ol>{sections.map(s => <li key={s}>{s}</li>)}</ol>
+      <p className="muted">หน่วยที่ใช้: ความยาว mm · แรง N/kN · หน่วยแรง MPa · แรงดัน/น้ำหนักแผ่ kPa</p></section>
+  </>;
+}
+
 const SECTIONS = ['ขอบเขตและเกณฑ์การออกแบบ', 'รูปทรงและการจัดวางแบบหล่อ', 'น้ำหนักบรรทุกแนวดิ่ง', 'แรงดันคอนกรีตสดด้านข้าง', 'การตรวจสอบแบบท้องคาน', 'การตรวจสอบแบบข้างคาน',
   'สรุปผลและคำแนะนำ', 'ปริมาณวัสดุ', 'ข้อจำกัดและรายการที่ยังขาด', 'เอกสารอ้างอิง'];
 
@@ -70,23 +94,9 @@ export function BeamReport({r, project, code, caseName, caseId, titleBlock: tb}:
   const group = (no: string, title: string, prefixes: string[], fig?: ReactElement) => <div className="rp-group" key={no}><h3>{no} {title}</h3>{fig}
     {r.checks.filter(c => prefixes.some(p => c.id.startsWith(p))).map((c, i) => <CheckCard key={c.id} c={c} no={`${no}.${i + 1}`}/>)}</div>;
   return <article className="calc-report">
-    <section className="rp-page rp-cover">
-      <div className="rp-brand"><span className="brand-square">CMG</span><div><b>CMG ENGINEERING & CONSTRUCTION</b><small>FORMWORK DESIGN DEPARTMENT</small></div></div>
-      <div className="rp-stamp">แบบร่างเบื้องต้น · ห้ามใช้ก่อสร้าง<br/><small>PRELIMINARY – NOT FOR CONSTRUCTION</small></div>
-      <h1>รายการคำนวณออกแบบแบบหล่อคาน</h1><h2>BEAM FORMWORK DESIGN CALCULATION</h2>
-      <table className="rp-meta"><tbody>
-        <tr><th>โครงการ</th><td>{project}</td><th>รหัสโครงการ</th><td>{code}</td></tr>
-        <tr><th>องค์อาคาร</th><td>{caseName} · แบบหล่อคาน</td><th>เลขที่เอกสาร</th><td>{docNo}</td></tr>
-        <tr><th>ขนาด</th><td>b {x.b} × h {x.h} mm · ยาว {x.length} mm</td><th>Rev / วันที่</th><td>{tb.rev} / {tb.date}</td></tr>
-        <tr><th>สถานะผลคัดกรอง</th><td>{r.status} · {fails.length ? `${fails.length} รายการเกินเกณฑ์` : 'ไม่มีรายการเกินเกณฑ์คัดกรอง'}</td><th>แบบประกอบ</th><td>BF-01 ถึง BF-03 (A3)</td></tr>
-      </tbody></table>
-      <Fig w={190} h={120} caption="รูปตัดแบบหล่อคาน (อ้างอิงแบบ BF-01)"><BeamSectionView r={r} box={{x: 0, y: 0, w: 190, h: 120}} titled={false}/></Fig>
-      <table className="rp-sign"><thead><tr><th/><th>ชื่อ</th><th>ลายมือชื่อ</th><th>วันที่</th></tr></thead><tbody>
-        {[['ออกแบบ / Designed', tb.designedBy], ['ตรวจสอบ / Checked', tb.checkedBy], ['อนุมัติ / Approved', tb.approvedBy]].map(([k, v]) => <tr key={k}><th>{k}</th><td>{v || ' '}</td><td/><td/></tr>)}
-      </tbody></table>
-    </section>
-    <section className="rp-page rp-toc"><h2>สารบัญ (CONTENTS)</h2><ol>{SECTIONS.map(s => <li key={s}>{s}</li>)}</ol>
-      <p className="muted">หน่วยที่ใช้: ความยาว mm · แรง N/kN · หน่วยแรง MPa · แรงดัน/น้ำหนักแผ่ kPa</p></section>
+    <ReportCover title="รายการคำนวณออกแบบแบบหล่อคาน" subtitle="BEAM FORMWORK DESIGN CALCULATION" project={project} code={code} element={`${caseName} · แบบหล่อคาน`} docNo={docNo}
+      size={`b ${x.b} × h ${x.h} mm · ยาว ${x.length} mm`} status={r.status} fails={fails.length} sheets="BF-01 ถึง BF-03 (A3)" tb={tb} sections={SECTIONS}
+      figure={<Fig w={190} h={120} caption="รูปตัดแบบหล่อคาน (อ้างอิงแบบ BF-01)"><BeamSectionView r={r} box={{x: 0, y: 0, w: 190, h: 120}} titled={false}/></Fig>}/>
 
     <section className="rp-sec"><h2>1. {SECTIONS[0]}</h2>
       <p>รายการคำนวณนี้คัดกรองแบบหล่อคานด้วยวิธียืดหยุ่นเบื้องต้น (engine {r.engineVersion}) เส้นทางแรงท้องคาน: น้ำหนักคอนกรีตและงาน → ไม้อัด → คร่าวท้องตามขวาง → คานรับตามยาว → ค้ำยัน และแบบข้าง: แรงดันคอนกรีตสด → ไม้อัด → คร่าวแนวตั้ง → {x.tieRows ? 'คานคู่และ Tie ทะลุคาน / ' : ''}ไม้กันตีนและจุดยึดบน คร่าว คานรับ และคร่าวข้างเป็นคานช่วงเดี่ยว ไม้อัดใช้วิธีคานต่อเนื่องของ APA V345 ผลลัพธ์ใช้คัดกรองเท่านั้น</p>

@@ -1,16 +1,16 @@
 import type {BeamResult, MemberMaterial} from '../domain/beam';
 import {ChainDim, Dim, Leader, Line, LW, SectionMark, Txt, ViewTitle, fitScale, mm, poly, type Box, type V} from './primitives';
 
-const C = {stud: '#1d4e89', waler: '#9b1c1c', tie: '#1e7b34', ply: '#9a6a2c', shore: '#5b3f8c'};
-type Mapper = (x: number, y: number) => V;
-function mapper(box: Box, ext: [number, number, number, number], S: number, titleSpace = 14): Mapper {
+export const C = {stud: '#1d4e89', waler: '#9b1c1c', tie: '#1e7b34', ply: '#9a6a2c', shore: '#5b3f8c'};
+export type Mapper = (x: number, y: number) => V;
+export function mapper(box: Box, ext: [number, number, number, number], S: number, titleSpace = 14): Mapper {
   const [x0, x1, y0, y1] = ext, cx = box.x + box.w / 2, cy = box.y + (box.h - titleSpace) / 2;
   return (x, y) => [cx + (x - (x0 + x1) / 2) / S, cy - (y - (y0 + y1) / 2) / S];
 }
-const rect = (P: Mapper, x0: number, y0: number, x1: number, y1: number): V[] => [P(x0, y0), P(x1, y0), P(x1, y1), P(x0, y1)];
-const diffs = (v: number[]) => v.slice(1).map((p, i) => p - v[i]);
+export const rect = (P: Mapper, x0: number, y0: number, x1: number, y1: number): V[] => [P(x0, y0), P(x1, y0), P(x1, y1), P(x0, y1)];
+export const diffs = (v: number[]) => v.slice(1).map((p, i) => p - v[i]);
 /** Member in cross-section: hatched timber, hollow box (SHS/RHS) or solid outline for open/round shapes. */
-function Member({P, x0, y0, x1, y1, m, color}: {P: Mapper; x0: number; y0: number; x1: number; y1: number; m: MemberMaterial; color: string}) {
+export function Member({P, x0, y0, x1, y1, m, color}: {P: Mapper; x0: number; y0: number; x1: number; y1: number; m: MemberMaterial; color: string}) {
   if (m.timber) return <polygon points={poly(rect(P, x0, y0, x1, y1))} fill="url(#h-timber)" stroke="#8a5a24" strokeWidth={LW.thin}/>;
   const t = m.section.t, box = m.section.family === 'SHS' || m.section.family === 'RHS';
   return <g><polygon points={poly(rect(P, x0, y0, x1, y1))} fill={color} stroke={color} strokeWidth={LW.thin}/>
