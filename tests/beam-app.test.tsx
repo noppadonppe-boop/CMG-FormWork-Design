@@ -49,5 +49,15 @@ describe('beam workflow inside the app (offline)', () => {
     expect(document.body.textContent).toContain('SF-02');
     await act(async () => {button('รายงาน PDF', document.querySelector('nav')!).click(); await wait();});
     expect(document.body.textContent).toContain('รายการคำนวณออกแบบแบบหล่อพื้น');
+    // Wall: same menus, wall screens.
+    await act(async () => {button('ผนัง', document.querySelector('.element-menu')!).click(); await wait();});
+    await act(async () => {button('จัดวางเบื้องต้น', document.querySelector('nav')!).click(); await wait();});
+    expect(document.querySelector('input[aria-label="ระยะ Tie สูงสุด"]')).toBeTruthy();
+    await act(async () => {button('รายการคำนวณ', document.querySelector('nav')!).click(); await wait();});
+    expect(document.body.textContent).toContain('ค้ำยันเอียง');
+    await act(async () => {button('แปลนและรูปตัด', document.querySelector('nav')!).click(); await wait();});
+    expect(document.body.textContent).toContain('WF-02');
+    await act(async () => {button('รายงาน PDF', document.querySelector('nav')!).click(); await wait();});
+    expect(document.body.textContent).toContain('รายการคำนวณออกแบบแบบหล่อผนัง');
   });
 });

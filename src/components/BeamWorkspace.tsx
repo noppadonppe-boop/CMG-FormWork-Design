@@ -1,10 +1,9 @@
 import {useMemo} from 'react';
 import {AlertTriangle, ChevronRight} from 'lucide-react';
 import {beamAdvice, type BeamInput, type BeamResult} from '../domain/beam';
-import {CC_VALUES} from '../domain/pressure';
 import {Defs} from '../drawing/primitives';
 import {BeamSectionView} from '../drawing/beamViews';
-import {AdviceTable, ChecksTable, MaterialFields, MemberPicker, Num as NumG, PlywoodFields, VerticalLoadFields, fmt as f, type FormCtx} from './FormParts';
+import {AdviceTable, ChecksTable, MaterialFields, MemberPicker, Num as NumG, PlywoodFields, PressureFields, VerticalLoadFields, fmt as f, type FormCtx} from './FormParts';
 
 export type BeamTab = 'overview' | 'geometry' | 'criteria' | 'layout' | 'results';
 const GEOMETRY: (keyof BeamInput)[] = ['b', 'h', 'slabT', 'length', 'soffitHeight', 'slabSides', 'slabLeft', 'slabRight'];
@@ -52,11 +51,7 @@ export function BeamPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab}
       <VerticalLoadFields<BeamInput> {...p}/>
       {r && <ul className="muted">{r.loads.steps.map(s => <li key={s}>{s}</li>)}</ul>}
       <h3>แรงดันด้านข้างบนแบบข้างคาน</h3>
-      <label className="field"><span>วิธีคำนวณ</span><select aria-label="วิธีคำนวณแรงดันคาน" disabled={!canEdit} value={x.pressureMethod} onChange={e => edit({pressureMethod: e.target.value as BeamInput['pressureMethod']})}>
-        <option value="HYDROSTATIC">แรงดันของเหลว ρgh เต็มความลึก (ปลอดภัยเสมอ)</option><option value="ACI347">ACI PRC-347-14(21) §4.2.2.1b (SI)</option></select></label>
-      {x.pressureMethod === 'ACI347' && <div className="form-grid"><Num {...p} k="pourRate" label="อัตราการเท R" unit="m/h"/><Num {...p} k="concreteTemp" label="อุณหภูมิคอนกรีต T" unit="°C"/>
-        <Num {...p} k="slump" label="ค่ายุบตัว" unit="mm" help="> 175 mm หรือ SCC ใช้แรงดันของเหลว"/><Num {...p} k="vibrationDepth" label="ความลึกเครื่องจี้" unit="m"/>
-        <label className="field"><span>ค่า Cc (ชนิดปูน/สารผสม)</span><select aria-label="Cc คาน" disabled={!canEdit} value={x.chemistryCc} onChange={e => edit({chemistryCc: Number(e.target.value)})}>{CC_VALUES.map(c => <option key={c} value={c}>{c}</option>)}</select></label></div>}
+      <PressureFields<BeamInput> {...p} depthLabel="เต็มความลึก"/>
       {r && <p className="muted">pmax = {f(r.pressureModel.pmax, 1)} kPa · {r.pressureModel.reason}</p>}</section>
       <section className="card"><h3>ไม้อัด (ท้องคานและแบบข้าง)</h3>
         <PlywoodFields<BeamInput> {...p}/>

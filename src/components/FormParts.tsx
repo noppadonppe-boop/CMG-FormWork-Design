@@ -1,5 +1,6 @@
 import React from 'react';
 import type {Check} from '../domain';
+import {CC_VALUES, type PressureMethod} from '../domain/pressure';
 import {GRAIN_LABEL, PLYWOOD_GRADE_LABEL, PLYWOOD_GRADES, PLYWOOD_SPANS, SPAN_LABEL} from '../domain/plywoodGrades';
 import type {MaterialSettings, PlywoodSettings} from '../domain/members';
 import {FAMILY_LABEL, TIMBER_GRADES, catalogueProperties, sectionById, stockFor, type StockFamily, type StockRole} from '../domain/sectionStock';
@@ -53,6 +54,15 @@ export function VerticalLoadFields<T extends {motorized: boolean}>(p: FormCtx<T>
   return <><div className="form-grid">{n('gamma' as keyof T & string, 'น้ำหนักคอนกรีต + เหล็กเสริม', 'kN/m³')}{n('formDead' as keyof T & string, 'น้ำหนักแบบหล่อ', 'kPa', 'ค่าสมมติ ต้องยืนยันตามระบบแบบที่ใช้')}
     {n('liveLoad' as keyof T & string, 'น้ำหนักจรขณะก่อสร้าง', 'kPa', 'ACI: ไม่น้อยกว่า 2.4 kPa (3.6 kPa เมื่อใช้รถเข็นติดเครื่องยนต์)')}{n('deflectionRatio' as keyof T & string, 'เกณฑ์การโก่ง L/n', 'n', 'L/360 ผิวโชว์ · L/270 งานทั่วไป')}</div>
     <label className="confirm"><input type="checkbox" checked={p.x.motorized} disabled={!p.canEdit} onChange={e => p.edit({motorized: e.target.checked} as Partial<T>)}/>ใช้รถเข็นติดเครื่องยนต์ (ขั้นต่ำ LL 3.6 kPa, D+L 6.0 kPa)</label></>;
+}
+/** Lateral pressure method and the ACI PRC-347-14(21) §4.2.2.1b inputs. */
+export function PressureFields<T extends {pressureMethod: PressureMethod; chemistryCc: number}>(p: FormCtx<T> & {depthLabel: string}) {
+  const {x, edit, canEdit} = p, n = (k: string, label: string, unit: string, help?: string) => <Num<T> {...p} k={k as keyof T & string} label={label} unit={unit} help={help}/>;
+  return <><label className="field"><span>วิธีคำนวณ</span><select aria-label="วิธีคำนวณแรงดัน" disabled={!canEdit} value={x.pressureMethod} onChange={e => edit({pressureMethod: e.target.value} as Partial<T>)}>
+    <option value="HYDROSTATIC">แรงดันของเหลว ρgh {p.depthLabel} (ปลอดภัยเสมอ)</option><option value="ACI347">ACI PRC-347-14(21) §4.2.2.1b (SI)</option></select></label>
+    {x.pressureMethod === 'ACI347' && <div className="form-grid">{n('pourRate', 'อัตราการเท R', 'm/h', 'ความสูงที่เทขึ้นต่อชั่วโมง ต้องควบคุมหน้างาน')}{n('concreteTemp', 'อุณหภูมิคอนกรีต T', '°C')}
+      {n('slump', 'ค่ายุบตัว', 'mm', '> 175 mm หรือ SCC ใช้แรงดันของเหลว')}{n('vibrationDepth', 'ความลึกเครื่องจี้', 'm')}
+      <label className="field"><span>ค่า Cc (ชนิดปูน/สารผสม)</span><select aria-label="ค่า Cc" disabled={!canEdit} value={x.chemistryCc} onChange={e => edit({chemistryCc: Number(e.target.value)} as Partial<T>)}>{CC_VALUES.map(c => <option key={c} value={c}>{c}</option>)}</select></label></div>}</>;
 }
 export function PlywoodFields<T extends PlywoodSettings>(p: FormCtx<T>) {
   const {x, edit, canEdit} = p;
