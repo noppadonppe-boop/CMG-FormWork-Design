@@ -2,7 +2,7 @@ import {useMemo, type ReactElement} from 'react';
 import {ACI_BRACING_REFERENCE, wallAdvice, type WallResult} from '../domain/wall';
 import {ACI_REFERENCE} from '../domain/pressure';
 import {PLYWOOD_GRADE_LABEL} from '../domain/plywoodGrades';
-import type {TitleBlock} from '../domain/titleBlock';
+import type {DesignRevisionBinding, TitleBlock} from '../domain/titleBlock';
 import {Table, Txt} from '../drawing/primitives';
 import {NoteBlock} from '../drawing/views';
 import {WallElevationView, WallPlanView, WallSectionView} from '../drawing/wallViews';
@@ -27,8 +27,8 @@ export function wallNotes(r: WallResult) {
   ];
 }
 
-export function WallDrawingSet({r, project, code, caseName, titleBlock, canEdit, onTitleBlockChange}: {r: WallResult; project: string; code: string; caseName: string;
-  titleBlock: TitleBlock; canEdit: boolean; onTitleBlockChange: (tb: TitleBlock) => void}) {
+export function WallDrawingSet({r, project, code, caseName, titleBlock, canEdit, onTitleBlockChange, revisionBinding}: {r: WallResult; project: string; code: string; caseName: string;
+  titleBlock: TitleBlock; canEdit: boolean; onTitleBlockChange: (tb: TitleBlock) => void; revisionBinding?: DesignRevisionBinding}) {
   const x = r.input;
   const sheets = [
     {code: 'WF-01', title: 'รูปด้านแบบหล่อผนัง', body: <>
@@ -58,19 +58,19 @@ export function WallDrawingSet({r, project, code, caseName, titleBlock, canEdit,
       <Txt x={23} y={244} s={2} fill="#444">INCOMPLETE = ไม่เกินเกณฑ์คัดกรองแต่ยังขาดการตรวจหรือข้อมูลรับรอง · FAIL = เกินเกณฑ์</Txt>
     </>},
   ];
-  return <A3Set sheets={sheets} project={project} code={code} caseName={caseName} elementLabel="แบบหล่อผนัง" confirmed={x.confirmed} titleBlock={titleBlock} canEdit={canEdit} onTitleBlockChange={onTitleBlockChange}/>;
+  return <A3Set sheets={sheets} project={project} code={code} caseName={caseName} elementLabel="แบบหล่อผนัง" confirmed={x.confirmed} titleBlock={titleBlock} canEdit={canEdit} onTitleBlockChange={onTitleBlockChange} revisionBinding={revisionBinding}/>;
 }
 
 const SECTIONS = ['ขอบเขตและเกณฑ์การออกแบบ', 'การจัดวางแบบหล่อ', 'แรงดันคอนกรีตสด', 'การตรวจสอบองค์อาคาร', 'ค้ำยันและเสถียรภาพ', 'สรุปผลและคำแนะนำ', 'ปริมาณวัสดุ', 'ข้อจำกัดและรายการที่ยังขาด', 'เอกสารอ้างอิง'];
 
-export function WallReport({r, project, code, caseName, caseId, titleBlock: tb}: {r: WallResult; project: string; code: string; caseName: string; caseId: string; titleBlock: TitleBlock}) {
+export function WallReport({r, project, code, caseName, caseId, titleBlock: tb, revisionBinding}: {r: WallResult; project: string; code: string; caseName: string; caseId: string; titleBlock: TitleBlock; revisionBinding?: DesignRevisionBinding}) {
   const x = r.input, pm = r.pressureModel, advice = useMemo(() => wallAdvice(x), [x]), fails = r.checks.filter(c => c.status === 'FAIL');
   const docNo = `CAL-${code || 'CMG'}-${caseId.replace(/[^\w]/g, '').slice(0, 6).toUpperCase()}`, st = sp(x.length, r.studs), sw = sp(x.height, r.levels), stt = r.ties.length ? sp(x.length, r.ties) : 0, walerSpan = r.strongback ? sp(x.length, r.braces) : stt;
   const group = (no: string, title: string, prefixes: string[], fig?: ReactElement) => <div className="rp-group" key={no}><h3>{no} {title}</h3>{fig}
     {r.checks.filter(c => prefixes.some(p => c.id.startsWith(p))).map((c, i) => <CheckCard key={c.id} c={c} no={`${no}.${i + 1}`}/>)}</div>;
   return <article className="calc-report">
     <ReportCover title="รายการคำนวณออกแบบแบบหล่อผนัง" subtitle="WALL FORMWORK DESIGN CALCULATION" project={project} code={code} element={`${caseName} · แบบหล่อผนัง (${r.strongback ? 'ด้านเดียว' : 'สองด้าน'})`} docNo={docNo}
-      size={`ยาว ${x.length} × หนา ${x.t} × สูงเท ${x.height} mm`} status={r.status} fails={fails.length} sheets="WF-01 ถึง WF-03 (A3)" tb={tb} sections={SECTIONS}
+      size={`ยาว ${x.length} × หนา ${x.t} × สูงเท ${x.height} mm`} status={r.status} fails={fails.length} sheets="WF-01 ถึง WF-03 (A3)" tb={tb} sections={SECTIONS} revisionBinding={revisionBinding}
       figure={<Fig w={190} h={120} caption="รูปตัดแบบหล่อผนัง (อ้างอิงแบบ WF-02)"><WallSectionView r={r} box={{x: 0, y: 0, w: 190, h: 120}} titled={false}/></Fig>}/>
     <section className="rp-sec"><h2>1. {SECTIONS[0]}</h2>
       <p>รายการคำนวณนี้คัดกรองแบบหล่อผนัง{r.strongback ? 'ด้านเดียว (เทชนดิน/ผนังเดิม)' : 'สองด้าน'}ด้วยวิธียืดหยุ่นเบื้องต้น (engine {r.engineVersion}) เส้นทางแรง: แรงดันคอนกรีตสด → ไม้อัด (คานต่อเนื่องตาม APA V345) → คร่าวแนวตั้ง → คานคู่แนวนอน → {r.strongback ? 'strongback แนวตั้ง (ฐานเป็นจุดหมุน รองรับที่ค้ำยัน) → ค้ำยันเอียงและพุกฐาน รวมแรงด้านข้างตาม ACI §4.2.3' : 'Tie ทะลุผนัง และแรงด้านข้างตาม ACI §4.2.3 → ค้ำยันเอียง'} คร่าวและคานคู่เป็นคานช่วงเดี่ยวภายใต้แรงดันสูงสุดคงที่ ผลลัพธ์ใช้คัดกรองเท่านั้น</p>

@@ -3,7 +3,7 @@ import type {Check, Result} from '../domain';
 import {buildFormworkLayout} from '../domain/formworkLayout';
 import {buildScene} from '../domain/scene';
 import {adviseLayout} from '../domain/optimize';
-import type {TitleBlock} from '../domain/titleBlock';
+import type {DesignRevisionBinding, TitleBlock} from '../domain/titleBlock';
 import {Defs, LW, Txt} from '../drawing/primitives';
 import {CornerDetail, IsoView, PlanView, SectionView, TieDetail} from '../drawing/views';
 import {WalerDetails} from './WalerDetails';
@@ -73,7 +73,7 @@ export function CheckCard({c, no}: {c: Check; no: string}) {
 
 const SECTIONS = ['ขอบเขตและเกณฑ์การออกแบบ', 'รูปทรงและการจัดวางแบบหล่อ', 'แรงดันคอนกรีตสด', 'การตรวจสอบองค์อาคาร', 'สรุปผลการตรวจสอบและคำแนะนำ', 'ปริมาณวัสดุ', 'แบบประกอบ', 'ข้อจำกัดและรายการที่ยังขาด', 'เอกสารอ้างอิง'];
 
-export function CalcReport({r, project, code, caseName, caseId, titleBlock: tb}: {r: Result; project: string; code: string; caseName: string; caseId: string; titleBlock: TitleBlock}) {
+export function CalcReport({r, project, code, caseName, caseId, titleBlock: tb, revisionBinding}: {r: Result; project: string; code: string; caseName: string; caseId: string; titleBlock: TitleBlock; revisionBinding?: DesignRevisionBinding}) {
   const {L, scene} = useMemo(() => ({L: buildFormworkLayout(r), scene: buildScene(r)}), [r]);
   const advice = useMemo(() => adviseLayout(r.input), [r]);
   const pm = r.pressureModel, x = r.input, docNo = `CAL-${code || 'CMG'}-${caseId.replace(/[^\w]/g, '').slice(0, 6).toUpperCase()}`;
@@ -94,6 +94,7 @@ export function CalcReport({r, project, code, caseName, caseId, titleBlock: tb}:
         <tr><th>องค์อาคาร</th><td>{caseName} · {x.kind === 'COLUMN' ? 'แบบหล่อเสา' : 'แบบหล่อฐานราก'} ({x.shape === 'L' ? 'รูป L' : 'สี่เหลี่ยม'})</td><th>เลขที่เอกสาร</th><td>{docNo}</td></tr>
         <tr><th>ขนาด</th><td>{x.width} × {x.length} × {x.height} mm</td><th>Rev / วันที่</th><td>{tb.rev} / {tb.date}</td></tr>
         <tr><th>สถานะผลคัดกรอง</th><td>{r.status} · {fails.length ? `${fails.length} รายการเกินเกณฑ์` : 'ไม่มีรายการเกินเกณฑ์คัดกรอง'}</td><th>แบบประกอบ</th><td>FW-01 ถึง FW-04 (A3)</td></tr>
+        {revisionBinding&&<tr><th>Design Revision</th><td>{revisionBinding.designRevision}</td><th>Review / hash</th><td>{revisionBinding.reviewState} · {revisionBinding.contentHash ? `${revisionBinding.contentHash.slice(0, 16)}…` : 'ยังไม่มี review hash'}</td></tr>}
       </tbody></table>
       <Fig w={190} h={112} caption="ภาพรวมแบบหล่อ 3 มิติ (ภาพประกอบ ไม่ใช่แบบติดตั้ง)"><IsoView scene={scene} box={{x: 0, y: 0, w: 190, h: 112}} titled={false}/></Fig>
       <table className="rp-sign"><thead><tr><th/><th>ชื่อ</th><th>ลายมือชื่อ</th><th>วันที่</th></tr></thead><tbody>

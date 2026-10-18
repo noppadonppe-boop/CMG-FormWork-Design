@@ -1,4 +1,5 @@
 import React, {useState} from 'react';
+import type {CaseIdentityIssue} from '../domain/caseIntegrity';
 import {allowedReviewActions, applyReviewAction, reviewIsStale, REVIEW_STATE_LABEL, type ReviewAction, type ReviewActor, type ReviewContext, type ReviewRecord} from '../domain/workflowV07/review';
 
 const ACTION_LABEL: Record<ReviewAction, string> = {SUBMIT: 'ส่งตรวจ', REVIEW: 'บันทึกผลตรวจ', APPROVE: 'อนุมัติภายใน', ISSUE: 'ออกเอกสารภายใน', RETURN: 'ส่งคืนเป็นร่าง', REVISE: 'เปิดรอบแก้ไขใหม่'};
@@ -35,13 +36,15 @@ export function ReviewPanel({record, actor, context, blockers, onChange}: {
 }
 
 /** Project-level queue for the Review & Issue menu. */
-export function ReviewQueue({rows, onOpen}: {rows: {caseId: string; name: string; elementType: string; record: ReviewRecord | null; stale: boolean | null}[]; onOpen: (caseId: string) => void}) {
+export function ReviewQueue({rows, onOpen}: {rows: {caseId: string; name: string; elementType: string; record: ReviewRecord | null; stale: boolean | null; integrityIssues?: CaseIdentityIssue[]}[]; onOpen: (caseId: string) => void}) {
   return <section className="card" aria-label="คิวตรวจและออกเอกสาร">
     <h3>Review &amp; Issue</h3>
     <p>สถานะต่อ Design Case ของโครงการนี้ ISSUED_INTERNAL หมายถึงออกเพื่อตรวจภายในเท่านั้น ไม่ใช่เอกสารก่อสร้าง</p>
-    <table><thead><tr><th>Design Case</th><th>องค์อาคาร</th><th>สถานะ</th><th>ตรงกับร่างปัจจุบัน</th><th>อัปเดต</th><th></th></tr></thead><tbody>
+    <table><thead><tr><th>Design Case</th><th>องค์อาคาร</th><th>สถานะ</th><th>ตรงกับร่างปัจจุบัน</th><th>ความสมบูรณ์ข้อมูล</th><th>อัปเดต</th><th></th></tr></thead><tbody>
       {rows.map(r => <tr key={r.caseId}><td>{r.name}</td><td>{r.elementType}</td><td>{r.record ? `${REVIEW_STATE_LABEL[r.record.state]} (${r.record.state})` : 'ร่าง (ยังไม่มีบันทึก)'}</td>
-        <td>{r.record && r.record.state !== 'DRAFT' ? (r.stale === null ? 'ไม่ทราบ' : r.stale ? 'ไม่ตรง · ต้องส่งคืน' : 'ตรง') : '—'}</td><td>{r.record ? when(r.record.updatedAtMs) : '—'}</td>
+        <td>{r.record && r.record.state !== 'DRAFT' ? (r.stale === null ? 'ไม่ทราบ' : r.stale ? 'ไม่ตรง · ต้องส่งคืน' : 'ตรง') : '—'}</td>
+        <td>{r.integrityIssues?.length ? <ul className="integrity-issues">{r.integrityIssues.map((issue, i) => <li key={`${issue.code}-${i}`}>{issue.message}</li>)}</ul> : 'ตรงกัน'}</td>
+        <td>{r.record ? when(r.record.updatedAtMs) : '—'}</td>
         <td><button className="text-btn" onClick={() => onOpen(r.caseId)}>เปิด</button></td></tr>)}
     </tbody></table>
   </section>;

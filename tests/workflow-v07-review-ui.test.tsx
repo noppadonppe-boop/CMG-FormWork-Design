@@ -37,9 +37,10 @@ it('renders the queue and an issued record without construction wording', () => 
   let r = applyReviewAction(emptyReviewRecord('p1', 'c1'), 'SUBMIT', engineer, ctx, '', 1);
   r = applyReviewAction(r, 'REVIEW', admin, ctx, '', 2); r = applyReviewAction(r, 'APPROVE', admin, ctx, '', 3);
   r = applyReviewAction(r, 'ISSUE', {uid: 'u-mas', name: 'Master C', roles: ['MasterAdmin']}, ctx, '', 4);
-  const html = renderToStaticMarkup(<><ReviewPanel record={r} actor={engineer} context={ctx} blockers={[]} onChange={() => {}}/><ReviewQueue rows={[{caseId: 'c1', name: 'B01', elementType: 'BEAM', record: r, stale: false}]} onOpen={() => {}}/></>);
+  const html = renderToStaticMarkup(<><ReviewPanel record={r} actor={engineer} context={ctx} blockers={[]} onChange={() => {}}/><ReviewQueue rows={[{caseId: 'c1', name: 'B01', elementType: 'BEAM', record: r, stale: false, integrityIssues: [{code: 'STORED_DRAFT_TYPE_MISMATCH', message: 'ร่าง v0.7 เป็น WALL แต่ Design Case เป็น BEAM'}]}]} onOpen={() => {}}/></>);
   expect(html).toContain('ISSUED_INTERNAL'); expect(html).toContain('NOT FOR CONSTRUCTION'); expect(html).toContain('Master C');
   // Every "FOR CONSTRUCTION" must be the "NOT FOR CONSTRUCTION" disclaimer; no bare APPROVED/PASS status cell.
   expect(html.match(/FOR CONSTRUCTION/g)!.length).toBe(html.match(/NOT FOR CONSTRUCTION/g)!.length);
   expect(html).not.toMatch(/<td>[^<]*\b(APPROVED|PASS)\b(?!_INTERNAL)/);
+  expect(html).toContain('ร่าง v0.7 เป็น WALL');
 });

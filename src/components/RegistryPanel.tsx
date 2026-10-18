@@ -1,6 +1,8 @@
 import React, {useState} from 'react';
+import publicCaptureText from '../reference/workflow-v07/public-reference-capture-2026-10-18.json?raw';
+import {closureReferences} from '../closurePackReferences';
 import {CATALOG_KIND_LABEL, CATALOG_KINDS, LIMIT_CHECKS, emptyEntry, emptyLimit, emptyMethod, limitUnit, markDraft, markReviewed, validateRegistryEntry, validateRegistryMethod,
-  type CatalogKind, type LimitCheck, type Registry, type RegistryEntry, type RegistryLimit, type RegistryMethod} from '../domain/workflowV07/registry';
+  closureReferenceRegistryEntries, publicReferenceRegistryEntries, type CatalogKind, type LimitCheck, type Registry, type RegistryEntry, type RegistryLimit, type RegistryMethod} from '../domain/workflowV07/registry';
 
 const number = (v: string) => v.trim() && Number.isFinite(Number(v)) ? Number(v) : null;
 const when = (ms: number | null) => ms === null ? '—' : new Date(ms).toLocaleString('th-TH');
@@ -8,9 +10,10 @@ type Item = {type: 'method'; value: RegistryMethod} | {type: 'entry'; value: Reg
 
 /** Reviewed method/catalog registry. The reviewer identity comes from the signed-in profile (or
  * the Owner-designated offline default); the software never marks anything REVIEWED by itself. */
-export function RegistryPanel({registry, reviewerName, canReview, canDelete, onSave, onDelete, onSeed}: {
+export function RegistryPanel({registry, reviewerName, canReview, canDelete, onSave, onDelete, onSeed, onSeedPublic, onSeedClosure}: {
   registry: Registry; reviewerName: string; canReview: boolean; canDelete: boolean;
   onSave: (item: Item) => Promise<void> | void; onDelete: (type: 'method' | 'entry', id: string) => Promise<void> | void; onSeed?: () => Promise<void> | void;
+  onSeedPublic?: (entries: RegistryEntry[]) => Promise<void> | void; onSeedClosure?: (entries: RegistryEntry[]) => Promise<void> | void;
 }) {
   const [editing, setEditing] = useState<Item | null>(null), [error, setError] = useState(''), [kindFilter, setKindFilter] = useState<CatalogKind | ''>('');
   async function save(item: Item) {
@@ -28,6 +31,8 @@ export function RegistryPanel({registry, reviewerName, canReview, canDelete, onS
     <p className="muted">ผู้ตรวจปัจจุบัน: {reviewerName || 'ยังไม่ระบุ (เข้าสู่ระบบหรือกำหนดโปรไฟล์)'} {canReview ? '' : '· บัญชีนี้ไม่มีสิทธิ์รีวิว/แก้ไขคลัง'}</p>
     {error && <div className="warning" role="alert">{error}</div>}
     {!registry.methods.length && !registry.entries.length && onSeed && canReview && <button className="btn secondary" onClick={() => void onSeed()}>สร้างรายการเริ่มต้น (DRAFT จากแหล่งเผยแพร่ ไม่มีขีดจำกัด)</button>}
+    {onSeedPublic && canReview && <div className="notice"><p>มีชุด Ringlock/Form Tie capture ล่าสุดจากแหล่งสาธารณะสำหรับเตรียมทะเบียน ผู้ใช้ต้องตรวจรุ่นจริงและกรอกขีดจำกัดเอง</p><button className="btn secondary" onClick={() => {try {void onSeedPublic(publicReferenceRegistryEntries(JSON.parse(publicCaptureText), Date.now()));} catch (e) {setError((e as Error).message);}}}>นำเข้า Ringlock / Form Tie ล่าสุดเป็น DRAFT</button></div>}
+    {onSeedClosure && canReview && <div className="notice"><p>มี Closure Pack Form Tie 11 รายการและ Ringlock 17 รายการเป็น reference-only; ตัวเลขจะเก็บเป็นคุณสมบัติอ้างอิงและไม่สร้างขีดจำกัด</p><button className="btn secondary" onClick={() => {try {void onSeedClosure(closureReferenceRegistryEntries(closureReferences.formTie, closureReferences.ringlockSidecar, Date.now()));} catch (e) {setError((e as Error).message);}}}>นำเข้า Closure Pack Form Tie / Ringlock เป็น DRAFT</button></div>}
 
     <h4>วิธีคำนวณ ({registry.methods.length})</h4>
     <table aria-label="วิธีคำนวณ"><thead><tr><th>ID</th><th>ชื่อ</th><th>แหล่ง / revision</th><th>ฐาน</th><th>สถานะ · ผู้ตรวจ</th><th></th></tr></thead><tbody>

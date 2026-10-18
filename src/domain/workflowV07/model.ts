@@ -19,6 +19,7 @@ import {validateAppliedCandidate, type AppliedLayoutCandidate} from './layoutCan
 import {evaluateSupportLayout, stampSupportLayout, validateSupportLayout, type AppliedSupportLayout} from './supportLayout.js';
 import {evaluateHeadBearings} from './headBearing.js';
 import {contractSignal, emptyRinglockContractAudit, overlayContractSignals} from './contractAudit.js';
+import {parseClosureInputTemplate, type ClosureProjectInputTemplate} from './closurePack.js';
 
 export interface WorkflowModel {
   schemaVersion: '0.7.0'; id: string; revisionId: string; elementType: ElementType; vertices: Point2[]; heightMm: number;
@@ -43,6 +44,8 @@ export interface WorkflowModel {
   stageStudy?: AppliedStageStudy | null;
   layoutCandidate?: AppliedLayoutCandidate | null;
   supportLayout?: AppliedSupportLayout | null;
+  /** Engineer-editable project evidence packets; these remain NOT_VERIFIED and never supply ratings by themselves. */
+  closureInputs?: ClosureProjectInputTemplate[];
   legacy: {engineVersion: string; input: Input; unknowns: Record<string, number | null>} | null;
 }
 export function fromLegacy(raw: Input, id: string): WorkflowModel {
@@ -51,7 +54,7 @@ export function fromLegacy(raw: Input, id: string): WorkflowModel {
     humanInputReviewed: false, sourceRef: null, designBasisRef: null, sideTopology: input.kind === 'COLUMN' ? 'COLUMN_YOKE' : input.shape === 'RECTANGLE' ? 'THROUGH_TIE' : null,
     gammaKNm3: input.gamma, slabThicknessMm: null, beamWidthMm: null, concreteStripMm: null, deadStripMm: null, liveStripMm: null,
     additionalDeadKPa: null, constructionLiveKPa: null, selections: {section: null, material: null, ringlock: null},
-    checkCatalogue: null, actions: [], members: [], requiredChecks: [], representatives: [], coverage: [], ringlock: null, ringlockRating: null, soffitLayout: null, ringlockResearch: null, sideLayout: null, frameLayout: null,
+    checkCatalogue: null, actions: [], members: [], requiredChecks: [], representatives: [], coverage: [], ringlock: null, ringlockRating: null, soffitLayout: null, ringlockResearch: null, sideLayout: null, frameLayout: null, closureInputs: [],
     legacy: {engineVersion: '0.3.0-screening', input: clone(input), unknowns: {tieNetArea: input.tieNetArea || null, tieAssemblySWL: input.tieAssemblySWL || null,
       cornerCapacityX: input.cornerCapacityX || null, cornerCapacityY: input.cornerCapacityY || null}}};
 }
@@ -59,11 +62,11 @@ export function parseWorkflowModel(raw: unknown): WorkflowModel {
   const r = record(raw);
   const keys = ['schemaVersion', 'id', 'revisionId', 'elementType', 'vertices', 'heightMm', 'humanInputReviewed', 'sourceRef', 'designBasisRef', 'sideTopology',
     'gammaKNm3', 'slabThicknessMm', 'beamWidthMm', 'concreteStripMm', 'deadStripMm', 'liveStripMm', 'additionalDeadKPa', 'constructionLiveKPa',
-    'selections', 'checkCatalogue', 'actions', 'members', 'requiredChecks', 'representatives', 'coverage', 'ringlock', 'ringlockRating', 'legacy', 'soffitLayout', 'ringlockResearch', 'sideLayout', 'frameLayout', 'coverageReview', 'ringlockAssembly', 'analysisCase', 'loadCases', 'stageStudy', 'layoutCandidate', 'supportLayout'];
+    'selections', 'checkCatalogue', 'actions', 'members', 'requiredChecks', 'representatives', 'coverage', 'ringlock', 'ringlockRating', 'legacy', 'soffitLayout', 'ringlockResearch', 'sideLayout', 'frameLayout', 'coverageReview', 'ringlockAssembly', 'analysisCase', 'loadCases', 'stageStudy', 'layoutCandidate', 'supportLayout', 'closureInputs'];
   if (r.schemaVersion !== '0.7.0' || typeof r.id !== 'string' || !r.id.trim() || r.id.length > 200 ||
     typeof r.revisionId !== 'string' || !r.revisionId.trim() || r.revisionId.length > 100 ||
     !['FOOTING', 'COLUMN', 'WALL', 'BEAM', 'SLAB'].includes(String(r.elementType)) || typeof r.humanInputReviewed !== 'boolean' ||
-    keys.filter(k => !['soffitLayout', 'ringlockResearch', 'sideLayout', 'frameLayout', 'coverageReview', 'ringlockAssembly', 'analysisCase', 'loadCases', 'stageStudy', 'layoutCandidate', 'supportLayout'].includes(k)).some(k => !Object.hasOwn(r, k)) || Object.keys(r).some(k => !keys.includes(k))) throw Error('Invalid v0.7 model schema; authority fields are not accepted');
+    keys.filter(k => !['soffitLayout', 'ringlockResearch', 'sideLayout', 'frameLayout', 'coverageReview', 'ringlockAssembly', 'analysisCase', 'loadCases', 'stageStudy', 'layoutCandidate', 'supportLayout', 'closureInputs'].includes(k)).some(k => !Object.hasOwn(r, k)) || Object.keys(r).some(k => !keys.includes(k))) throw Error('Invalid v0.7 model schema; authority fields are not accepted');
   if (![null, 'THROUGH_TIE', 'SEGMENTED_TIE', 'COLUMN_YOKE', 'GROUND_BRACED'].includes(r.sideTopology as string | null)) throw Error('Invalid side topology');
   for (const key of ['sourceRef', 'designBasisRef']) if (r[key] !== null && (typeof r[key] !== 'string' || String(r[key]).length > 2000)) throw Error(`Invalid ${key}`);
   for (const key of ['gammaKNm3', 'slabThicknessMm', 'beamWidthMm', 'concreteStripMm', 'deadStripMm', 'liveStripMm', 'additionalDeadKPa', 'constructionLiveKPa']) {
@@ -102,6 +105,11 @@ export function parseWorkflowModel(raw: unknown): WorkflowModel {
   if (r.stageStudy !== null && r.stageStudy !== undefined) validateStageStudy(r.stageStudy);
   if (r.layoutCandidate !== null && r.layoutCandidate !== undefined) validateAppliedCandidate(r.layoutCandidate);
   if (r.supportLayout !== null && r.supportLayout !== undefined) validateSupportLayout(r.supportLayout);
+  if (r.closureInputs !== undefined && r.closureInputs !== null) {
+    if (!Array.isArray(r.closureInputs) || r.closureInputs.length > 5) throw Error('Closure project input inventory is invalid');
+    const forms = r.closureInputs.map(value => parseClosureInputTemplate(value).form_type);
+    if (new Set(forms).size !== forms.length) throw Error('Duplicate Closure project input form');
+  }
   if (r.analysisCase && r.stageStudy) throw Error('Compiled case cannot contain a stage study');
   if (r.analysisCase && r.loadCases) throw Error('Nested analysis case books are not supported');
   if (r.ringlockResearch !== null && r.ringlockResearch !== undefined) screenRinglockResearch(r.ringlockResearch as RinglockResearchSnapshot, null);

@@ -7,7 +7,7 @@ import {ReviewPanel} from './ReviewPanel';
 import {contentHash} from '../domain/workflowV07/snapshot';
 import {outstandingRegister, STEP_GROUPS, WIZARD_STEP_LABEL, wizardSteps, type WizardStep} from '../domain/workflowV07/register';
 import {OutstandingRegister} from './OutstandingRegister';
-import {applyCoverageReview, fromLegacy, previewWorkflow, regenerateDraftLayouts, reviseDraft, type WorkflowModel} from '../domain/workflowV07/model';
+import {applyCoverageReview, fromLegacy, parseWorkflowModel, previewWorkflow, regenerateDraftLayouts, reviseDraft, type WorkflowModel} from '../domain/workflowV07/model';
 import type {SoffitLayout} from '../domain/workflowV07/soffit';
 import {stampSideLayout, type SideLayoutDefinition} from '../domain/workflowV07/sideLayout';
 import {selectReference, type SelectionSnapshot} from '../domain/workflowV07/catalogues';
@@ -35,6 +35,8 @@ import {applyLayoutCandidate, type CandidateRequest, type CandidateReview} from 
 import {CoverageReviewEditor, CoverageReviewResults} from './CoverageReview';
 import {captureRinglockAssembly, stampRinglockAssembly, type RinglockAssemblyDefinition} from '../domain/workflowV07/ringlockAssembly';
 import {RinglockAssemblyEditor, RinglockAssemblyResults} from './RinglockAssembly';
+import {ClosureInputEditor} from './ClosureInputEditor';
+import type {ClosureAnalysisContext, ClosureProjectInputTemplate} from '../domain/workflowV07/closurePack';
 import {applyLoadCases} from '../domain/workflowV07/loadCases';
 import {LoadCasesEditor, LoadCasesResults} from './LoadCases';
 import {applyStageStudy, captureStage, copyToDraftStage, loadStageForEditing, removeStageLayout} from '../domain/workflowV07/stageStudy';
@@ -149,6 +151,15 @@ export function WorkflowDocuments({view}: {view: View}) {
     <LoadCasesResults preview={preview}/>
     <StageStudyResults preview={preview}/>
     <CoverageReviewResults model={model} preview={preview}/>
+    <section className="closure-input-report" aria-label="ข้อมูลวิศวกรรมที่แนบกับ Revision นี้">
+      <h3>ข้อมูลวิศวกรรมโครงการที่แนบกับ Revision</h3>
+      <p>ส่วนนี้บันทึกข้อมูลจากผู้ใช้และหลักฐานอ้างอิงตาม Snapshot เดียวกัน แต่สถานะยังเป็น NOT_VERIFIED และไม่ถูกตีความเป็นกำลังออกแบบโดยอัตโนมัติ</p>
+      {model.closureInputs?.length ? model.closureInputs.map(template => <details key={template.form_type}>
+        <summary>{template.form_type} · Revision {template.context.revisionId || 'ไม่ผูก'} · {template.review.trustedVerificationStatus} · {template.constructionRelease}</summary>
+        <p>วิศวกร: {template.review.engineerId || 'UNKNOWN'} · หลักฐาน: {template.review.evidenceRef || 'UNKNOWN'} · Snapshot ที่ตรวจรับ: {template.review.acceptedSnapshotHash || 'UNKNOWN'}</p>
+        <pre>{JSON.stringify(template.inputs, null, 2)}</pre>
+      </details>) : <p>ยังไม่มีการบันทึกชุดข้อมูลโครงการ</p>}
+    </section>
     <RinglockResearchSummary snapshot={model.ringlockResearch ?? null} summary={preview.ringlockReference}/>
     <table><thead><tr><th>คู่ช่วงผิว</th><th>ผิว</th><th>ระยะผ่านคอนกรีต</th><th>ช่วงผิว</th></tr></thead><tbody>
       {view.drawing.topology.pairs.map(p => <tr key={p.id}><td>{p.id}</td><td>{p.faceAId} ↔ {p.faceBId}</td><td>{show(p.chordMm)} mm</td><td>{show(p.endMm - p.startMm)} mm</td></tr>)}
@@ -333,6 +344,31 @@ export default function WorkflowV07Panel({input, caseId, initialElementType, sto
       setModel(reviseDraft(model, patch)); setError('');
     } catch (e) {setError((e as Error).message);}
   }
+  function closureContext(): ClosureAnalysisContext {
+    const layouts = [model.soffitLayout, model.sideLayout, model.frameLayout, model.supportLayout, model.ringlockAssembly].filter(Boolean);
+    const activeStageId = model.analysisCase?.stageId ?? model.frameLayout?.stageId ?? model.soffitLayout?.stageId ?? model.sideLayout?.stageId ?? model.supportLayout?.stageId ?? model.ringlockAssembly?.stageId ?? null;
+    const capturedStageId = layouts.length && layouts.every(layout => layout!.stageId === layouts[0]!.stageId) ? layouts[0]!.stageId : activeStageId;
+    const loadCaseId = model.analysisCase?.loadCaseId ?? model.frameLayout?.loadCaseId ?? model.soffitLayout?.loadCaseId ?? model.sideLayout?.loadCaseId ?? model.supportLayout?.loadCaseId ?? model.ringlockAssembly?.loadCaseId ?? null;
+    return {projectId: reviewActor?.projectId ?? null, revisionId: model.revisionId, designSnapshotHash: null, activeStageId, capturedStageId, loadCaseId};
+  }
+  function saveClosureInput(template: ClosureProjectInputTemplate) {
+    try {
+      const prior = (model.closureInputs ?? []).filter(row => row.form_type !== template.form_type);
+      const next = reviseDraft(model, {closureInputs: [...prior, template]});
+      const context = closureContext();
+      const bound: ClosureProjectInputTemplate = {...template, context: {...context, revisionId: next.revisionId, designSnapshotHash: null},
+        review: {...template.review, acceptedSnapshotHash: null, acceptedStageId: null, acceptedLoadCaseId: null, trustedVerificationStatus: 'NOT_VERIFIED'}};
+      setModel(parseWorkflowModel({...next, closureInputs: [...prior, bound]})); setError('');
+    } catch (e) {setError((e as Error).message);}
+  }
+  function rebindClosureInput(template: ClosureProjectInputTemplate) {
+    try {
+      const prior = (model.closureInputs ?? []).filter(row => row.form_type !== template.form_type);
+      const bound: ClosureProjectInputTemplate = {...template, context: closureContext(),
+        review: {...template.review, acceptedSnapshotHash: null, acceptedStageId: null, acceptedLoadCaseId: null, trustedVerificationStatus: 'NOT_VERIFIED'}};
+      setModel(parseWorkflowModel({...model, closureInputs: [...prior, bound]})); setError('');
+    } catch (e) {setError((e as Error).message);}
+  }
   function editRinglockPlan(presetId: string) {
     try {
       const ringlock = selectRinglockPlan(model.ringlock, presetId);
@@ -501,6 +537,10 @@ export default function WorkflowV07Panel({input, caseId, initialElementType, sto
       setModel(applyCoverageReview(model, definition)); setError('');
     }}/>}
     {analysis.preview && <CoverageReviewResults model={model} preview={analysis.preview}/>}
+    <ClosureInputEditor templates={model.closureInputs ?? []} baselines={{ringlock_configuration: closureReferences.templates.ringlockConfiguration,
+      support_soil: closureReferences.templates.supportSoil, support_slab: closureReferences.templates.supportSlab,
+      serviceability: closureReferences.templates.serviceability, stage_release: closureReferences.templates.stageRelease}}
+      context={closureContext()} currentRevisionId={model.revisionId} onSave={saveClosureInput} onRebind={rebindClosureInput}/>
     <OutstandingRegister blockers={analysis.preview?.blockers ?? (analysis.error ? [`ANALYSIS:${analysis.error}`] : [])}/>
     {reviewActor && onReviewChange && <ReviewPanel record={review ?? emptyReviewRecord(reviewActor.projectId ?? '', caseId)} actor={reviewActor}
       context={{contentHash: draftHash, engineVersion: WORKFLOW_VERSION, draftPending: anyPending || !!analysis.error || !draftHash}} blockers={analysis.preview?.blockers ?? [analysis.error ?? 'ANALYSIS_FAILED']} onChange={onReviewChange}/>}

@@ -1,7 +1,7 @@
 import {useMemo, type ReactElement} from 'react';
 import {slabAdvice, type SlabResult} from '../domain/slab';
 import {PLYWOOD_GRADE_LABEL} from '../domain/plywoodGrades';
-import type {TitleBlock} from '../domain/titleBlock';
+import type {DesignRevisionBinding, TitleBlock} from '../domain/titleBlock';
 import {Table, Txt} from '../drawing/primitives';
 import {NoteBlock} from '../drawing/views';
 import {SlabPlanView, SlabSectionView} from '../drawing/slabViews';
@@ -25,8 +25,8 @@ export function slabNotes(r: SlabResult) {
   ];
 }
 
-export function SlabDrawingSet({r, project, code, caseName, titleBlock, canEdit, onTitleBlockChange}: {r: SlabResult; project: string; code: string; caseName: string;
-  titleBlock: TitleBlock; canEdit: boolean; onTitleBlockChange: (tb: TitleBlock) => void}) {
+export function SlabDrawingSet({r, project, code, caseName, titleBlock, canEdit, onTitleBlockChange, revisionBinding}: {r: SlabResult; project: string; code: string; caseName: string;
+  titleBlock: TitleBlock; canEdit: boolean; onTitleBlockChange: (tb: TitleBlock) => void; revisionBinding?: DesignRevisionBinding}) {
   const x = r.input;
   const sheets = [
     {code: 'SF-01', title: 'แปลนแบบหล่อพื้นและค้ำยัน', body: <>
@@ -56,19 +56,19 @@ export function SlabDrawingSet({r, project, code, caseName, titleBlock, canEdit,
       <Txt x={23} y={244} s={2} fill="#444">INCOMPLETE = ไม่เกินเกณฑ์คัดกรองแต่ยังขาดการตรวจหรือข้อมูลรับรอง · FAIL = เกินเกณฑ์</Txt>
     </>},
   ];
-  return <A3Set sheets={sheets} project={project} code={code} caseName={caseName} elementLabel="แบบหล่อพื้น" confirmed={x.confirmed} titleBlock={titleBlock} canEdit={canEdit} onTitleBlockChange={onTitleBlockChange}/>;
+  return <A3Set sheets={sheets} project={project} code={code} caseName={caseName} elementLabel="แบบหล่อพื้น" confirmed={x.confirmed} titleBlock={titleBlock} canEdit={canEdit} onTitleBlockChange={onTitleBlockChange} revisionBinding={revisionBinding}/>;
 }
 
 const SECTIONS = ['ขอบเขตและเกณฑ์การออกแบบ', 'การจัดวางแบบหล่อ', 'น้ำหนักบรรทุก', 'การตรวจสอบองค์อาคาร', 'สรุปผลและคำแนะนำ', 'ปริมาณวัสดุ', 'ข้อจำกัดและรายการที่ยังขาด', 'เอกสารอ้างอิง'];
 
-export function SlabReport({r, project, code, caseName, caseId, titleBlock: tb}: {r: SlabResult; project: string; code: string; caseName: string; caseId: string; titleBlock: TitleBlock}) {
+export function SlabReport({r, project, code, caseName, caseId, titleBlock: tb, revisionBinding}: {r: SlabResult; project: string; code: string; caseName: string; caseId: string; titleBlock: TitleBlock; revisionBinding?: DesignRevisionBinding}) {
   const x = r.input, advice = useMemo(() => slabAdvice(x), [x]), fails = r.checks.filter(c => c.status === 'FAIL');
   const docNo = `CAL-${code || 'CMG'}-${caseId.replace(/[^\w]/g, '').slice(0, 6).toUpperCase()}`, sj = sp(x.lx, r.joists), sb = sp(x.ly, r.bearers), ss = sp(x.lx, r.shores);
   const group = (no: string, title: string, prefixes: string[], fig?: ReactElement) => <div className="rp-group" key={no}><h3>{no} {title}</h3>{fig}
     {r.checks.filter(c => prefixes.some(p => c.id.startsWith(p))).map((c, i) => <CheckCard key={c.id} c={c} no={`${no}.${i + 1}`}/>)}</div>;
   return <article className="calc-report">
     <ReportCover title="รายการคำนวณออกแบบแบบหล่อพื้น" subtitle="SLAB FORMWORK DESIGN CALCULATION" project={project} code={code} element={`${caseName} · แบบหล่อพื้น`} docNo={docNo}
-      size={`${x.lx} × ${x.ly} mm · หนา ${x.t} mm`} status={r.status} fails={fails.length} sheets="SF-01 ถึง SF-03 (A3)" tb={tb} sections={SECTIONS}
+      size={`${x.lx} × ${x.ly} mm · หนา ${x.t} mm`} status={r.status} fails={fails.length} sheets="SF-01 ถึง SF-03 (A3)" tb={tb} sections={SECTIONS} revisionBinding={revisionBinding}
       figure={<Fig w={190} h={120} caption="แปลนแบบหล่อพื้นและค้ำยัน (อ้างอิงแบบ SF-01)"><SlabPlanView r={r} box={{x: 0, y: 0, w: 190, h: 120}} titled={false}/></Fig>}/>
     <section className="rp-sec"><h2>1. {SECTIONS[0]}</h2>
       <p>รายการคำนวณนี้คัดกรองแบบหล่อท้องพื้นหนึ่งช่วงด้วยวิธียืดหยุ่นเบื้องต้น (engine {r.engineVersion}) เส้นทางแรง: น้ำหนักคอนกรีตและงาน → ไม้อัด (คานต่อเนื่องตาม APA V345) → คร่าว → คานรับ → ค้ำยัน คร่าวและคานรับเป็นคานช่วงเดี่ยว ค้ำยันใช้พื้นที่รับแรงของต้นภายใน ผลลัพธ์ใช้คัดกรองเท่านั้น</p>

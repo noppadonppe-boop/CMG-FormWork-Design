@@ -1,7 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import {closureReferences} from '../src/closurePackReferences';
 import {canonicalClosureTieSlot, createClosureTieDraft, lookupClosureRinglockReference, normalizeClosureFormTieBridge,
-  normalizeClosureRinglockSidecar, parseClosureInputTemplate, screenClosureTieAssembly, closureDraftFromTieDossier} from '../src/domain/workflowV07/closurePack';
+  normalizeClosureRinglockSidecar, parseClosureInputTemplate, screenClosureTieAssembly, closureDraftFromTieDossier, validateClosureInputTemplate} from '../src/domain/workflowV07/closurePack';
 import {tieDossierFixture} from './fixtures/workflow-v07-tie-dossier';
 
 const context = {projectId: 'P-CLOSURE', revisionId: 'R-CLOSURE', designSnapshotHash: 'a'.repeat(64), activeStageId: 'STAGE-1', capturedStageId: 'STAGE-1', loadCaseId: 'LC-SERVICE'};
@@ -88,5 +88,14 @@ describe('Workflow v0.7 Closure Pack adapters', () => {
     expect(parseClosureInputTemplate(template).review.trustedVerificationStatus).toBe('NOT_VERIFIED');
     expect(template.confirmed).toBe(false);
     expect(() => parseClosureInputTemplate({...structuredClone(template), confirmed: true})).toThrow(/release gate/);
+  });
+
+  it('allows project inputs to be filled while rejecting invented fields, wrong numeric types, and approval flags', () => {
+    const template = closure.templates.supportSoil;
+    const filled = {...structuredClone(template), inputs: {...template.inputs, allowableBearingPressure_kPa: 125, geotechnicalReportRef: 'GEOTECH-RPT-01'}};
+    expect(validateClosureInputTemplate(filled, template).inputs.allowableBearingPressure_kPa).toBe(125);
+    expect(() => validateClosureInputTemplate({...filled, inputs: {...filled.inputs, unknownCapacity: 999}}, template)).toThrow(/approved template inventory/);
+    expect(() => validateClosureInputTemplate({...filled, inputs: {...filled.inputs, allowableBearingPressure_kPa: '125'}}, template)).toThrow(/finite/);
+    expect(() => validateClosureInputTemplate({...filled, confirmed: true}, template)).toThrow(/release gate/);
   });
 });

@@ -1,7 +1,7 @@
 # แผนงานสู่วัตถุประสงค์ทั้งหมด (ร่างเพื่อขออนุมัติ)
 
 อ้างอิง `docs/OBJECTIVES.md` (ระบบแบบหล่อ 5 แบบ) และกฎการทำงานของ Master Prompt 1.1
-สถานะตั้งต้น: engine `0.7.0-preview.32`, 784 tests, deploy แล้วบน rc-formwork.web.app
+สถานะตรวจล่าสุด: engine `0.7.0-preview.32`, 865 tests, deploy แล้วบน `https://rc-formwork.web.app/` version `592b723a1cbe091e` (Hosting release `1792340126451000`).
 
 หลักการของแผน
 - ทำทีละชั้นให้ "ใช้ได้จริง" ก่อนขยายวิศวกรรม: บันทึกข้อมูล → ข้อมูลตั้งต้น → กระบวนการตรวจ → ประสบการณ์ใช้งาน → ช่องว่างวิศวกรรม → หลักฐานการทดสอบ
@@ -14,8 +14,7 @@
 ## Phase A — ความถูกต้องของข้อมูลผู้ใช้ (ทำก่อนทุกอย่าง เพราะเปิด production แล้ว)
 
 สถานะ: A1, A2 ทำแล้วในโค้ด (`src/domain/workflowV07/storage.ts`, subcollection `projects/{id}/workflow/{caseId}`,
-rules + functions deleteProject, ตัวบ่งชี้บันทึก/revision/stale ใน panel); A3 Owner เลือกไม่ขึ้น banner
-ยังต้อง deploy rules + functions + hosting ก่อนที่ production จะบันทึกร่างได้
+rules + functions deleteProject, ตัวบ่งชี้บันทึก/revision/stale ใน panel); A3 Owner เลือกไม่ขึ้น banner. Rules, Functions และ Hosting ถูก deploy แล้วและ release audit ผ่าน; มี backup/proposal และ decision-template validator แล้ว แต่ต้องตรวจข้อมูล Production ราย Case ให้ตรงก่อนใช้งานจริง
 
 A1. บันทึก Workflow v0.7 ต่อ Design Case
 - เพิ่ม `case.workflowV07` = {model (authored inputs เท่านั้น), engineVersion, revisionId, updatedAt}
@@ -59,29 +58,31 @@ B3. ผูก catalog กับ 5 ระบบ
 
 ## Phase C — กระบวนการตรวจ/อนุมัติ/ออกแบบ และ audit
 
-สถานะ: C1–C3 ทำแล้ว (`src/domain/workflowV07/review.ts`, Firestore `projects/{id}/review/{caseId}` พร้อม rules บังคับบทบาท/
-ความเป็นอิสระของผู้ตรวจ/hash ผูกรอบ, ReviewPanel ในหน้า v0.7, เมนู Review & Issue, rules tests 83 รายการ)
+สถานะ: C1–C3 ทำแล้วบางส่วน (`src/domain/workflowV07/review.ts`, Firestore `projects/{id}/review/{caseId}` พร้อม rules บังคับบทบาท/
+ความเป็นอิสระของผู้ตรวจ/hash ผูกรอบ, ReviewPanel ในหน้า v0.7, เมนู Review & Issue, rules tests ผ่าน)
 บทบาทตาม default: Engineer ส่งตรวจ · Admin/MasterAdmin ตรวจและอนุมัติภายใน · MasterAdmin ออกเอกสารภายใน · ผู้ตรวจ/อนุมัติต้องไม่ใช่ผู้ส่ง
-ยังไม่มี: การบังคับใน Cloud Functions (ปัจจุบันบังคับใน Rules), รายงาน/แบบ A3 แสดงสถานะและ hash ของ review (ไปทำใน G)
+ทำแล้วเพิ่ม: รายงานและชุดแบบ A3 v0.7 แสดง Design Revision/hash จาก frozen Snapshot เดียวกัน; raster และ Playwright emulator smoke ผ่าน
+เพิ่มแล้ว: `saveReviewRecord` ใน Cloud Functions บังคับ signed identity, role/name, history chain, transition replay และ transactional compare-and-write; emulator audit ผ่าน 12 checks และ Production Functions deploy แล้ว. ยังเหลือ full two-project browser lifecycle และ Owner review ของเกณฑ์/ข้อมูลจริง
 
-C1. สถานะเอกสารต่อ case: DRAFT → SUBMITTED → REVIEWED → APPROVED_FOR_INTERNAL_REVIEW → ISSUED (ยังไม่มี "FOR CONSTRUCTION" จนกว่า Owner กำหนดเกณฑ์)
+C1. สถานะเอกสารต่อ case: DRAFT → SUBMITTED → REVIEWED → APPROVED_INTERNAL → ISSUED_INTERNAL (ยังไม่มี "FOR CONSTRUCTION" จนกว่า Owner กำหนดเกณฑ์)
 - เปลี่ยนสถานะได้เฉพาะ role ที่กำหนด บังคับทั้งใน Functions และ Rules; Viewer/Engineer อนุมัติไม่ได้
 - ISSUED ล็อก snapshot (hash) และบันทึก audit event ทุกการเปลี่ยน
 - การแก้ไข input หลัง ISSUED สร้าง revision ใหม่ ไม่แก้ของเดิม
 
 C2. หน้าจอ Review & Issue และ Audit
 - รายการเอกสารรอตรวจ, blockers ที่ยังเหลือ (outstanding-information register), ประวัติการเปลี่ยนสถานะ
-- รายงาน/แบบ A3 แสดงสถานะและ hash เดียวกับ snapshot
+- รายงาน/แบบ A3 ของ legacy ใช้ผลเดียวกัน และ Case ที่มีร่าง v0.7 ใช้ `WorkflowV07Output` จาก frozen Snapshot/model เดียวกัน พร้อมตรวจ Review hash; A3 แสดง geometry, ทุก face, soffit/shoring, frame และ support contacts
 
-C3. เทสต์: rules + functions (emulator) สำหรับทุก transition, ผู้ใช้ข้ามโครงการ, viewer approve ไม่ได้, snapshot เดิมไม่เปลี่ยนเมื่อแก้ input
+C3. Rules + Functions emulator audit ผ่าน 12 checks; Browser acceptance smoke ผ่านการบันทึกร่างและแสดงแบบ 8 แผ่นต่อ Beam/Slab/Wall. Full two-project save/reload/report/review flow และ printed PDF acceptance ยังต้องทำ
 
 ---
 
 ## Phase D — ประสบการณ์ใช้งานตามเส้นทางแรงของแต่ละระบบ
 
 สถานะ: D1 wizard ตามเส้นทางแรง (ขั้นซ่อนแต่ไม่ unmount เพื่อรักษาสถานะ editor), D3 ทะเบียนข้อมูลที่ยังขาดต่อขั้นและรวม
-(`src/domain/workflowV07/register.ts`), D4 แยก chunk (firebase/react/icons/reference-data; main 1.76 MB → 0.95 MB) ทำแล้ว
-ยังไม่ทำ: D2 เมนูชุดเต็มตามข้อกำหนด (มีเพิ่มเฉพาะ Library และ Review & Issue) และ wizard ยังเป็นการจัดกลุ่ม editor เดิม ไม่ได้ออกแบบฟอร์มใหม่
+(`src/domain/workflowV07/register.ts`), D4 แยก chunk ทำแล้ว
+D2 เมนูหลักทำแล้วใน `src/main.tsx`: เมนูองค์อาคาร 5 ระบบ, Connections & Bracing และ Audit & Settings พร้อมข้อความ BLOCKED/NO_GO เมื่อข้อมูลไม่ครบ
+wizard ยังเป็นการจัดกลุ่ม editor เดิม ไม่ได้ออกแบบฟอร์มใหม่ทั้งหมด
 
 D1. Wizard ต่อระบบ (แทน panel เดียว)
 - ฐานราก: รูปทรง/ความดัน → ไม้อัด → คร่าว → คานรัด → ไทร์/แผ่นรอง → มุม → รายงาน
@@ -136,9 +137,9 @@ F3. ขยาย extraction ให้คาน/พื้น/ผนัง (คว
 
 ## Phase G — รายงาน แบบ และหลักฐานการทดสอบ
 
-G1. Report worker: PDF จริงฝังฟอนต์ไทย ค้นหาข้อความได้ เลขหน้า สูตร/ตาราง/รูปไม่ถูกตัด; เนื้อหาเดียวกับ snapshot (hash แสดงบนทุกหน้า)
-G2. แบบ A3 สำหรับคาน พื้น ผนัง (ต่อยอด `formworkLayout` ที่ element-agnostic แล้ว) และ visual QA ด้วย rasterize ตาม AGENTS.md
-G3. E2E (Playwright): สร้าง 2 โครงการ → case ทั้ง 5 ระบบ → criteria → check → save/reload → รายงาน → review gate; รันบน emulator
+G1. Report worker: PDF จริงฝังฟอนต์ไทย ค้นหาข้อความได้ เลขหน้า สูตร/ตาราง/รูปไม่ถูกตัด; เนื้อหาเดียวกับ snapshot (hash แสดงบนทุกหน้า) — **ยังค้างการยืนยัน worker/ฟอนต์ไทยแบบอัตโนมัติ**
+G2. แบบ A3 สำหรับคาน พื้น ผนังมี draft renderer (`src/components/*Docs.tsx`, `src/components/WorkflowV07Drawings.tsx`); raster smoke พร้อม Tahoma ครอบคลุม 21 sheets ใน `tests/drawing-raster.test.tsx`; **ยังค้าง printed-PDF pagination/visual acceptance**
+G3. E2E (Playwright): automated emulator flow now signs in, creates the mock-up, verifies all five element menus, opens Beam/Slab/Wall detailed views and Audit (`scripts/test-browser-acceptance.mjs`); full two-project criteria/save/reload/report/review scenario and printed-PDF pagination remain pending
 G4. ปรับ `CAPABILITIES.md`, `VALIDATION.md` ให้ตรงปัจจุบัน และสร้าง Owner manual acceptance checklist สำหรับ 5 ระบบ
 G5. Demonstration package: Mock-up project ทั้ง 10 case ออกรายงานร่าง + แบบ A3 แสดง INCOMPLETE ที่ยังเหลืออย่างชัดเจน
 

@@ -304,8 +304,7 @@ function reviewDoc(projectId: string, caseId: string) {return doc(projectDoc(pro
 export async function saveReviewRecord(recordValue: ReviewRecord) {
   const user = requireCloud().auth.currentUser; if (!user) throw Error('กรุณาเข้าสู่ระบบก่อนเปลี่ยนสถานะเอกสาร');
   validateReviewRecord(recordValue);
-  await setDoc(reviewDoc(recordValue.projectId, recordValue.caseId), {projectId: recordValue.projectId, caseId: recordValue.caseId, state: recordValue.state, contentHash: recordValue.contentHash,
-    engineVersion: recordValue.engineVersion, submittedBy: recordValue.submittedBy, recordJson: JSON.stringify(recordValue), updatedBy: user.uid, updatedAt: serverTimestamp()}, {merge: false});
+  await httpsCallable(requireCloud().functions, 'saveReviewRecord')({record: recordValue});
 }
 export async function loadReviewRecords(projectId: string): Promise<Record<string, ReviewRecord>> {
   const snap = await getDocs(collection(projectDoc(projectId), 'review')), out: Record<string, ReviewRecord> = {};

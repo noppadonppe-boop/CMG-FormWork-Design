@@ -34,6 +34,13 @@ describe('wall workspace, drawings and report', () => {
     expect(report.match(/class="rp-check"/g)?.length).toBe(r.checks.length);
   });
 
+  it('prints one revision and review hash on both wall outputs', () => {
+    const r = calculateWall(wallDefaults), binding = {designRevision: 'R-W01-3', contentHash: 'abcdef0123456789abcdef0123456789', reviewState: 'SUBMITTED'};
+    const sheets = renderToStaticMarkup(<WallDrawingSet r={r} project="P" code="C-1" caseName="W01" titleBlock={tb} canEdit onTitleBlockChange={() => {}} revisionBinding={binding}/>);
+    const report = renderToStaticMarkup(<WallReport r={r} project="P" code="C-1" caseName="W01" caseId="w01" titleBlock={tb} revisionBinding={binding}/>);
+    for (const html of [sheets, report]) {expect(html).toContain('R-W01-3'); expect(html).toContain('SUBMITTED'); expect(html).toContain('abcdef0123456789');}
+  });
+
   it('switches the pressure method and applies advice from the editor', async () => {
     const host = document.createElement('div'); document.body.appendChild(host);
     let latest: WallInput = {...wallDefaults, confirmed: true};

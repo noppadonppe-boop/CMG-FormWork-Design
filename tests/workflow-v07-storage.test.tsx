@@ -62,7 +62,7 @@ it('panel restores a saved draft instead of the legacy seed and persists edits o
     await act(async () => root.render(<WorkflowV07Panel input={{...defaults}} caseId="W1" initialElementType="WALL" stored={saved} onPersist={d => {persisted.push(d);}}/>));
     expect((host.querySelector('select') as HTMLSelectElement).value).toBe('WALL');
     expect(host.textContent).toContain('บันทึกร่างแล้ว');
-    expect(host.textContent).not.toContain('stale');
+    expect(host.textContent).not.toContain('ร่างนี้บันทึกด้วย engine'); // embedded engineering notes may discuss stale evidence
     await new Promise(r => setTimeout(r, 900));
     expect(persisted).toHaveLength(0); // restoring is not a change
     const basis = Array.from(host.querySelectorAll('input')).find(i => i.value === 'SYNTHETIC saved basis')!;

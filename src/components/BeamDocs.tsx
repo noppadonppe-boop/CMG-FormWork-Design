@@ -2,7 +2,7 @@ import {useMemo, type ReactElement} from 'react';
 import {ACI_LOADS_REFERENCE, beamAdvice, type BeamResult} from '../domain/beam';
 import {ACI_REFERENCE} from '../domain/pressure';
 import {PLYWOOD_GRADE_LABEL} from '../domain/plywoodGrades';
-import type {TitleBlock} from '../domain/titleBlock';
+import type {DesignRevisionBinding, TitleBlock} from '../domain/titleBlock';
 import {Table, Txt} from '../drawing/primitives';
 import {NoteBlock} from '../drawing/views';
 import {BeamElevationView, BeamPlanView, BeamSectionView} from '../drawing/beamViews';
@@ -26,8 +26,8 @@ export function beamNotes(r: BeamResult) {
   ];
 }
 
-export function BeamDrawingSet({r, project, code, caseName, titleBlock, canEdit, onTitleBlockChange}: {r: BeamResult; project: string; code: string; caseName: string;
-  titleBlock: TitleBlock; canEdit: boolean; onTitleBlockChange: (tb: TitleBlock) => void}) {
+export function BeamDrawingSet({r, project, code, caseName, titleBlock, canEdit, onTitleBlockChange, revisionBinding}: {r: BeamResult; project: string; code: string; caseName: string;
+  titleBlock: TitleBlock; canEdit: boolean; onTitleBlockChange: (tb: TitleBlock) => void; revisionBinding?: DesignRevisionBinding}) {
   const x = r.input;
   const sheets = [
     {code: 'BF-01', title: 'รูปตัดแบบหล่อคาน', body: <>
@@ -58,12 +58,12 @@ export function BeamDrawingSet({r, project, code, caseName, titleBlock, canEdit,
       <Txt x={23} y={244} s={2} fill="#444">INCOMPLETE = ไม่เกินเกณฑ์คัดกรองแต่ยังขาดการตรวจหรือข้อมูลรับรอง · FAIL = เกินเกณฑ์</Txt>
     </>},
   ];
-  return <A3Set sheets={sheets} project={project} code={code} caseName={caseName} elementLabel="แบบหล่อคาน" confirmed={x.confirmed} titleBlock={titleBlock} canEdit={canEdit} onTitleBlockChange={onTitleBlockChange}/>;
+  return <A3Set sheets={sheets} project={project} code={code} caseName={caseName} elementLabel="แบบหล่อคาน" confirmed={x.confirmed} titleBlock={titleBlock} canEdit={canEdit} onTitleBlockChange={onTitleBlockChange} revisionBinding={revisionBinding}/>;
 }
 
 /** Cover page, signatures and contents shared by the soffit-system reports. */
-export function ReportCover({title, subtitle, project, code, element, docNo, size, status, fails, sheets, tb, sections, figure}: {title: string; subtitle: string; project: string; code: string;
-  element: string; docNo: string; size: string; status: string; fails: number; sheets: string; tb: TitleBlock; sections: string[]; figure: ReactElement}) {
+export function ReportCover({title, subtitle, project, code, element, docNo, size, status, fails, sheets, tb, sections, figure, revisionBinding}: {title: string; subtitle: string; project: string; code: string;
+  element: string; docNo: string; size: string; status: string; fails: number; sheets: string; tb: TitleBlock; sections: string[]; figure: ReactElement; revisionBinding?: DesignRevisionBinding}) {
   return <>
     <section className="rp-page rp-cover">
       <div className="rp-brand"><span className="brand-square">CMG</span><div><b>CMG ENGINEERING & CONSTRUCTION</b><small>FORMWORK DESIGN DEPARTMENT</small></div></div>
@@ -74,6 +74,7 @@ export function ReportCover({title, subtitle, project, code, element, docNo, siz
         <tr><th>องค์อาคาร</th><td>{element}</td><th>เลขที่เอกสาร</th><td>{docNo}</td></tr>
         <tr><th>ขนาด</th><td>{size}</td><th>Rev / วันที่</th><td>{tb.rev} / {tb.date}</td></tr>
         <tr><th>สถานะผลคัดกรอง</th><td>{status} · {fails ? `${fails} รายการเกินเกณฑ์` : 'ไม่มีรายการเกินเกณฑ์คัดกรอง'}</td><th>แบบประกอบ</th><td>{sheets}</td></tr>
+        {revisionBinding&&<tr><th>Design Revision</th><td>{revisionBinding.designRevision}</td><th>Review / hash</th><td>{revisionBinding.reviewState} · {revisionBinding.contentHash ? `${revisionBinding.contentHash.slice(0, 16)}…` : 'ยังไม่มี review hash'}</td></tr>}
       </tbody></table>
       {figure}
       <table className="rp-sign"><thead><tr><th/><th>ชื่อ</th><th>ลายมือชื่อ</th><th>วันที่</th></tr></thead><tbody>
@@ -88,14 +89,14 @@ export function ReportCover({title, subtitle, project, code, element, docNo, siz
 const SECTIONS = ['ขอบเขตและเกณฑ์การออกแบบ', 'รูปทรงและการจัดวางแบบหล่อ', 'น้ำหนักบรรทุกแนวดิ่ง', 'แรงดันคอนกรีตสดด้านข้าง', 'การตรวจสอบแบบท้องคาน', 'การตรวจสอบแบบข้างคาน',
   'สรุปผลและคำแนะนำ', 'ปริมาณวัสดุ', 'ข้อจำกัดและรายการที่ยังขาด', 'เอกสารอ้างอิง'];
 
-export function BeamReport({r, project, code, caseName, caseId, titleBlock: tb}: {r: BeamResult; project: string; code: string; caseName: string; caseId: string; titleBlock: TitleBlock}) {
+export function BeamReport({r, project, code, caseName, caseId, titleBlock: tb, revisionBinding}: {r: BeamResult; project: string; code: string; caseName: string; caseId: string; titleBlock: TitleBlock; revisionBinding?: DesignRevisionBinding}) {
   const x = r.input, pm = r.pressureModel, advice = useMemo(() => beamAdvice(x), [x]), fails = r.checks.filter(c => c.status === 'FAIL');
   const docNo = `CAL-${code || 'CMG'}-${caseId.replace(/[^\w]/g, '').slice(0, 6).toUpperCase()}`, sj = sp(r, r.joists), ss = sp(r, r.shores), st = sp(r, r.studs);
   const group = (no: string, title: string, prefixes: string[], fig?: ReactElement) => <div className="rp-group" key={no}><h3>{no} {title}</h3>{fig}
     {r.checks.filter(c => prefixes.some(p => c.id.startsWith(p))).map((c, i) => <CheckCard key={c.id} c={c} no={`${no}.${i + 1}`}/>)}</div>;
   return <article className="calc-report">
     <ReportCover title="รายการคำนวณออกแบบแบบหล่อคาน" subtitle="BEAM FORMWORK DESIGN CALCULATION" project={project} code={code} element={`${caseName} · แบบหล่อคาน`} docNo={docNo}
-      size={`b ${x.b} × h ${x.h} mm · ยาว ${x.length} mm`} status={r.status} fails={fails.length} sheets="BF-01 ถึง BF-03 (A3)" tb={tb} sections={SECTIONS}
+      size={`b ${x.b} × h ${x.h} mm · ยาว ${x.length} mm`} status={r.status} fails={fails.length} sheets="BF-01 ถึง BF-03 (A3)" tb={tb} sections={SECTIONS} revisionBinding={revisionBinding}
       figure={<Fig w={190} h={120} caption="รูปตัดแบบหล่อคาน (อ้างอิงแบบ BF-01)"><BeamSectionView r={r} box={{x: 0, y: 0, w: 190, h: 120}} titled={false}/></Fig>}/>
 
     <section className="rp-sec"><h2>1. {SECTIONS[0]}</h2>

@@ -39,6 +39,15 @@ describe('beam workspace, drawings and report', () => {
     expect(report).toContain(r.quantities[0].item);
   });
 
+  it('prints the same Design Revision and review hash on the A3 set and A4 report', () => {
+    const r = calculateBeam({...beamDefaults, tieRows: 1});
+    const binding = {designRevision: 'R-B01-7', contentHash: '0123456789abcdef0123456789abcdef', reviewState: 'SUBMITTED'};
+    const sheets = renderToStaticMarkup(<BeamDrawingSet r={r} project="P" code="C-1" caseName="B01" titleBlock={tb} canEdit onTitleBlockChange={() => {}} revisionBinding={binding}/>);
+    const report = renderToStaticMarkup(<BeamReport r={r} project="P" code="C-1" caseName="B01" caseId="b01" titleBlock={tb} revisionBinding={binding}/>);
+    expect(sheets).toContain('R-B01-7'); expect(sheets).toContain('SUBMITTED'); expect(sheets).toContain('0123456789abcdef');
+    expect(report).toContain('R-B01-7'); expect(report).toContain('SUBMITTED'); expect(report).toContain('0123456789abcdef');
+  });
+
   it('applies spacing advice and section changes through the editor', async () => {
     const host = document.createElement('div'); document.body.appendChild(host);
     let latest: BeamInput = {...beamDefaults, confirmed: true};

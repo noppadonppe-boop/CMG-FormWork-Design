@@ -4,7 +4,7 @@ import type {Result} from '../domain';
 import {buildFormworkLayout, type FormworkLayout} from '../domain/formworkLayout';
 import {buildScene, type Scene} from '../domain/scene';
 import {DRAW_AREA, LW, Sheet, Table, Txt, type TitleInfo} from '../drawing/primitives';
-import {today, type TitleBlock} from '../domain/titleBlock';
+import {today, type DesignRevisionBinding, type TitleBlock} from '../domain/titleBlock';
 import {CornerDetail, ElevationView, IsoView, Legend, MemberSections, NoteBlock, PlanView, SectionView, TieDetail} from '../drawing/views';
 
 type Ctx = {L: FormworkLayout; r: Result; scene: Scene; tb: TitleBlock};
@@ -76,17 +76,17 @@ const SHEETS: {code: string; title: string; draw: (c: Ctx) => ReactElement}[] = 
   }},
 ];
 
-export function DrawingSet({result, project, code, caseName, titleBlock: info, canEdit = true, onTitleBlockChange}: {result: Result; project: string; code: string; caseName: string; titleBlock: TitleBlock; canEdit?: boolean; onTitleBlockChange: (tb: TitleBlock) => void}) {
+export function DrawingSet({result, project, code, caseName, titleBlock: info, canEdit = true, onTitleBlockChange, revisionBinding}: {result: Result; project: string; code: string; caseName: string; titleBlock: TitleBlock; canEdit?: boolean; onTitleBlockChange: (tb: TitleBlock) => void; revisionBinding?: DesignRevisionBinding}) {
   const base = useMemo(() => {try {return {L: buildFormworkLayout(result), r: result, scene: buildScene(result)};} catch {return null;}}, [result]);
   if (!base) return <div className="warning">ข้อมูลไม่ครบหรือไม่ถูกต้อง จึงสร้างแบบไม่ได้ · ตรวจมิติและระยะก่อน</div>;
   const ctx: Ctx = {...base, tb: info};
   return <A3Set sheets={SHEETS.map(s => ({code: s.code, title: s.title, body: s.draw(ctx)}))} project={project} code={code} caseName={caseName}
-    elementLabel={ctx.L.kind === 'COLUMN' ? 'แบบหล่อเสา' : 'แบบหล่อฐานราก'} confirmed={ctx.L.confirmed} titleBlock={info} canEdit={canEdit} onTitleBlockChange={onTitleBlockChange}/>;
+    elementLabel={ctx.L.kind === 'COLUMN' ? 'แบบหล่อเสา' : 'แบบหล่อฐานราก'} confirmed={ctx.L.confirmed} titleBlock={info} canEdit={canEdit} onTitleBlockChange={onTitleBlockChange} revisionBinding={revisionBinding}/>;
 }
 
 /** A3 sheet set with shared title block, revision log, SVG export and A3 print controls. */
-export function A3Set({sheets, project, code, caseName, elementLabel, confirmed, titleBlock: info, canEdit = true, onTitleBlockChange}: {sheets: {code: string; title: string; body: ReactElement}[];
-  project: string; code: string; caseName: string; elementLabel: string; confirmed: boolean; titleBlock: TitleBlock; canEdit?: boolean; onTitleBlockChange: (tb: TitleBlock) => void}) {
+export function A3Set({sheets, project, code, caseName, elementLabel, confirmed, titleBlock: info, canEdit = true, onTitleBlockChange, revisionBinding}: {sheets: {code: string; title: string; body: ReactElement}[];
+  project: string; code: string; caseName: string; elementLabel: string; confirmed: boolean; titleBlock: TitleBlock; canEdit?: boolean; onTitleBlockChange: (tb: TitleBlock) => void; revisionBinding?: DesignRevisionBinding}) {
   const SHEETS = sheets;
   const [note, setNote] = useState('');
   const svgs = useRef<(SVGSVGElement | null)[]>([]);
@@ -116,6 +116,7 @@ export function A3Set({sheets, project, code, caseName, elementLabel, confirmed,
       <div className="card-title"><h3>ชุดแบบก่อสร้างแบบหล่อ A3 ({SHEETS.length} แผ่น)</h3>
         <div className="source-actions"><button className="btn" onClick={print}><Printer size={16}/>พิมพ์ / บันทึก PDF (A3)</button></div></div>
       <p className="muted">แบบสร้างจากข้อมูลเดียวกับรายการคำนวณ แก้มิติหรือระยะแล้วแบบจะอัปเดตทันที · ตอนพิมพ์ให้เลือกขนาดกระดาษ A3 แนวนอน และปิดหัว/ท้ายกระดาษของเบราว์เซอร์</p>
+      {revisionBinding&&<p className="muted revision-binding">Design Revision: {revisionBinding.designRevision} · Review: {revisionBinding.reviewState} · hash: {revisionBinding.contentHash ? `${revisionBinding.contentHash.slice(0, 16)}…` : 'ยังไม่มี review hash'}</p>}
       <div className="form-grid four">{field('rev', 'แก้ไขครั้งที่ (Rev)')}{field('date', 'วันที่')}{field('designedBy', 'ออกแบบ')}{field('drawnBy', 'เขียนแบบ')}{field('checkedBy', 'ตรวจ')}{field('approvedBy', 'อนุมัติ')}</div>
       <div className="source-actions"><label className="field revision-note"><span>บันทึกการแก้ไขครั้งใหม่ (Rev ถัดไป)</span><input value={note} maxLength={120} disabled={!canEdit} placeholder="เช่น ปรับระยะคร่าวเป็น 250 mm ตามผลคำนวณ" onChange={e => setNote(e.target.value)}/></label>
         <button className="btn secondary" disabled={!canEdit || !note.trim()} onClick={addRevision}>เพิ่ม Rev</button></div>

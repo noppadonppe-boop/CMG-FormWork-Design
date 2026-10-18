@@ -258,11 +258,40 @@ export function parseClosureInputTemplate(raw: unknown): ClosureProjectInputTemp
   const r = record(raw); exactKeys(r, ['schema_version', 'form_type', 'context', 'inputs', 'review', 'confirmed', 'constructionRelease'], 'Closure input template');
   if (r.schema_version !== CLOSURE_SCHEMA_VERSION || !['ringlock_configuration', 'support_soil', 'support_slab', 'serviceability', 'stage_release'].includes(String(r.form_type)) || r.confirmed !== false || r.constructionRelease !== 'NO_GO') throw Error('Closure input template release gate/schema mismatch');
   const context = record(r.context); exactKeys(context, ['projectId', 'revisionId', 'designSnapshotHash', 'activeStageId', 'capturedStageId', 'loadCaseId'], 'Closure input context');
-  for (const key of ['projectId', 'revisionId', 'designSnapshotHash', 'activeStageId', 'capturedStageId', 'loadCaseId']) if (context[key] !== null && typeof context[key] !== 'string') throw Error(`Closure input context ${key} must be string or null`);
+  for (const key of ['projectId', 'revisionId', 'designSnapshotHash', 'activeStageId', 'capturedStageId', 'loadCaseId']) if (context[key] !== null) text(context[key], `Closure input context ${key}`, true);
   const review = record(r.review); exactKeys(review, ['engineerId', 'evidenceRef', 'acceptedSnapshotHash', 'acceptedStageId', 'acceptedLoadCaseId', 'trustedVerificationStatus'], 'Closure evidence review');
   if (review.trustedVerificationStatus !== 'NOT_VERIFIED') throw Error('Closure input cannot claim trusted verification');
+  for (const key of ['engineerId', 'evidenceRef', 'acceptedSnapshotHash', 'acceptedStageId', 'acceptedLoadCaseId']) if (review[key] !== null) text(review[key], `Closure review ${key}`, true);
   if (!r.inputs || typeof r.inputs !== 'object' || Array.isArray(r.inputs)) throw Error('Closure input fields must be an object');
   return clone(raw as ClosureProjectInputTemplate);
+}
+
+/** Validate an edited/imported project form against the exact field inventory shipped with the
+ * Closure Pack. Values may be filled, but fields cannot be added, removed, or changed to a
+ * different primitive type. This keeps a user-editable packet from smuggling in release flags. */
+export function validateClosureInputTemplate(raw: unknown, baseline: ClosureProjectInputTemplate): ClosureProjectInputTemplate {
+  const parsed = parseClosureInputTemplate(raw);
+  if (parsed.form_type !== baseline.form_type) throw Error('Closure input template type mismatch');
+  const actual = record(parsed.inputs), expected = record(baseline.inputs), expectedKeys = Object.keys(expected).sort(), actualKeys = Object.keys(actual).sort();
+  if (expectedKeys.length !== actualKeys.length || expectedKeys.some((key, i) => key !== actualKeys[i])) throw Error('Closure input fields differ from the approved template inventory');
+  for (const key of expectedKeys) {
+    const value = actual[key], source = expected[key];
+    if (value === null) continue;
+    if (Array.isArray(source)) {
+      if (!Array.isArray(value)) throw Error(`Closure input ${key} must be an array`);
+      if (canonical(value).length > 20000) throw Error(`Closure input ${key} is too large`);
+    } else if (typeof source === 'number') {
+      finite(value, `Closure input ${key}`, true);
+    } else if (typeof source === 'string') {
+      text(value, `Closure input ${key}`, true);
+    } else if (source === null && /(_mm|_kN|_MPa|_kPa|_kN_m3|_mm2|_mm3|_mm4)$/.test(key)) {
+      finite(value, `Closure input ${key}`, true);
+    } else if (source === null && typeof value !== 'string' && typeof value !== 'number' && !Array.isArray(value)) {
+      throw Error(`Closure input ${key} must be text, number, array, or null`);
+    }
+  }
+  if (canonical(parsed).length > 100000) throw Error('Closure input template exceeds 100000 characters');
+  return parsed;
 }
 
 export function closurePackInventory(formTie: ClosureFormTieBridge, ringlock: ClosureRinglockSidecar) {

@@ -1,0 +1,88 @@
+{
+  "schemaVersion": "cmg-002-case-reconciliation-decision-1",
+  "projectId": "0d4fa640-8849-4dd2-aa54-ba0120b6209b",
+  "projectCode": "CMG-002",
+  "sourceBackup": "F:/Downloads/CMG-002-project-backup.json",
+  "owner": null,
+  "decisions": [
+    {
+      "caseId": "4f9d6cf3-d655-48aa-88e3-15f6d08b730c",
+      "name": "F01 · ฐานราก",
+      "storedType": "WALL",
+      "nameSuggestedType": "FOOTING",
+      "decision": null,
+      "allowed": ["USE_NAME_SUGGESTED_TYPE", "USE_STORED_TYPE", "CREATE_SEPARATE_CASE"]
+    },
+    {
+      "caseId": "aa0179a2-323d-4ee0-866c-f91db9eb04c3",
+      "name": "F03 · ฐานราก",
+      "storedType": "FOOTING",
+      "nameSuggestedType": "FOOTING",
+      "decision": null,
+      "allowed": ["KEEP", "RENAME", "MERGE_AFTER_DOCUMENT_REVIEW"]
+    },
+    {
+      "caseId": "053d505d-b1ce-4dd6-8a82-85db43ac7b3c",
+      "name": "F03 · ฐานราก",
+      "storedType": "FOOTING",
+      "nameSuggestedType": "FOOTING",
+      "decision": null,
+      "allowed": ["KEEP", "RENAME", "MERGE_AFTER_DOCUMENT_REVIEW"]
+    },
+    {
+      "caseId": "0214e914-c50d-4c3b-945a-4ba7bd85abcf",
+      "name": "C02 · เสา",
+      "storedType": "WALL",
+      "nameSuggestedType": "COLUMN",
+      "decision": null,
+      "allowed": ["USE_NAME_SUGGESTED_TYPE", "USE_STORED_TYPE", "CREATE_SEPARATE_CASE"]
+    },
+    {
+      "caseId": "96f9ce5c-4920-46ee-88b4-a4d9cb5b346b",
+      "name": "W02 · ผนัง",
+      "storedType": "SLAB",
+      "nameSuggestedType": "WALL",
+      "decision": null,
+      "allowed": ["USE_NAME_SUGGESTED_TYPE", "USE_STORED_TYPE", "CREATE_SEPARATE_CASE"]
+    },
+    {
+      "caseId": "54603c4d-d748-478a-819e-e7a81bc28b4c",
+      "name": "W02 · ผนัง",
+      "storedType": "SLAB",
+      "nameSuggestedType": "WALL",
+      "decision": null,
+      "allowed": ["USE_NAME_SUGGESTED_TYPE", "USE_STORED_TYPE", "CREATE_SEPARATE_CASE"]
+    },
+    {
+      "caseId": "7dce3438-9e61-4aee-9d4d-0019c5b9275a",
+      "name": "B02 · คาน",
+      "storedType": "SLAB",
+      "nameSuggestedType": "BEAM",
+      "decision": null,
+      "allowed": ["USE_NAME_SUGGESTED_TYPE", "USE_STORED_TYPE", "CREATE_SEPARATE_CASE"]
+    },
+    {
+      "caseId": "a65f58ef-800e-489e-8370-6c393eeceb38",
+      "name": "S02 · พื้น",
+      "storedType": "FOOTING",
+      "nameSuggestedType": "SLAB",
+      "decision": null,
+      "allowed": ["USE_NAME_SUGGESTED_TYPE", "USE_STORED_TYPE", "CREATE_SEPARATE_CASE"]
+    },
+    {
+      "caseId": "e66c5d19-2068-49ba-9bc8-6c24e4228bfc",
+      "name": "B02 · คาน",
+      "storedType": "BEAM",
+      "nameSuggestedType": "BEAM",
+      "decision": null,
+      "allowed": ["KEEP", "RENAME", "MERGE_AFTER_DOCUMENT_REVIEW"]
+    }
+  ],
+  "apply": {
+    "approvedBy": null,
+    "approvedAt": null,
+    "reason": null,
+    "newBackupBeforeWrite": null,
+    "applyToProduction": false
+  }
+}

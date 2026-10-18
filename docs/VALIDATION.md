@@ -1,4 +1,32 @@
-# Validation evidence — 2026-10-13
+# Validation evidence — current recheck 2026-10-19
+
+- Full Vitest: **100 files / 870 tests passed**.
+- `npm run typecheck` and `npm run build`: **PASS** after adding the editable Closure Pack project-input forms. Vite still reports the existing large-bundle advisory.
+- `npm run test:visual`: **PASS** — 21 legacy/v0.7 A3 sheets rasterized with `@napi-rs/canvas`; this includes the eight-sheet Workflow v0.7 draft arrangement (geometry, each physical side, soffit/shoring, frame and support contacts) from one frozen Snapshot. Tahoma registered from `C:/Windows/Fonts/tahoma.ttf`.
+- `npm run typecheck` and `npm run build`: **PASS**; bundle-size warning remains informational.
+- Production `verify:deployment`: **PASS (13 checks)** for HTTP/SPA, five element menus, Connections, Audit, public Ringlock/Form Tie DRAFT import, NO_GO gate, sidebar scroll rule, and the deployed v0.7 A3 drawing chunk.
+- Firebase release audit: **PASS** for Hosting version `592b723a1cbe091e` (release `1792340126451000`, finalized `2026-10-18T16:15:26.451Z`), ten Node 22 Functions (including `saveReviewRecord`), and Firestore/Storage rule hash matches.
+- Functions emulator audit: **PASS** — 12 checks, including server-side Review transition acceptance and forged-history rejection.
+- Reconciliation template audit: **PASS** with `npm run audit:reconciliation`; `--ready` mode correctly remains blocked until Owner decisions, approval metadata and a new pre-write backup are filled.
+- Audit & Settings now includes an explicit per-Case reconciliation form, non-mutating JSON import/export, and readiness check; `applyToProduction` is always `false` until a separate reviewed write process is approved.
+- Registry can also import the Closure Pack's 11 Form Tie and 17 Ringlock rows as DRAFT properties with no Registry limits.
+- Workflow v0.7 Review step now edits, validates, saves, imports and exports the five Closure Pack project-input forms (Ringlock, soil, supporting slab, serviceability, stage release). The saved data is bound to the case Revision and included in its Snapshot; the inputs remain `NOT_VERIFIED`, do not supply solver capacities, and do not clear engineering blockers.
+- Owner input is consolidated in [OWNER_INPUT_PACKET.md](./OWNER_INPUT_PACKET.md); it contains no invented engineering values and preserves the NO_GO boundary.
+- Browser acceptance: **PASS** with `npm run test:browser:acceptance` against isolated emulators/Vite; it signs in, creates the mock-up project, verifies all five element menus, opens Beam/Slab/Wall, saves emulator-only drafts, checks each eight-sheet A3 output, and opens Audit. External network/404 console noise is filtered; no external AI call is made.
+- Printed browser PDF pagination/fonts and the complete two-project criteria/save/reload/review E2E remain pending; raster smoke does not claim printed-PDF approval.
+
+## Six-item closeout matrix
+
+| ข้อ | หลักฐานปัจจุบัน | สถานะ | งานที่ยังต้องทำ |
+|---|---|---|---|
+| 1. Production Case relations | `F:/Downloads/CMG-002-project-backup.json`, `scripts/audit-project-backup.mjs`, `docs/CMG-002_RECONCILIATION_PROPOSAL.md` | PARTIAL | Owner ต้องเลือก mapping ของ Case ที่ชื่อ/ประเภท/ร่างชนกัน แล้วจึงเขียนกลับหลัง backup ใหม่ |
+| 2. Hosting / Firebase release | `npm run verify:release` และ `npm run verify:deployment` | PASS | ไม่มีช่องว่าง release ที่ตรวจพบในรอบนี้ |
+| 3. Product catalogue / Design Basis | Closure Pack templates, Ringlock/Form Tie references, Registry UI, public capture import as DRAFT | BLOCKED | ต้องเติมและ review รุ่น/ล็อต/SWL/configuration จริง, soil/young-slab basis, load basis และ acceptance criteria |
+| 4. Beam / Slab / Wall primary UX | Production bundle มีเมนูองค์อาคาร 5 ระบบ, Connections, Audit; browser smoke เปิด Beam/Slab/Wall ได้ | PASS (screening UX) | ยังต้องเติมข้อมูลจริงเพื่อให้ผลพ้น `DRAFT / INCOMPLETE / NO_GO` |
+| 5. Shared Design Revision / Hash | `WorkflowV07Output`, frozen v0.7 Snapshot, eight-sheet `WorkflowV07Drawings`, `ReviewPanel`, legacy title block binding | PASS (same-model report/A3 output; raster checked) | ยังต้องสร้าง/ตรวจ Review ของ Case จริงหลัง reconcile และเปลี่ยน revision |
+| 6. Emulator E2E / acceptance | `npm run test:browser:acceptance` automated Playwright run covers eight-sheet output for Beam/Slab/Wall; Functions audit 12 checks; raster smoke 21 sheets | PASS (emulator flow) | Printed browser PDF pagination/fonts and full two-project lifecycle remain pending |
+
+## Historical evidence — 2026-10-13
 
 ## Current private-cloud v0.3 phase
 
@@ -51,7 +79,7 @@ This report describes observed checks, not construction acceptance.
 | Authenticated Functions runtime integration | BLOCKED — sandbox does not permit emulator Unix socket |
 | Live AI/provider drawing extraction | NOT RUN |
 | Real browser/mobile UI, PDF upload/render interactions | NOT RUN |
-| Printed PDF pagination/fonts/visual QA | NOT RUN |
+| Printed PDF pagination/fonts/visual QA | PARTIAL — 13-sheet SVG raster smoke with Tahoma passed; browser print pagination remains NOT RUN |
 | Professional formwork method validation and construction issue | NOT COMPLETE / BLOCKED |
 | Transfer/start Codex on owner's PC | NOT PERFORMED — remote device Offline |
 

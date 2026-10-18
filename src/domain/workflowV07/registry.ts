@@ -169,6 +169,92 @@ export function seedRegistry(now = 0): Registry {
     ],
   };
 }
+
+/** Convert the owner-provided public Ringlock/Form Tie capture into editable DRAFT
+ * catalogue rows. Published numbers are kept as labelled properties only; this
+ * adapter deliberately creates no resistance limits and never changes authority
+ * fields or construction release state. */
+export function publicReferenceRegistryEntries(raw: unknown, now = Date.now()): RegistryEntry[] {
+  const r = record(raw);
+  if (r.schema_version !== 'public-reference-capture-1.0' || r.status !== 'REFERENCE_ONLY' || r.construction_release !== 'NO_GO' || r.automatic_import_into_app !== false) throw Error('Invalid public reference capture release gate');
+  if (typeof r.checked_on !== 'string' || !r.checked_on.trim()) throw Error('Public reference capture date required');
+  if (!Array.isArray(r.sources) || !r.sources.length) throw Error('Public reference sources required');
+  const sources = r.sources.map(record), sourceById = new Map(sources.map(s => {
+    if (typeof s.id !== 'string' || !s.id.trim() || typeof s.url !== 'string' || !s.url.trim()) throw Error('Public reference source identity required');
+    return [s.id, s] as const;
+  }));
+  const sourceMeta = (id: unknown) => {
+    if (typeof id !== 'string' || !sourceById.has(id)) throw Error('Public reference row has unknown source');
+    const s = sourceById.get(id)!;
+    return {sourceRef: id, evidenceRef: s.url as string, sourceRevision: `${typeof s.edition === 'string' && s.edition.trim() ? s.edition : 'public-page'} @ ${r.checked_on}`, scopeEvidenceRef: 'Public reference capture only; verify actual project stock, configuration, revision and assembly before design use'};
+  };
+  const slug = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 70) || 'ROW';
+  const make = (id: string, kind: CatalogKind, name: string, productRef: string, properties: Record<string, number | string | null>, sourceId: unknown): RegistryEntry => {
+    const meta = sourceMeta(sourceId);
+    return {...emptyEntry(id, kind, now), name, productRef, properties, sourceRef: meta.sourceRef, sourceRevision: meta.sourceRevision, evidenceRef: meta.evidenceRef, scopeEvidenceRef: meta.scopeEvidenceRef};
+  };
+  const entries: RegistryEntry[] = [];
+  const ties = r.form_tie_public_values;
+  if (!Array.isArray(ties)) throw Error('Public Form Tie rows required');
+  for (const row of ties.map(record)) {
+    if (typeof row.product_label !== 'string' || typeof row.source_id !== 'string' || typeof row.publisher_value_unit !== 'string' || typeof row.publisher_value_label !== 'string' || row.project_product_verified !== false || row.status !== 'REFERENCE_ONLY_UNVERIFIED') throw Error('Unsafe public Form Tie row');
+    const value = row.publisher_value === null ? null : finite(row.publisher_value, 'public Form Tie value', true);
+    entries.push(make(`REF-FORM-TIE-${slug(row.product_label)}`, 'TIE', `${row.product_label} · public reference`, row.product_label,
+      {publisher_value: value, publisher_value_unit: row.publisher_value_unit, publisher_value_label: row.publisher_value_label, assembly_capacity_kN: row.assembly_capacity_kN === null ? null : finite(row.assembly_capacity_kN, 'assembly capacity', true), project_product_verified: 'false', automatic_design_use: 'false'}, row.source_id));
+  }
+  const ring = record(r.ringlock_public_values);
+  if (ring.project_system_verified !== false || ring.status !== 'REFERENCE_ONLY_UNVERIFIED' || ring.source_id === undefined) throw Error('Unsafe public Ringlock capture');
+  const factors = record(ring.stated_factors);
+  const gammaM = finite(factors.gamma_M, 'public gamma_M', true), gammaF = finite(factors.gamma_F, 'public gamma_F', true);
+  if (!Array.isArray(ring.standard_axial_loads) || !Array.isArray(ring.diagonal_bay_brace_2m_lift)) throw Error('Public Ringlock rows required');
+  for (const row of ring.standard_axial_loads.map(record)) {
+    const spacing = finite(row.ledger_spacing_m, 'ledger spacing', true), compression = finite(row.compression_kN, 'compression reference', true), tension = finite(row.tension_kN, 'tension reference', true);
+    entries.push(make(`REF-DOKA-RINGLOCK-STD-${slug(String(spacing))}`, 'SHORING', `Doka Ringlock standard · ledger ${spacing} m · public reference`, 'Doka Ringlock · verify project system',
+      {ledger_spacing_m: spacing, publisher_compression_kN: compression, publisher_tension_kN: tension, gamma_M: gammaM, gamma_F: gammaF, automatic_design_use: 'false', project_system_verified: 'false'}, ring.source_id));
+  }
+  for (const row of ring.diagonal_bay_brace_2m_lift.map(record)) {
+    const bay = finite(row.bay_length_m, 'brace bay length', true), tension = finite(row.tension_kN, 'brace tension reference', true), compression = finite(row.compression_kN, 'brace compression reference', true);
+    entries.push(make(`REF-DOKA-RINGLOCK-BRACE-${slug(String(bay))}`, 'BRACE', `Doka Ringlock diagonal brace · bay ${bay} m · public reference`, 'Doka Ringlock · verify project system',
+      {bay_length_m: bay, lift_height_m: 2, publisher_tension_kN: tension, publisher_compression_kN: compression, gamma_M: gammaM, gamma_F: gammaF, automatic_design_use: 'false', project_system_verified: 'false'}, ring.source_id));
+  }
+  const ids = new Set<string>();
+  for (const entry of entries) {if (ids.has(entry.id)) throw Error(`Duplicate public reference id ${entry.id}`); ids.add(entry.id); validateRegistryEntry(entry);}
+  return entries;
+}
+
+/** Convert the Closure Pack's exact Form Tie/Ringlock rows into DRAFT properties.
+ * Closure values remain labelled source properties: this adapter creates no RegistryLimit and
+ * refuses any record that is not explicitly reference-only/no-go. */
+export function closureReferenceRegistryEntries(formRaw: unknown, ringRaw: unknown, now = Date.now()): RegistryEntry[] {
+  const form = record(formRaw), ring = record(ringRaw);
+  if (form.data_role !== 'REFERENCE_NOT_PROJECT_APPROVAL' || form.confirmed !== false || form.constructionRelease !== 'NO_GO' || form.automatic_design_use !== undefined) {
+    throw Error('Invalid Closure Pack Form Tie release gate');
+  }
+  if (ring.confirmed !== false || ring.constructionRelease !== 'NO_GO' || ring.preserve_existing_ringlock_json !== true) throw Error('Invalid Closure Pack Ringlock release gate');
+  if (!Array.isArray(form.records) || form.records.length !== 11 || !Array.isArray(ring.records) || ring.records.length !== 17) throw Error('Closure Pack reference inventory mismatch');
+  const sourceRevision = (source: unknown, fallback: unknown) => `${typeof source === 'string' && source.trim() ? source : 'closure-pack'} @ ${typeof fallback === 'string' && fallback.trim() ? fallback : 'owner-capture'}`;
+  const textOrNull = (value: unknown) => typeof value === 'string' || typeof value === 'number' || value === null ? value : null;
+  const entries: RegistryEntry[] = [];
+  for (const raw of form.records.map(record)) {
+    if (raw.automatic_design_use !== false || raw.scope !== 'SEPARATOR_ONLY' || typeof raw.record_id !== 'string' || typeof raw.source_id !== 'string') throw Error('Unsafe Closure Pack Form Tie row');
+    const properties: Record<string, number | string | null> = {};
+    for (const key of ['manufacturer', 'designation', 'inner_type', 'thread_designation', 'grade', 'tensile_effective_area_mm2', 'legacy_table_area_mm2', 'breaking_load_kN', 'allowable_tensile_load_kN', 'capacity_basis', 'source_status', 'scope'] as const) properties[key] = textOrNull(raw[key]);
+    entries.push({...emptyEntry(`REF-CLOSURE-FORM-TIE-${raw.record_id}`, 'TIE', now), name: `${String(raw.designation)} · Closure Pack reference`, productRef: `${raw.manufacturer ?? 'Manufacturer unknown'} · ${String(raw.designation)}`, properties,
+      sourceRef: raw.source_id, sourceRevision: sourceRevision(form.baseline_version, form.as_of), evidenceRef: String(raw.source_locator ?? raw.source_id), scopeEvidenceRef: 'Closure Pack reference only; complete assembly, project product identity and engineer review are required'});
+  }
+  for (const raw of ring.records.map(record)) {
+    if (raw.automatic_design_use !== false || raw.interpolation_allowed !== false || raw.extrapolation_allowed !== false || typeof raw.rating_id !== 'string' || typeof raw.source_id !== 'string') throw Error('Unsafe Closure Pack Ringlock row');
+    const selector = record(raw.selector), limits = record(raw.limits), properties: Record<string, number | string | null> = {
+      manufacturer: textOrNull(raw.manufacturer), system_ref: textOrNull(raw.system_ref), kind: textOrNull(raw.kind), rating_scope: textOrNull(raw.rating_scope), source_pdf_page: textOrNull(raw.source_pdf_page), source_basis_text: textOrNull(raw.source_basis_text), source_gamma_M: textOrNull(raw.source_gamma_M), source_gamma_F: textOrNull(raw.source_gamma_F), basis_mapping_status: textOrNull(raw.basis_mapping_status), automatic_design_use: 'false', interpolation_allowed: 'false', extrapolation_allowed: 'false', selector_json: JSON.stringify(selector), published_limits_json: JSON.stringify(limits), conditions_json: JSON.stringify(raw.conditions ?? []),
+    };
+    const kind = raw.kind === 'BRACE' ? 'BRACE' : raw.kind === 'STANDARD' ? 'SHORING' : 'OTHER';
+    entries.push({...emptyEntry(`REF-CLOSURE-RINGLOCK-${raw.rating_id}`, kind, now), name: `${String(raw.rating_id)} · Closure Pack reference`, productRef: `${raw.manufacturer ?? 'Manufacturer unknown'} · ${String(raw.system_ref ?? raw.rating_id)}`, properties,
+      sourceRef: raw.source_id, sourceRevision: sourceRevision(raw.source_edition, form.as_of), evidenceRef: `closure-pack:${String(raw.source_id)}${raw.source_pdf_page == null ? '' : `#page=${String(raw.source_pdf_page)}`}`, scopeEvidenceRef: 'Closure Pack component reference only; not a complete shoring configuration or project stock approval'});
+  }
+  const ids = new Set<string>();
+  for (const entry of entries) {if (ids.has(entry.id)) throw Error(`Duplicate Closure Pack registry id ${entry.id}`); ids.add(entry.id); validateRegistryEntry(entry);}
+  return entries;
+}
 /** Review transition: the reviewer is the signed-in user; the software never fills this in. */
 export function markReviewed<T extends {review: RegistryReview; updatedAtMs: number}>(item: T, reviewedBy: string, now = Date.now(), note = ''): T {
   if (!reviewedBy.trim()) throw Error('Reviewer identity required');

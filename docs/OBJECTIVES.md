@@ -30,7 +30,7 @@ requirements matrix ต่อจากนี้ ข้อกำหนดด้�
 
 ## สถานะต่อระบบ (ประเมินใหม่ 2026-10-18 · v0.7 `0.7.0-preview.32` · legacy ฐานราก/เสา `0.3.0-screening`)
 
-ตรวจเทียบกับโค้ดและเทสต์ ณ commit `5bfbad9` (812 tests: ผ่าน 811, ไม่ผ่าน 1 = `workflow-v07-spatial-loads` ที่ค้างมาก่อน) · typecheck และ build ผ่าน
+ตรวจเทียบกับโค้ดและเทสต์ใน working tree หลังรอบปรับ Workflow (full suite 865 tests ผ่าน; typecheck และ build ผ่าน)
 รายละเอียดงานแต่ละ Phase ดู `docs/ROADMAP.md`
 
 | ระบบ | ส่วนที่ทำแล้ว | ช่องว่างหลัก |
@@ -40,16 +40,29 @@ requirements matrix ต่อจากนี้ ข้อกำหนดด้�
 | 3 คาน | **โมดูลคานใช้งานจริง** (`src/domain/beam.ts`, 2026-10-18): มิติ b/h/พื้น/ความยาว/ความสูง → น้ำหนัก ACI §4.2.1 → ไม้อัด APA ต่อเนื่อง → คร่าวท้อง (แรงแผ่บางส่วนแบบ exact) → คานรับ → ค้ำยัน (SWL ผู้ผลิต) และแบบข้าง: แรงดัน ρgh/ACI → ไม้อัด → คร่าวแนวตั้ง → Tie + คานคู่; ตารางเหล็กไทย/ไม้, คำแนะนำระยะสูงสุด, แบบ A3 BF-01..03, รายงาน A4, บันทึกต่อ case และ backup; v0.7 (ละเอียด) ยังเปิดได้จากหน้าภาพรวม | SWL ค้ำยัน/Tie ต้องกรอกจากผู้ผลิต; ค้ำยันทแยงและไม้กันตีนยังเป็นแรงที่ต้องออกแบบ (INCOMPLETE); คร่าว/คานรับคิดช่วงเดี่ยว; แบบพื้นข้างคานออกแบบแยก; MCP/AI อ่านแบบยังไม่รองรับคาน |
 | 4 พื้น | **โมดูลพื้นใช้งานจริง** (`src/domain/slab.ts`, 2026-10-18): ช่วงพื้น lx × ly × t → น้ำหนัก ACI §4.2.1 → ไม้อัด APA ต่อเนื่อง → คร่าว → คานรับ → ค้ำยัน (SWL ผู้ผลิต) และแรงด้านข้าง §4.2.3.2 ต่อทิศ; ตารางเหล็กไทย/ไม้, คำแนะนำระยะสูงสุด, แบบ A3 SF-01..03, รายงาน A4, บันทึกต่อ case และ backup; v0.7 (ละเอียด) เปิดได้จากหน้าภาพรวม | SWL ค้ำยันต้องกรอกจากผู้ผลิต; ค้ำยันทแยง/ledger เป็นแรงที่ต้องออกแบบ (INCOMPLETE); คร่าว/คานรับคิดช่วงเดี่ยว; คิดช่วงเดียวแบบตารางสม่ำเสมอ (ยังไม่รองรับช่องเปิด/คานหลายช่วง/การเทเป็นขั้น); การค้ำซ้ำหลายชั้น (§4.5) ยังไม่คำนวณ |
 | 5 ผนัง | **โมดูลผนังใช้งานจริง** (`src/domain/wall.ts`, 2026-10-18): สองด้าน (Tie ทะลุ: ตัวเหล็ก + SWL ชุด) หรือ **ด้านเดียว** (เทชนดิน/ผนังเดิม: คานคู่ → strongback แบบฐานหมุน + ค้ำยัน + ปลายยื่น → ค้ำยันรับแรงดันคอนกรีต + แรงด้านข้าง ACI §4.2.3 → พุกฐานรับแรงเฉือนและแรงยก §4.1.4d); แรงดัน ρgh/ACI, ไม้อัด APA ต่อเนื่อง, ตารางเหล็กไทย/ไม้, คำแนะนำระยะสูงสุด, แบบ A3 WF-01..03, รายงาน A4, บันทึกต่อ case และ backup; AI อ่านแบบสร้าง case ผนังได้ | SWL ชุด Tie / ค้ำยัน / พุกต้องกรอกจากผู้ผลิต; การโก่งเดาะค้ำยัน มุมผนัง ปลายผนัง และจุดยึด strongback ยังเป็น INCOMPLETE; คร่าว/คานคู่คิดช่วงเดี่ยวภายใต้ pmax คงที่ |
-| ร่วมทุกระบบ | RBAC + rules tests; ลบโครงการ; Mock-up 10 case; registry วิธี/ผลิตภัณฑ์ (DRAFT/REVIEWED/RETIRED); review → approve → issue พร้อมความเป็นอิสระของผู้ตรวจและ hash; ทะเบียนข้อมูลที่ยังขาด; แยก chunk; Design Book (หนังสือ + มาตรฐานฉบับล่าสุด); MCP server; แชท AI เสนอทางเลือกจาก optimizer | ข้อมูลผลิตภัณฑ์ที่รีวิวแล้วจาก Owner (B2); เมนูครบตามข้อกำหนด (D2); บังคับ review ใน Cloud Functions; รายงาน/A3 แสดงสถานะ review และ hash; PDF worker ฝังฟอนต์ไทย (G1); E2E Playwright (G3); AI กับ provider จริง (F1); ledger จุดต่อ แผ่นรอง/นัต/bolt/weld/splice |
+| ร่วมทุกระบบ | RBAC + rules tests; ลบโครงการ; Mock-up 10 case; registry วิธี/ผลิตภัณฑ์ (DRAFT/REVIEWED/RETIRED); review → approve → issue พร้อมความเป็นอิสระของผู้ตรวจและ hash; ทะเบียนข้อมูลที่ยังขาด; แยก chunk; Design Book (หนังสือ + มาตรฐานฉบับล่าสุด); MCP server; แชท AI เสนอทางเลือกจาก optimizer; server-side review transition gate | ข้อมูลผลิตภัณฑ์ที่รีวิวแล้วจาก Owner (B2); legacy อ่าน catalog เดียวกัน (B3); PDF worker ฝังฟอนต์ไทย/print pagination (G1); E2E Playwright (G3); AI กับ provider จริง (F1); ledger จุดต่อ แผ่นรอง/นัต/bolt/weld/splice |
 
 หมายเหตุ
 - ความสามารถแยกเป็นสองชุด: ACI pressure, APA plywood, ตารางเหล็กไทย, optimizer, แบบ A3 และรายงาน A4 อยู่ใน legacy ฐานราก/เสาเท่านั้น; คาน/พื้น/ผนังใช้ engine v0.7 ซึ่งมีโมเดล coupled/เฟรม/registry/review ที่ legacy ไม่มี
-- Firestore rules ใน repo เป็นชุด RBAC (ตรงกับ commit); production `calculationeng` ณ 2026-10-18 14:07 ถูก Owner เปิด `allow read, write: if true` ชั่วคราวโดยตั้งใจ ต้อง deploy rules ชุด RBAC กลับก่อนใช้งานจริง
+- Firestore/Storage rules ใน repo เป็นชุด RBAC; release audit ของ `calculationeng` เวลา 2026-10-18 14:17 ยืนยัน deployed rules hash ตรงกับ source และสถานะ release เป็น `PASS` แล้ว
 
-ลำดับงานแนะนำต่อจากนี้ (ข้อ 1–4 เดิมทำแล้ว):
+ลำดับงานแนะนำต่อจากนี้ (เมนู, release reconciliation และ revision binding ทำแล้ว; งานข้อมูลวิศวกรรมด้านล่างยังค้าง):
 (1) Owner กรอกข้อมูลผลิตภัณฑ์ที่ใช้จริงลง registry และรีวิว (B2) แล้วให้ legacy อ่าน catalog เดียวกัน (B3) →
 (2) รวมความสามารถสองชุด: ใช้ ACI pressure / APA plywood / ตารางเหล็กไทยใน v0.7 คาน/พื้น/ผนัง →
 (3) ช่องว่างวิศวกรรม E: รวมแรงคานลง Shoring เดียว, ผนังผิวเดี่ยว, เสถียรภาพเสาเต็มความสูง, ledger จุดต่อ →
 (4) แบบ A3 สำหรับคาน/พื้น/ผนัง และ PDF worker (G1–G2) → (5) E2E บน emulator (G3) → (6) AI กับ provider จริง (F)
 
 ไม่มีข้อใดในเอกสารนี้เป็นการอนุมัติทางวิศวกรรม ทุกผลยังเป็น DRAFT / NO_GO / NOT FOR CONSTRUCTION
+
+## สถานะตรวจซ้ำหลังรอบปรับ Workflow
+
+รอบตรวจล่าสุดเพิ่มเมนูองค์อาคารหลักสำหรับฐานราก/เสา/ผนัง/คาน/พื้น, ตารางเตือนความสัมพันธ์ของ Design Case (ประเภท, ร่าง v0.7, ข้อมูลคำนวณ, id/ชื่อซ้ำ), ปุ่มแก้ความขัดแย้งแบบยืนยันโดยผู้ใช้, และแสดง Design Revision กับ review hash เดียวกันบนแบบ A3 และรายงาน A4. เพิ่ม checklist และ emulator audit ports เพื่อทำ backup, ตรวจ release และทดสอบซ้ำโดยไม่แตะ Production.
+
+หลักฐานการตรวจซ้ำ 2026-10-18: `npm test -- --maxWorkers=1` ผ่าน 99 files / 865 tests; `npm run test:visual` raster ผ่าน 21 sheets พร้อม Tahoma; typecheck/build/MCP build, Closure Pack 77 tests, Rules 84 tests และ Functions audit 12 checks ผ่าน. Browser acceptance บน emulator ผ่านการบันทึกร่างและแสดงแบบ A3 แปดแผ่นของ Beam/Slab/Wall. Production `verify:deployment` ผ่าน 13 checks รวม chunk แบบ v0.7 A3; `verify:release` ยืนยัน Hosting version `592b723a1cbe091e` / release `1792340126451000` FINALIZED เวลา `2026-10-18T16:15:26.451Z`; Functions ตรงกัน 10 exports บน Node 22 และ Firestore/Storage Rules hash ตรง source (`59c750f4f8402d9295e5737c0fcc4421ff8cffb94cbbebca1f62564bb63bf143`, `9b806d81d995abdd9fc091a5e2a4496be047d4e8c361572b632111cabf4c5826`). Registry ยังนำเข้า public และ Closure Pack Ringlock/Form Tie เป็น DRAFT โดยไม่สร้างขีดจำกัดอัตโนมัติ.
+Manual browser smoke บน local `127.0.0.1:5196` แสดงเมนู ELEMENT WORKFLOW ครบ 5 ระบบ, แสดง warning ของ Case ที่ชนิดไม่ตรง และ export backup ได้จริง. Browser acceptance บน emulator ชุดแยก `firebase.emulators-browser.json` ทำซ้ำได้ด้วย `scripts/seed-browser-emulator.mjs` และ `scripts/test-browser-acceptance.mjs`: สร้าง mock-up 10 Case แล้วตรวจเมนูทั้งห้า, เปิด Beam/Slab/Wall, ยืนยันปุ่มนำเข้า Registry และยืนยันรายละเอียด v0.7 เป็น `DRAFT / NO_GO`; Playwright run นี้เป็นการตรวจ emulator เท่านั้นและไม่แตะ Production.
+Production release ล่าสุดตรวจผ่าน `verify:deployment` และ `verify:release`: หน้าเว็บและ deployed A3 chunk อยู่ครบ, functions/rules identities ตรง source. Emulator Playwright ผ่านเมนูหลักทั้งห้า, Audit และ A3 8 แผ่นของ Beam/Slab/Wall; การคลิกพิมพ์ PDF จริงยังไม่ได้รับ acceptance. ข้อมูล CMG-002 ที่ต้อง reconcile ยังคงอยู่ (เช่น dropdown `F01 · ฐานราก` แต่หัวข้อแสดง `ผนัง`, และชื่อ F03/W02/B02 ซ้ำ). เมื่อ Case มีร่าง v0.7 ผลคำนวณ/แบบ/รายงานใช้ Snapshot เดียวกันและแสดง hash.
+ข้อเสนอ reconcile ที่ไม่เขียน Production ถูกจัดทำไว้ใน `docs/CMG-002_RECONCILIATION_PROPOSAL.md` และ audit ที่ทำซ้ำได้อยู่ใน `scripts/audit-project-backup.mjs`.
+
+ชุดกรอกข้อมูล Owner ที่รวม Case decisions, catalog evidence และ Design Basis อยู่ใน `docs/OWNER_INPUT_PACKET.md`; ยังไม่ใช่การอนุมัติหรือการเขียน Production.
+
+สิ่งที่ยังค้างและห้ามเติมค่าเดา: การ reconcile ข้อมูล Production ที่มี case id/ชื่อ/ประเภทชนกัน, catalog และ SWL/กำลังจริงจากผู้ผลิต, Design Basis/ข้อมูลฐานรองรับ, การตรวจจุดต่อและเสถียรภาพ, และการฝังฟอนต์/แบ่งหน้าของ PDF ที่พิมพ์จาก browser. จนกว่าจะมีหลักฐานเหล่านี้ ระบบต้องคงสถานะ INCOMPLETE/BLOCKED/NO_GO.

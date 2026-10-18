@@ -1,6 +1,8 @@
 /** Per-case document/title-block data shared by the A3 drawing set and the calculation report. Stored on the project case. */
 export interface RevisionEntry {rev: string; date: string; description: string}
 export interface TitleBlock {rev: string; date: string; designedBy: string; drawnBy: string; checkedBy: string; approvedBy: string; revisions: RevisionEntry[]}
+/** Identity displayed on both the calculation report and the A3 drawing set. */
+export interface DesignRevisionBinding {designRevision: string; contentHash: string; reviewState: string}
 
 const str = (v: unknown, max = 60) => typeof v === 'string' ? v.slice(0, max) : '';
 export const today = () => new Date().toLocaleDateString('th-TH');

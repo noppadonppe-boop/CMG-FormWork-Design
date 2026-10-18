@@ -1,9 +1,11 @@
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {describe, expect, it} from 'vitest';
+import publicCaptureText from '../src/reference/workflow-v07/public-reference-capture-2026-10-18.json?raw';
+import {closureReferences} from '../src/closurePackReferences';
 import {RegistryPanel} from '../src/components/RegistryPanel';
 import {screenBeamMemberResistance} from '../src/domain/workflowV07/beamResistance';
-import {beamEvidenceFromRegistry, emptyEntry, emptyLimit, emptyMethod, entriesForCheck, markDraft, markReviewed, resistanceEvidenceFromRegistry, seedRegistry,
+import {beamEvidenceFromRegistry, closureReferenceRegistryEntries, emptyEntry, emptyLimit, emptyMethod, entriesForCheck, markDraft, markReviewed, publicReferenceRegistryEntries, resistanceEvidenceFromRegistry, seedRegistry,
   sideLocalEvidenceFromRegistry, validateRegistry, validateRegistryEntry, type Registry} from '../src/domain/workflowV07/registry';
 import {screenSideLocalChecks} from '../src/domain/workflowV07/sideLocalChecks';
 
@@ -24,6 +26,29 @@ describe('reviewed registry', () => {
     expect(seed.entries.every(e => e.review.status === 'DRAFT' && e.limits.length === 0)).toBe(true);
     expect(seed.entries.find(e => e.id === 'BRACE-34MM-UNKNOWN')!.properties.wallThicknessMm).toBeNull();
     expect(entriesForCheck(seed, 'FLEXURE')).toHaveLength(0);
+  });
+  it('imports the updated public Ringlock/Form Tie capture as DRAFT properties without resistance limits', () => {
+    const entries = publicReferenceRegistryEntries(JSON.parse(publicCaptureText), NOW);
+    expect(entries).toHaveLength(15);
+    expect(entries.filter(e => e.kind === 'TIE')).toHaveLength(2);
+    expect(entries.filter(e => e.kind === 'SHORING')).toHaveLength(6);
+    expect(entries.filter(e => e.kind === 'BRACE')).toHaveLength(7);
+    expect(entries.every(e => e.review.status === 'DRAFT' && e.limits.length === 0 && e.sourceRevision.includes('@ 2026-10-18'))).toBe(true);
+    expect(entries.find(e => e.id === 'REF-DOKA-RINGLOCK-STD-1')!.sourceRevision).toBe('11/2020 @ 2026-10-18');
+    expect(entries.find(e => e.id === 'REF-FORM-TIE-INNER-UNIT-B9')!.properties.publisher_value).toBe(20);
+    expect(entries.find(e => e.id === 'REF-DOKA-RINGLOCK-STD-1')!.properties.publisher_compression_kN).toBe(55);
+    expect(() => publicReferenceRegistryEntries(JSON.parse(publicCaptureText.replace('"automatic_import_into_app": false', '"automatic_import_into_app": true')), NOW)).toThrow(/release gate/);
+  });
+  it('imports Closure Pack Form Tie and Ringlock rows as DRAFT properties without limits', () => {
+    const entries = closureReferenceRegistryEntries(closureReferences.formTie, closureReferences.ringlockSidecar, NOW);
+    expect(entries).toHaveLength(28);
+    expect(entries.filter(e => e.kind === 'TIE')).toHaveLength(11);
+    expect(entries.filter(e => e.kind === 'SHORING')).toHaveLength(6);
+    expect(entries.filter(e => e.kind === 'BRACE')).toHaveLength(7);
+    expect(entries.filter(e => e.kind === 'OTHER')).toHaveLength(4);
+    expect(entries.every(e => e.review.status === 'DRAFT' && e.limits.length === 0)).toBe(true);
+    expect(entries.find(e => e.id === 'REF-CLOSURE-FORM-TIE-BOOK-T46-B')!.properties.allowable_tensile_load_kN).toBeCloseTo(20.593965);
+    expect(entries.find(e => e.id === 'REF-CLOSURE-RINGLOCK-DOKA20-JOINT-My')!.properties.published_limits_json).toContain('1.05');
   });
   it('requires reviewer identity, values and method ids before an item can be REVIEWED', () => {
     expect(() => markReviewed(emptyEntry('X', 'OTHER', NOW), '   ', NOW)).toThrow(/Reviewer identity/);
@@ -63,9 +88,11 @@ describe('reviewed registry', () => {
   });
   it('renders the library with reviewer identity and statuses but no approval wording', () => {
     const registry = reviewedRegistry();
-    const html = renderToStaticMarkup(<RegistryPanel registry={{...registry, entries: [...registry.entries, ...seedRegistry(NOW).entries]}} reviewerName={REVIEWER} canReview canDelete onSave={() => {}} onDelete={() => {}}/>);
+    const html = renderToStaticMarkup(<RegistryPanel registry={{...registry, entries: [...registry.entries, ...seedRegistry(NOW).entries]}} reviewerName={REVIEWER} canReview canDelete onSave={() => {}} onDelete={() => {}} onSeedPublic={() => {}} onSeedClosure={() => {}}/>);
     expect(html).toContain('RHS-50x100x3.2'); expect(html).toContain('REVIEWED · Noppadon P · Engineer');
     expect(html).toContain('BRACE-34MM-UNKNOWN'); expect(html).toContain('ยังไม่มีขีดจำกัด');
+    expect(html).toContain('นำเข้า Ringlock / Form Tie ล่าสุดเป็น DRAFT');
+    expect(html).toContain('นำเข้า Closure Pack Form Tie / Ringlock เป็น DRAFT');
     expect(html).not.toMatch(/<td>[^<]*\b(PASS|APPROVED)\b/);
   });
 });

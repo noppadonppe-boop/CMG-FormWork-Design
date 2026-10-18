@@ -33,6 +33,13 @@ describe('slab workspace, drawings and report', () => {
     expect(report.match(/class="rp-check"/g)?.length).toBe(r.checks.length);
   });
 
+  it('prints one revision and review hash on both slab outputs', () => {
+    const r = calculateSlab(slabDefaults), binding = {designRevision: 'R-S01-2', contentHash: 'fedcba9876543210fedcba9876543210', reviewState: 'REVIEWED'};
+    const sheets = renderToStaticMarkup(<SlabDrawingSet r={r} project="P" code="C-1" caseName="S01" titleBlock={tb} canEdit onTitleBlockChange={() => {}} revisionBinding={binding}/>);
+    const report = renderToStaticMarkup(<SlabReport r={r} project="P" code="C-1" caseName="S01" caseId="s01" titleBlock={tb} revisionBinding={binding}/>);
+    for (const html of [sheets, report]) {expect(html).toContain('R-S01-2'); expect(html).toContain('REVIEWED'); expect(html).toContain('fedcba9876543210');}
+  });
+
   it('applies spacing advice and keeps confirmation for non-geometry edits', async () => {
     const host = document.createElement('div'); document.body.appendChild(host);
     let latest: SlabInput = {...slabDefaults, confirmed: true};
