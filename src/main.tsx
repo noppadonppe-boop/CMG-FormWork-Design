@@ -56,11 +56,14 @@ const ELEMENT_TYPES: {id: ElementType; label: string}[] = [
  {id:'FOOTING',label:'ฐานราก'}, {id:'COLUMN',label:'เสา'}, {id:'WALL',label:'ผนัง'}, {id:'BEAM',label:'คาน'}, {id:'SLAB',label:'พื้น'},
 ];
 const KEY='cmg-formwork-demo-v1';
+let localExampleCaseNo=0;
+const PROJECT_EXAMPLE_LOCAL_ID='project-example-local';
+const PROJECT_EXAMPLE_LOCAL:Project={...projectExample('PROJECT-EXAMPLE-LOCAL',()=>`PROJECT-EXAMPLE-LOCAL-${++localExampleCaseNo}`),id:PROJECT_EXAMPLE_LOCAL_ID};
 const initial:Project[]=[{id:'demo-industrial',name:'โครงการโรงงานอุตสาหกรรม',code:'CMG-2026-001',cases:[
  {id:'F01',name:'F01 · ฐานราก 3 × 4 เมตร',input:{...defaults}},
  {id:'F02',name:'F02 · ฐานรากรูปตัว L',input:{...defaults,shape:'L',width:4000,length:3000,armX:2000,armY:2000}},
  {id:'C01',name:'C01 · เสา 1 × 1 เมตร',input:{...defaults,kind:'COLUMN',width:1000,length:1000,height:8000,armX:500,armY:500}}
-]}];
+]}, PROJECT_EXAMPLE_LOCAL];
 function hydrate(raw:unknown[]):Project[]{
  return raw.flatMap(value=>{
   if(!value||typeof value!=='object')return [];
@@ -87,8 +90,9 @@ function hydrate(raw:unknown[]):Project[]{
 const REGISTRY_KEY='cmg-formwork-registry-v1';
 // Offline registry: a stored list wins; missing/corrupt data seeds published-source DRAFT items.
 function storedRegistry():Registry{if(configured)return emptyRegistry();try{const v=JSON.parse(localStorage.getItem(REGISTRY_KEY)||'null');if(v===null)return seedRegistry();validateRegistry(v);return v;}catch{return seedRegistry();}}
+function withLocalProjectExample(projects:Project[]):Project[]{return projects.some(p=>p.name==='Project Example'||p.code==='PROJECT-EXAMPLE-001')?projects:[...projects,PROJECT_EXAMPLE_LOCAL];}
 // An explicitly stored empty list stays empty (all projects deleted); missing or corrupt data seeds the demo.
-function stored():Project[]{if(configured)return [];try{const v=JSON.parse(localStorage.getItem(KEY)||'null');if(!Array.isArray(v))return initial;const result=hydrate(v);return result.length||!v.length?result:initial;}catch{return initial;}}
+function stored():Project[]{if(configured)return [];try{const v=JSON.parse(localStorage.getItem(KEY)||'null');if(!Array.isArray(v))return initial;const result=hydrate(v);return result.length||!v.length?withLocalProjectExample(result):initial;}catch{return initial;}}
 const f=(n:number|null,d=2)=>n===null?'—':n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
 function Plan({input,result,large=false}:{input:Input;result:Result|null;large?:boolean}){
  let ps;try{validateInput(input);ps=polygon(input);}catch{return <p>ตรวจมิติและระยะให้ถูกต้องก่อนแสดงภาพ</p>;}
@@ -159,7 +163,7 @@ function App(){
  async function seedClosureReferenceItems(entries: RegistryEntry[]){const existing=new Set(registry.entries.map(e=>e.id));const fresh=entries.filter(e=>!existing.has(e.id));for(const e of fresh)await saveRegistry({type:'entry',value:e});setMessage(fresh.length?`นำเข้า Closure Pack Form Tie/Ringlock ${fresh.length} รายการเป็น DRAFT · ยังไม่ใช่กำลังโครงการ`:'รายการ Closure Pack นี้มีอยู่แล้วในคลัง');}
  const backupPicker=useRef<HTMLInputElement>(null);
  const autoSaveLock=useRef(false),lastAutoSaved=useRef('');
- const p=projects.find(p=>p.id===projectId)||projects[0]||initial[0],c=p.cases.find(c=>c.id===caseId)||p.cases[0],x=c.input,uid=firebaseUser?.uid||'',canEditCurrentProject=canProject(userProfile,p.id,'edit');
+ const p=projects.find(p=>p.id===projectId)||projects[0]||initial[0],c=p.cases.find(c=>c.id===caseId)||p.cases[0],x=c.input,uid=firebaseUser?.uid||'',localExample=p.id===PROJECT_EXAMPLE_LOCAL_ID,canEditCurrentProject=(!localExample||!configured)&&(!configured||canProject(userProfile,p.id,'edit'));
  const caseAudit=useMemo(()=>auditCaseIdentities(p.cases),[p.cases]),currentIntegrityIssues=caseAudit.byCase[c.id]??[];
  const nameSuggestedType=suggestedElementTypeFromName(c.name),hasNamePrefixMismatch=currentIntegrityIssues.some(issue=>issue.code==='NAME_PREFIX_TYPE_MISMATCH');
  useEffect(()=>{setWorkflowElementType(c.workflowElementType??(c.input.kind as ElementType));},[c.id,c.workflowElementType,c.input.kind]);
@@ -199,9 +203,10 @@ function App(){
    try{
     const loaded=hydrate(await loadProjects(userProfile));
     if(cancelled)return;
-    setProjects(loaded);
-    if(loaded.length){setProjectId(loaded[0].id);setCaseId(loaded[0].cases[0].id);setMessage('เชื่อมต่อ Firebase แล้ว · แสดงเฉพาะโครงการที่คุณมีสิทธิ์เข้าถึง');}
-    else setMessage(hasRole(userProfile,'MasterAdmin')?'เชื่อมต่อ Firebase แล้ว · ยังไม่มีโครงการ กดเพิ่มโครงการเพื่อเริ่มงาน':'ยังไม่มีโครงการที่ได้รับมอบหมายจาก MasterAdmin');
+    const visible=withLocalProjectExample(loaded);
+    setProjects(visible);
+    if(loaded.length){setProjectId(loaded[0].id);setCaseId(loaded[0].cases[0].id);setMessage('เชื่อมต่อ Firebase แล้ว · แสดงเฉพาะโครงการที่คุณมีสิทธิ์เข้าถึง พร้อม Project Example แบบ local read-only');}
+    else {setProjectId(PROJECT_EXAMPLE_LOCAL_ID);setCaseId(PROJECT_EXAMPLE_LOCAL.cases[0].id);setMessage(hasRole(userProfile,'MasterAdmin')?'ยังไม่มีโครงการใน Firebase · เปิด Project Example แบบ local แล้ว กด “สร้าง Project Example” เพื่อบันทึกเข้า Firebase':'ยังไม่มีโครงการที่ได้รับมอบหมายจาก MasterAdmin · เปิด Project Example แบบ local read-only ให้แล้ว');}
    }catch(e){if(!cancelled)setMessage((e as Error).message);}
    finally{if(!cancelled)setBusy(false);}
   })();
@@ -271,7 +276,7 @@ function App(){
  const canManageProjects=!configured||hasRole(userProfile,'MasterAdmin');
  async function addMockProject(){
    if(!canManageProjects)return;
-   const z:Project=projectExample('PROJECT-EXAMPLE-'+String(projects.length+1).padStart(3,'0'));
+   const z:Project=projectExample('PROJECT-EXAMPLE-'+String(projects.filter(q=>q.id!==PROJECT_EXAMPLE_LOCAL_ID).length+1).padStart(3,'0'));
    setProjects(v=>[...v,z]);setProjectId(z.id);setCaseId(z.cases[0].id);setWorkflowElementType(z.cases[0].workflowElementType??'FOOTING');setTab('overview');
    const done='สร้าง Project Example แล้ว · ฐานราก เสา ผนัง คาน พื้น อย่างละ 2 แบบ · ทุกฟิลด์มีค่าและแหล่งอ้างอิงตัวอย่าง · SWL ที่ไม่มีหลักฐานเป็น 0/UNKNOWN · NO_GO';
    if(!configured){setMessage(done+' · โหมดออฟไลน์');return;}
@@ -282,6 +287,7 @@ function App(){
  }
  async function removeProject(){
    if(!canManageProjects||!projects.some(q=>q.id===p.id))return;
+   if(localExample){setProjects(ps=>ps.filter(q=>q.id!==PROJECT_EXAMPLE_LOCAL_ID));setProjectId('');setCaseId('');setMessage('ซ่อน Project Example แบบ local แล้ว · ไม่ได้ลบข้อมูล Firebase');return;}
    if(!window.confirm(`ลบโครงการ "${p.name}" (${p.code}) พร้อม Design Case ทั้งหมด ${p.cases.length} รายการ${configured?' รวมข้อมูลและไฟล์ใน Firebase':''}?\nการลบย้อนกลับไม่ได้ ควรสำรองโครงการก่อน`))return;
    if(configured){
      setBusy(true);
@@ -417,8 +423,8 @@ function App(){
  {tab==='library'&&<RegistryPanel registry={registry} reviewerName={reviewerName} canReview={canReviewRegistry} canDelete={!configured||hasRole(userProfile,'MasterAdmin')} onSave={saveRegistry} onDelete={removeRegistryItem} onSeed={seedRegistryItems} onSeedPublic={seedPublicReferenceItems} onSeedClosure={seedClosureReferenceItems}/>}
   {tab==='connections'&&<section className="card" aria-label="จุดต่อและค้ำยัน"><h2>จุดต่อและค้ำยัน / Connections &amp; Bracing</h2><p>หน้านี้รวมรายการตรวจที่ยังต้องมีหลักฐานจริงก่อนออกแบบ: Tie และแผ่นรอง/นัต/เกลียว, คานต่อ/จุดต่อ, U-head, Jack Base, Ringlock ledger/brace, ค้ำยัน, anchor และเสถียรภาพรวม</p><div className="notice">สถานะปัจจุบัน: BLOCKED / NO_GO · ระบบจะไม่สร้างกำลังหรือ SWL จากขนาดหน้าตัดหรือชื่อผู้ผลิต</div><ul className="blockers"><li>ตรวจสอบ product identity, รุ่น, batch และเอกสารกำลังของชุดประกอบให้ตรงกับ Design Revision</li><li>ผูกแรงปฏิกิริยาและจุดพิกัดจริงกับ connection/anchor ทุกจุด</li><li>ยืนยันฐานแรง (SERVICE หรือ FACTORED), allowable/design resistance และขอบเขตการใช้</li><li>ตรวจ buckling, joint stiffness, bearing, uplift, lateral restraint และ global stability</li></ul>{practical&&<button className="btn" onClick={()=>{setTab('overview');setShowV07(true);}}>เปิด Workflow v0.7 สำหรับกรอกหลักฐาน</button>}<p className="muted">ข้อมูลผลิตภัณฑ์และขีดจำกัดกรอกได้ที่เมนูคลังวัสดุ/วิธีคำนวณ แต่รายการ DRAFT ยังเป็น REFERENCE_ONLY และไม่ทำให้ผลเป็น PASS</p></section>}
  {tab==='audit'&&<><section className="card" aria-label="Audit และ Settings"><h2>Audit &amp; Settings</h2><p>ตรวจความสัมพันธ์ของ Design Case, Design Revision, Review และข้อมูลสำรองในโครงการปัจจุบัน</p><div className="metrics"><div><small>CASES</small><strong>{p.cases.length}</strong></div><div><small>ISSUES</small><strong>{p.cases.reduce((n,z)=>n+(caseAudit.byCase[z.id]?.length??0),0)}</strong></div><div><small>DUPLICATE NAMES</small><strong>{caseAudit.duplicateNames.length}</strong></div><div><small>V07 REVISION</small><strong>{c.workflowV07?.model.revisionId||`CASE-${c.id}`}</strong></div></div><table><thead><tr><th>Case</th><th>ประเภท</th><th>Revision</th><th>Review</th><th>Issues</th><th></th></tr></thead><tbody>{p.cases.map(z=>{const issues=caseAudit.byCase[z.id]??[];return <tr key={z.id}><td>{z.name}</td><td>{z.workflowElementType??z.input.kind}</td><td>{z.workflowV07?.model.revisionId||`CASE-${z.id}`}</td><td>{z.review?.state||'DRAFT'}{z.review?.contentHash?` · ${z.review.contentHash.slice(0,10)}`:''}</td><td>{issues.length?issues.map(issue=>issue.code).join(', '):'—'}</td><td><button className="text-btn" onClick={()=>{setCaseId(z.id);setWorkflowElementType(z.workflowElementType??(z.input.kind as ElementType));setTab('overview');}}>เปิด</button></td></tr>;})}</tbody></table>{(caseAudit.duplicateNames.length||caseAudit.duplicateIds.length)&&<div className="warning">พบชื่อซ้ำ {caseAudit.duplicateNames.length} รายการ / ID ซ้ำ {caseAudit.duplicateIds.length} รายการ · กรุณาสำรองโครงการและแก้ทีละ Case โดยผู้มีอำนาจ</div>}<p className="muted">การแก้ชื่อ/ประเภทและการลบร่างต้องกดยืนยันในหน้า Case; ระบบไม่แก้ Production อัตโนมัติจาก prefix หรือข้อมูลอ้างอิง</p></section><ReconciliationPanel projectId={p.id} projectCode={p.code} cases={p.cases.map(z=>({id:z.id,name:z.name,storedType:(z.workflowElementType??z.input.kind) as ElementType}))} canEdit={canEditCurrentProject}/></>}
- {tab==='overview'&&p.name==='Project Example'&&practical&&<section className="card"><h3>Project Example · แหล่งอ้างอิงของข้อมูลตัวอย่าง</h3><p className="muted">ค่ามิติและพารามิเตอร์นี้จัดไว้เพื่อสาธิตการกรอกข้อมูลและการเปิดแบบเท่านั้น ทุก case ยังเป็น MOCK-UP / NO_GO</p><ul className="blockers">{Object.entries(PROJECT_EXAMPLE_REFERENCES).map(([key,value])=><li key={key}><b>{key}</b> · {value}</li>)}</ul><div className="warning"><AlertTriangle size={18}/><p>ค่ากำลัง SWL ของค้ำยัน, Ringlock, Form Tie และพุกยังเป็น 0/UNKNOWN จึงห้ามออกเอกสารพร้อมใช้ก่อสร้างจนกว่าจะผูกใบรับรอง/Configuration/Design Basis จริง</p></div></section>}
- {tab==='overview'&&legacyElement&&<><section className="hero"><div><span className="eyebrow">FROM DRAWING TO CALCULATION</span><h2>จัดวางแบบหล่อ<br/>พร้อมหลักฐานที่ตรวจสอบได้</h2><p>รับแบบ · ยืนยันมิติ · เปรียบเทียบการจัดวาง · ตรวจสมาชิก · รายงานร่าง</p><button className="btn light" onClick={()=>setTab('upload')}><Upload size={17}/>เริ่มจาก PDF / ภาพสเก็ตช์</button></div><div className="hero-diagram"><Layers size={92} strokeWidth=".7"/><span>PLYWOOD + STEEL FRAME</span></div></section>{p.name==='Project Example'&&<section className="card"><h3>Project Example · แหล่งอ้างอิงของข้อมูลตัวอย่าง</h3><p className="muted">ค่ามิติและพารามิเตอร์นี้จัดไว้เพื่อสาธิตการกรอกข้อมูลและการเปิดแบบเท่านั้น ทุก case ยังเป็น MOCK-UP / NO_GO</p><ul className="blockers">{Object.entries(PROJECT_EXAMPLE_REFERENCES).map(([key,value])=><li key={key}><b>{key}</b> · {value}</li>)}</ul><div className="warning"><AlertTriangle size={18}/><p>ค่ากำลัง SWL ของค้ำยัน, Ringlock, Form Tie และพุกยังเป็น 0/UNKNOWN จึงห้ามออกเอกสารพร้อมใช้ก่อสร้างจนกว่าจะผูกใบรับรอง/Configuration/Design Basis จริง</p></div></section>}
+ {tab==='overview'&&p.name==='Project Example'&&practical&&<section className="card"><h3>Project Example · แหล่งอ้างอิงของข้อมูลตัวอย่าง</h3><p className="muted">{localExample?'โครงการนี้เป็น local read-only เพราะยังไม่มีรายการเดียวกันใน Firebase · MasterAdmin กด “สร้าง Project Example” เพื่อบันทึกเป็นโครงการจริงได้':'ค่ามิติและพารามิเตอร์นี้จัดไว้เพื่อสาธิตการกรอกข้อมูลและการเปิดแบบเท่านั้น'} ทุก case ยังเป็น MOCK-UP / NO_GO</p><ul className="blockers">{Object.entries(PROJECT_EXAMPLE_REFERENCES).map(([key,value])=><li key={key}><b>{key}</b> · {value}</li>)}</ul><div className="warning"><AlertTriangle size={18}/><p>ค่ากำลัง SWL ของค้ำยัน, Ringlock, Form Tie และพุกยังเป็น 0/UNKNOWN จึงห้ามออกเอกสารพร้อมใช้ก่อสร้างจนกว่าจะผูกใบรับรอง/Configuration/Design Basis จริง</p></div></section>}
+ {tab==='overview'&&legacyElement&&<><section className="hero"><div><span className="eyebrow">FROM DRAWING TO CALCULATION</span><h2>จัดวางแบบหล่อ<br/>พร้อมหลักฐานที่ตรวจสอบได้</h2><p>รับแบบ · ยืนยันมิติ · เปรียบเทียบการจัดวาง · ตรวจสมาชิก · รายงานร่าง</p><button className="btn light" onClick={()=>setTab('upload')}><Upload size={17}/>เริ่มจาก PDF / ภาพสเก็ตช์</button></div><div className="hero-diagram"><Layers size={92} strokeWidth=".7"/><span>PLYWOOD + STEEL FRAME</span></div></section>{p.name==='Project Example'&&<section className="card"><h3>Project Example · แหล่งอ้างอิงของข้อมูลตัวอย่าง</h3><p className="muted">{localExample?'โครงการนี้เป็น local read-only เพราะยังไม่มีรายการเดียวกันใน Firebase · MasterAdmin กด “สร้าง Project Example” เพื่อบันทึกเป็นโครงการจริงได้':'ค่ามิติและพารามิเตอร์นี้จัดไว้เพื่อสาธิตการกรอกข้อมูลและการเปิดแบบเท่านั้น'} ทุก case ยังเป็น MOCK-UP / NO_GO</p><ul className="blockers">{Object.entries(PROJECT_EXAMPLE_REFERENCES).map(([key,value])=><li key={key}><b>{key}</b> · {value}</li>)}</ul><div className="warning"><AlertTriangle size={18}/><p>ค่ากำลัง SWL ของค้ำยัน, Ringlock, Form Tie และพุกยังเป็น 0/UNKNOWN จึงห้ามออกเอกสารพร้อมใช้ก่อสร้างจนกว่าจะผูกใบรับรอง/Configuration/Design Basis จริง</p></div></section>}
  <div className="metrics"><div><small>CONCRETE VOLUME</small><strong>{f(r?.volume??null)}<em>m³</em></strong></div><div><small>SIDE FORMWORK AREA</small><strong>{f(r?.formArea??null)}<em>m²</em></strong></div><div><small>MAX. FRESH PRESSURE</small><strong>{f(r?.pressure??null,1)}<em>kPa</em></strong></div><div><small>ENGINEERING STATUS</small><strong className="amber">{r?.status||'INVALID'}</strong><span>ต้องตรวจส่วนที่ยังขาด</span></div></div>
  <div className="grid two"><section className="card"><div className="card-title"><h3>รูปทรงและแนวจัดวาง</h3><button className="text-btn" onClick={()=>setTab('geometry')}>แก้ไขมิติ →</button></div><Plan input={x} result={r}/></section><section className="card"><h3>ขั้นตอนของแบบนี้</h3><div className="steps">{[['01','รับแบบต้นฉบับ',sourceName||'เพิ่ม PDF/ภาพ หรือป้อนมิติด้วยตนเอง'],['02','ยืนยันรูปทรง',x.confirmed?'ยืนยันแล้ว':'ยังไม่ยืนยัน'],['03','จัดวางเบื้องต้น','เปรียบเทียบตัวเลือกจากระบบ'],['04','ตรวจรายการคำนวณ','คัดกรองสมาชิกและแสดงส่วนที่ยังขาด'],['05','รายงานและแบบติดตั้ง','ส่งออกรายงานร่างได้']].map(([n,a,b])=><div key={n}><span>{n}</span><section><b>{a}</b><p>{b}</p></section></div>)}</div><div className="warning"><AlertTriangle size={18}/><p>ต้นแบบนี้ยังไม่ครบสำหรับออกแบบก่อสร้างจริง ทุกค่าที่ใช้คัดกรองแสดงที่มาและข้อจำกัด</p></div></section></div></>}
 
