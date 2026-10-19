@@ -3,7 +3,8 @@ import {validateSlabInput,type SlabInput} from './slab.js';
 import {validateWallInput,type WallInput} from './wall.js';
 import {upgradeInput,validateInput,type Input} from './index.js';
 import type {ElementType} from './workflowV07/common.js';
-export interface BackupProject{id:string;name:string;code:string;cases:{id:string;name:string;input:Input;workflowElementType?:ElementType;beam?:BeamInput;slab?:SlabInput;wall?:WallInput}[]}
+import {parseStoredWorkflowDraft,type StoredWorkflowDraft} from './workflowV07/storage.js';
+export interface BackupProject{id:string;name:string;code:string;cases:{id:string;name:string;input:Input;workflowElementType?:ElementType;workflowV07?:StoredWorkflowDraft;beam?:BeamInput;slab?:SlabInput;wall?:WallInput}[]}
 const ELEMENTS:readonly string[]=['FOOTING','COLUMN','WALL','BEAM','SLAB'];
 export function parseProjectBackup(text:string,makeId:()=>string=()=>crypto.randomUUID()):BackupProject{
   if(text.length>2*1024*1024)throw Error('ไฟล์โครงการใหญ่เกินขอบเขต');
@@ -16,6 +17,7 @@ export function parseProjectBackup(text:string,makeId:()=>string=()=>crypto.rand
     const beam='beam' in item&&item.beam!=null?{...validateBeamInput(item.beam),confirmed:false}:undefined;
     const slab='slab' in item&&item.slab!=null?{...validateSlabInput(item.slab),confirmed:false}:undefined;
     const wall='wall' in item&&item.wall!=null?{...validateWallInput(item.wall),confirmed:false}:undefined;
-    return {id:makeId(),name:item.name,input:{...(raw.schemaVersion===3?validateInput(item.input):upgradeInput(item.input,raw.schemaVersion)),confirmed:false},...(element!==undefined?{workflowElementType:element as ElementType}:{}),...(beam?{beam}:{}),...(slab?{slab}:{}),...(wall?{wall}:{})};
+    const workflowV07='workflowV07' in item&&item.workflowV07!=null?parseStoredWorkflowDraft(item.workflowV07):undefined;
+    return {id:makeId(),name:item.name,input:{...(raw.schemaVersion===3?validateInput(item.input):upgradeInput(item.input,raw.schemaVersion)),confirmed:false},...(element!==undefined?{workflowElementType:element as ElementType}:{}),...(workflowV07?{workflowV07}:{}),...(beam?{beam}:{}),...(slab?{slab}:{}),...(wall?{wall}:{})};
   })};
 }

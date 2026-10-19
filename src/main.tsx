@@ -3,7 +3,7 @@ import {createRoot} from 'react-dom/client';
 import {LayoutDashboard,FolderOpen,Layers,Upload,Settings2,FileText,CheckCircle2,AlertTriangle,Plus,Save,Download,ChevronRight,Building2,RotateCcw,LogIn,Users,Bell,BookOpen,Trash2,Link2,ShieldCheck} from 'lucide-react';
 import {calculate,columnDefaults,defaults,extensionDefaults,polygon,positions,segmentInside,validateInput,type Input,type Result} from './domain';
 import {parseProjectBackup} from './domain/projectBackup';
-import {PROJECT_EXAMPLE_REFERENCES, projectExample} from './domain/mockProject';
+import {PROJECT_EXAMPLE_REFERENCES, projectExample, projectExampleWorkflowDraft} from './domain/mockProject';
 import {WalerDetails} from './components/WalerDetails';
 import {AssemblyDetail} from './components/AssemblyDetail';
 import {ColumnCriteria,ColumnYokeDetails} from './components/ColumnYokeDetails';
@@ -90,7 +90,14 @@ function hydrate(raw:unknown[]):Project[]{
 const REGISTRY_KEY='cmg-formwork-registry-v1';
 // Offline registry: a stored list wins; missing/corrupt data seeds published-source DRAFT items.
 function storedRegistry():Registry{if(configured)return emptyRegistry();try{const v=JSON.parse(localStorage.getItem(REGISTRY_KEY)||'null');if(v===null)return seedRegistry();validateRegistry(v);return v;}catch{return seedRegistry();}}
-function withLocalProjectExample(projects:Project[]):Project[]{return projects.some(p=>p.name==='Project Example'||p.code==='PROJECT-EXAMPLE-001')?projects:[...projects,PROJECT_EXAMPLE_LOCAL];}
+function withLocalProjectExample(projects:Project[]):Project[]{
+ const found=projects.find(p=>p.name==='Project Example'||p.code==='PROJECT-EXAMPLE-001');
+ if(!found)return [...projects,PROJECT_EXAMPLE_LOCAL];
+ // Older Project Example records were saved before v0.7 drafts were attached. Rehydrate only
+ // the synthetic example's missing drafts from the same deterministic reference source; user
+ // projects and existing drafts are left untouched.
+ return projects.map(p=>p!==found?p:{...p,cases:p.cases.map(c=>c.workflowV07?c:{...c,workflowV07:projectExampleWorkflowDraft(c.input,c.workflowElementType??c.input.kind,c.id)})});
+}
 // An explicitly stored empty list stays empty (all projects deleted); missing or corrupt data seeds the demo.
 function stored():Project[]{if(configured)return [];try{const v=JSON.parse(localStorage.getItem(KEY)||'null');if(!Array.isArray(v))return initial;const result=hydrate(v);return result.length||!v.length?withLocalProjectExample(result):initial;}catch{return initial;}}
 const f=(n:number|null,d=2)=>n===null?'—':n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -281,7 +288,7 @@ function App(){
    const done='สร้าง Project Example แล้ว · ฐานราก เสา ผนัง คาน พื้น อย่างละ 2 แบบ · ทุกฟิลด์มีค่าและแหล่งอ้างอิงตัวอย่าง · SWL ที่ไม่มีหลักฐานเป็น 0/UNKNOWN · NO_GO';
    if(!configured){setMessage(done+' · โหมดออฟไลน์');return;}
    setBusy(true);
-   try{await saveProject(z,'overview',z.cases[0].id);setMessage(done+' · บันทึกไป Firebase แล้ว');}
+   try{await saveProject(z,'overview',z.cases[0].id);for(const exampleCase of z.cases)if(exampleCase.workflowV07)await saveWorkflowDraft(z.id,exampleCase.id,exampleCase.workflowV07);setMessage(done+' · บันทึกไป Firebase แล้ว รวม Draft v0.7 ของทั้ง 10 Case');}
    catch(e){setMessage(done+' แต่บันทึก Firebase ไม่สำเร็จ: '+(e as Error).message);}
    finally{setBusy(false);}
  }

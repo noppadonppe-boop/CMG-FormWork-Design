@@ -109,3 +109,20 @@ it('creates the complete Project Example with populated fields and traceable sou
   expect(PROJECT_EXAMPLE_REFERENCES.plywood).toContain('APA');
   expect(PROJECT_EXAMPLE_REFERENCES.sections).toContain('PAP-TIS107');
 });
+
+it('attaches a populated v0.7 draft to every Project Example case without inventing resistance', () => {
+  const p = projectExample('PROJECT-EXAMPLE-001', (() => {let n = 0; return () => `EX-${++n}`;})());
+  expect(p.cases.every(c => c.workflowV07)).toBe(true);
+  for (const c of p.cases) {
+    const model = c.workflowV07!.model;
+    expect(model.sourceRef).toContain('PROJECT-EXAMPLE');
+    expect(model.designBasisRef).toContain('ACI PRC-347');
+    expect(model.selections.section?.reference.section_id).toBe('PAP-2026-CLIP-100x50x20x3.2');
+    expect(model.selections.material?.reference.material_id).toBe('STEEL-SS400');
+    expect(model.selections.ringlock?.reference.component_id).toBe('DOKA21-301011500');
+    expect(model.humanInputReviewed).toBe(false);
+    expect(model.ringlockRating).toBeNull();
+  }
+  const restored = parseProjectBackup(JSON.stringify({schemaVersion: 3, project: p}));
+  expect(restored.cases.every(c => c.workflowV07)).toBe(true);
+});
