@@ -19,10 +19,12 @@ import {selectRinglockPlan} from './workflowV07/ringlockPlan.js';
 import {emptyHeadBearing} from './workflowV07/headBearing.js';
 import {CASE_ACTIONS} from './workflowV07/caseFactors.js';
 import {stampLoadCases} from './workflowV07/loadCases.js';
+import {completeProjectExampleInputs, completeExamplePractical, EXAMPLE_DATA_VERSION} from './projectExampleCompletion.js';
+import {exampleEvidenceWorksheets} from './projectExampleEvidence.js';
 
 /** A teaching dataset, not a product certificate. Geometry/arrangements are explicitly
  * synthetic; E, I and mass below come from the checked-in source tables. */
-export const PROJECT_EXAMPLE_REVISION = 'PROJECT-EXAMPLE-INPUTS-2';
+export const PROJECT_EXAMPLE_REVISION = EXAMPLE_DATA_VERSION;
 export const EXAMPLE_GEOMETRY = 'PROJECT-EXAMPLE / SYNTHETIC geometry · docs/PROJECT_EXAMPLE.md';
 export const EXAMPLE_PENDING = 'ยังไม่มีหลักฐานสินค้าจริง/หน้างาน — ต้องระบุก่อนตรวจรับ';
 const stageId = 'EX-POUR-01', loadCaseId = 'EX-SERVICE-01';
@@ -48,7 +50,7 @@ function member(id: string): MemberStiffness {
     selfWeightKNPerM: s.kg_per_m * 9.80665 / 1000, evidenceRef: `${id} · ${sectionSource}`};
 }
 const studId = 'PAP-TIS107-SHS-50x50x2.3', bearerId = 'PAP-TIS107-RHS-100x50x3.2';
-export interface ExampleContext {beam?: BeamInput; slab?: SlabInput; wall?: WallInput}
+export interface ExampleContext {beam?: BeamInput; slab?: SlabInput; wall?: WallInput; projectId?:string}
 
 function side(model: WorkflowModel): SideLayoutDefinition {
   const topology = pairFaces(model.vertices, model.heightMm);
@@ -204,7 +206,17 @@ export function projectExampleWorkflowDraft(input:Input,elementType:ElementType,
   m.loadCases=stampLoadCases(m,{schemaVersion:'1',cases:[{id:'EX-SERVICE',stageId,loadCaseId:'EX-SERVICE-CHECK',basis:'SERVICE',basisEvidenceRef:basis,
     sharedLayoutEvidenceRef:`${EXAMPLE_GEOMETRY} · same active pour layout and loads; explicit-factor walkthrough`,
     factors:Object.fromEntries(CASE_ACTIONS.map(k=>[k,['WIND','PLACEMENT','OTHER','IMPOSED_MOVEMENT'].includes(k)?0:1])) as NonNullable<WorkflowModel['analysisCase']>['factors']}]});
-  return createStoredWorkflowDraft(m,input,Date.parse('2026-10-19T12:00:00+07:00'));
+  return storeCompletedExample(m,input,context.projectId);
+}
+
+function storeCompletedExample(m:WorkflowModel,input:Input,projectId?:string):StoredWorkflowDraft {
+  m=completeProjectExampleInputs(m);
+  m.closureInputs=exampleEvidenceWorksheets(m,projectId);
+  const rating=m.ringlockRating;
+  m=regenerateDraftLayouts(m,{}, {allowIncomplete:true});
+  m.ringlockRating=rating;
+  if(m.loadCases)m.loadCases=stampLoadCases(m,m.loadCases);
+  return createStoredWorkflowDraft(m,input);
 }
 
 /** Replace only the known untouched, layout-free v1 seed. Authored drafts are never
@@ -214,9 +226,17 @@ export function isOldExampleSeed(d:StoredWorkflowDraft):boolean {
   return m.revisionId==='PROJECT-EXAMPLE-v0.7'&&m.sourceRef?.startsWith('PROJECT-EXAMPLE · PAP-TIS107')===true&&
     !m.humanInputReviewed&&!m.soffitLayout&&!m.sideLayout&&!m.frameLayout&&!m.supportLayout&&!m.members.length&&!m.actions.length;
 }
-export function upgradeProjectExampleCase<T extends {id:string;name:string;input:Input;workflowElementType?:ElementType;workflowV07?:StoredWorkflowDraft}&ExampleContext>(c:T):T {
+export function upgradeProjectExampleCase<T extends {id:string;name:string;input:Input;workflowElementType?:ElementType;workflowV07?:StoredWorkflowDraft}&ExampleContext>(c:T,projectId?:string):T {
   if(!/^Project Example · (F0[12]|C0[12]|W0[12]|B0[12]|S0[12]) · /.test(c.name))return c;
   const previous=c.workflowV07?.model;
+  if(previous?.revisionId==='PROJECT-EXAMPLE-INPUTS-2'&&previous.sourceRef?.startsWith('PROJECT-EXAMPLE')){
+    const next=structuredClone(previous);
+    next.revisionId=PROJECT_EXAMPLE_REVISION;next.humanInputReviewed=false;next.representatives=[];next.coverage=[];next.coverageReview=null;
+    const completed=completeExamplePractical(c);
+    const result={...completed,workflowV07:storeCompletedExample(next,completed.input,projectId)};
+    delete (result as typeof result & {review?:unknown}).review;
+    return result;
+  }
   if(previous&&(previous.soffitLayout||previous.sideLayout||previous.frameLayout||previous.supportLayout||previous.ringlockAssembly))return c;
   const workflowV07=projectExampleWorkflowDraft(c.input,c.workflowElementType??c.input.kind,c.id,c);
   if(c.workflowV07&&!isOldExampleSeed(c.workflowV07)){

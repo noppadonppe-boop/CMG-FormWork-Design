@@ -22,6 +22,11 @@ it('shows populated required soffit fields, saves a real edit, and restores it o
     const fields=[...host.querySelectorAll<HTMLInputElement>('.soffit-editor input[aria-required="true"]')];
     expect(fields.length).toBeGreaterThan(10);expect(fields.filter(f=>!f.value.trim())).toHaveLength(0);
     expect(host.querySelector('[data-testid="project-example-guide"]')?.textContent).toContain('18 แนวคร่าว');
+    for(const selector of ['.ringlock-assembly-editor','.frame-editor','.support-layout-editor','.closure-input-editor']){
+      const inputs=[...host.querySelectorAll<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>(`${selector} input:not([type="file"]):not([type="checkbox"]),${selector} select,${selector} textarea`)];
+      expect(inputs.length,selector).toBeGreaterThan(0);
+      expect(inputs.filter(i=>!i.disabled&&!i.hasAttribute('data-action-only')&&!i.value.trim()).map(i=>i.closest('label')?.textContent),selector).toEqual([]);
+    }
     const evidence=[...host.querySelectorAll('.soffit-editor label')].find(l=>l.textContent?.startsWith('หลักฐานตำแหน่งและโหลด'))!.querySelector('input')!;
     await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(evidence,'EXAMPLE edited source');evidence.dispatchEvent(new Event('input',{bubbles:true}));});
     expect(persist).not.toHaveBeenCalled();

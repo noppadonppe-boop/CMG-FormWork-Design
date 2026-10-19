@@ -1,4 +1,5 @@
-import {canonical, finite, record, signed} from './common.js';
+import {finite, record, signed} from './common.js';
+import {definitionHash} from './definitionHash.js';
 
 export const BEAM_MEMBER_EVIDENCE_SCHEMA = 'beam-member-evidence-1' as const;
 export const BEAM_MEMBER_QUANTITIES = ['FLEXURE', 'SHEAR', 'DEFLECTION'] as const;
@@ -56,7 +57,7 @@ export function emptyBeamMemberEvidence(quantity: BeamMemberQuantity | null = nu
 
 export function beamMemberEvidenceReference(role: string, rawMember: unknown) {
   const {resistanceEvidence: _evidence, ...member} = record(rawMember);
-  return canonical({role, member: {...member, binding: member.binding ?? null}});
+  return definitionHash({role, member: {...member, binding: member.binding ?? null}});
 }
 
 function exact(raw: unknown) {

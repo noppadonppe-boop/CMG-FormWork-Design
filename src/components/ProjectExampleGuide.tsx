@@ -5,7 +5,7 @@ import type {WorkflowModel} from '../domain/workflowV07/model';
  * each category of unavailable evidence beside the populated editable forms. */
 export function ProjectExampleGuide({model:m}:{model:WorkflowModel}){
   if(!m.sourceRef?.startsWith('PROJECT-EXAMPLE'))return null;
-  const vertical=!!m.soffitLayout,tied=!!m.sideLayout?.ties.length;
+  const vertical=!!m.soffitLayout;
   return <details open className="notice" data-testid="project-example-guide"><summary><strong>Project Example · ข้อมูลกรอกตัวอย่างและที่มา</strong></summary>
     <p>มิติและผังเป็นข้อมูลสมมติสำหรับฝึกกรอก แก้ไขได้ทุกช่อง ค่า E / I / น้ำหนักสมาชิกมาจาก PAP-TIS107, วัสดุ STKR400 และไม้อัด UPM007CPR 18 mm ตามหลักฐานในช่องนั้น</p>
     <table><thead><tr><th>ขั้นตอน</th><th>ข้อมูลในร่างนี้</th></tr></thead><tbody>
@@ -15,13 +15,7 @@ export function ProjectExampleGuide({model:m}:{model:WorkflowModel}){
       <tr><td>เฟรม / ฐาน</td><td>{m.frameLayout?`${m.frameLayout.nodes.length} จุด · ${m.frameLayout.elements.length} สมาชิก · ${m.supportLayout?.bases.length??0} ฐาน`:'ไม่มีเฟรมค้ำแนวดิ่งในตัวอย่าง through-tie'}{m.sideTopology==='COLUMN_YOKE'?' · ยึดจุดอ้างอิงสำหรับวิเคราะห์วงรัด ไม่มีฐานลงดิน':''}</td></tr>
       <tr><td>Stage / Load case</td><td>{m.soffitLayout?.stageId??m.sideLayout?.stageId} / {m.soffitLayout?.loadCaseId??m.sideLayout?.loadCaseId} · SERVICE · มีชุดตัวคูณตัวอย่างในขั้นกรณีโหลด</td></tr>
     </tbody></table>
-    <p>รายการ “รอตรวจ” รวมทั้งข้อจำกัดการวิเคราะห์และการอนุมัติ จึงไม่ใช่จำนวนช่องว่าง ข้อมูลต่อไปนี้ยังไม่มีหลักฐานจริงและยังเว้นค่ากำลังไว้:</p>
-    <ul>
-      {tied&&<li>กำลังชุด Form Tie และระยะหลบเหล็กเสริม — ระบุในแบบข้าง / ชุดไทร์</li>}
-      {vertical&&<li>Rating ของ Ringlock ตาม configuration และช่วงยืด/ระยะฝังที่อนุญาตของ Jack — ระบุใน Shoring / การประกอบรายขา</li>}
-      {m.frameLayout&&<li>กำลังสมาชิก/จุดต่อและเงื่อนไขยึดจริง — เฟรมตัวอย่างใช้สมมติฐานเชิงเส้นตามคำอธิบายในฟิลด์ ไม่ใช่ใบรับรองอุปกรณ์</li>}
-      {m.supportLayout&&<li>กำลังรับแรงกด พื้นรองรับ และพุก — ระบุในฐานรองรับ (ยังไม่มี Design Basis หน้างาน)</li>}
-      <li>หลักฐานกำลังไม้อัด/สมาชิกตามสภาพใช้งาน และการตรวจ–อนุมัติของผู้รับผิดชอบ</li>
-    </ul>
+    <p><strong>ข้อมูล Mock-up:</strong> ใส่ค่าฝึกกรอกสำหรับกำลังสมาชิก ชุดไทร์ 30 kN ค้ำยัน 30 kN/ขา พุก 20 kN และพื้นรองรับ 3 MPa ตามส่วนที่ใช้ในแต่ละระบบแล้ว พร้อมที่มาในฟิลด์และแก้ไขได้</p>
+    <p>EX-DB-01 (MOCK) คือ Design Basis สมมติของตัวอย่าง: เกณฑ์โก่ง min(L/360, 3 mm), พื้นเดิมหนา 200 mm, คอนกรีต 24 MPa อายุ 28 วัน ส่วน REFERENCE_ONLY คือสถานะข้อมูลอ้างอิง ตัวอย่างไม่ได้ลงลายเซ็นแทนผู้ตรวจ รายการ “รอตรวจ” เป็นผลตรวจและการอนุมัติ ไม่ใช่จำนวนช่องว่าง</p>
   </details>;
 }

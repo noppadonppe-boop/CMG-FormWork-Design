@@ -156,7 +156,7 @@ export function ClosureInputEditor({templates, baselines, context, currentRevisi
           {Object.keys(baseline.inputs).map(key => {
             if (type === 'ringlock_configuration' && key === 'systemPresetId') return null;
             const original = (baseline.inputs as Record<string, unknown>)[key], value = inputValues[key];
-            const isNumber = typeof original === 'number' || (original === null && NUMERIC_KEY.test(key));
+            const isNumber = typeof value === 'number' || typeof original === 'number' || (original === null && NUMERIC_KEY.test(key));
             const label = FIELD_LABEL[key] ?? key;
             if (Array.isArray(original) || Array.isArray(value) || typeof value === 'string' && Array.isArray(original)) return <label className="field closure-input-wide" key={key}>
               <span>{label} <small>JSON</small></span><textarea aria-label={label} value={typeof value === 'string' ? value : JSON.stringify(value ?? [], null, 2)} onChange={event => updateField(key, event.target.value)} onBlur={event => {

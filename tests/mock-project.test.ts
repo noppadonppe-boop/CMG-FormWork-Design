@@ -84,9 +84,9 @@ it('ships an importable Project Example file with populated reference fields', (
   expect(restored.code).toBe('PROJECT-EXAMPLE-001');
   expect(restored.cases).toHaveLength(10);
   expect(restored.cases.every(c => c.input.walerSectionId === 'PAP-TIS107-RHS-100x50x3.2' && c.input.studSectionId === 'PAP-TIS107-SHS-50x50x2.3')).toBe(true);
-  expect(restored.cases.filter(c => c.beam).every(c => c.beam!.shoreReference.includes('ringlock-research'))).toBe(true);
-  expect(restored.cases.filter(c => c.slab).every(c => c.slab!.shoreReference.includes('ringlock-research'))).toBe(true);
-  expect(restored.cases.filter(c => c.wall).every(c => c.wall!.braceReference.includes('ringlock-research'))).toBe(true);
+  expect(restored.cases.filter(c => c.beam).every(c => c.beam!.shoreReference.includes('MOCK'))).toBe(true);
+  expect(restored.cases.filter(c => c.slab).every(c => c.slab!.shoreReference.includes('MOCK'))).toBe(true);
+  expect(restored.cases.filter(c => c.wall).every(c => c.wall!.braceReference.includes('MOCK'))).toBe(true);
 });
 
 it('creates the complete Project Example with populated fields and traceable source labels', () => {
@@ -101,16 +101,16 @@ it('creates the complete Project Example with populated fields and traceable sou
   expect(p.cases.filter(c => c.beam).every(c => Object.values(c.beam!).every(v => v !== '' && v !== undefined && v !== null))).toBe(true);
   expect(p.cases.filter(c => c.slab).every(c => Object.values(c.slab!).every(v => v !== '' && v !== undefined && v !== null))).toBe(true);
   expect(p.cases.filter(c => c.wall).every(c => Object.values(c.wall!).every(v => v !== '' && v !== undefined && v !== null))).toBe(true);
-  expect(p.cases.filter(c => c.beam).every(c => c.beam!.shoreSWL === 0 && c.beam!.shoreReference.includes('ringlock-research'))).toBe(true);
-  expect(p.cases.filter(c => c.slab).every(c => c.slab!.shoreSWL === 0 && c.slab!.shoreReference.includes('ringlock-research'))).toBe(true);
-  expect(p.cases.filter(c => c.wall).every(c => c.wall!.braceSWL === 0 && c.wall!.braceReference.includes('ringlock-research'))).toBe(true);
+  expect(p.cases.filter(c => c.beam).every(c => c.beam!.shoreSWL === 30 && c.beam!.shoreReference.includes('MOCK'))).toBe(true);
+  expect(p.cases.filter(c => c.slab).every(c => c.slab!.shoreSWL === 30 && c.slab!.shoreReference.includes('MOCK'))).toBe(true);
+  expect(p.cases.filter(c => c.wall).every(c => c.wall!.braceSWL === 20 && c.wall!.braceReference.includes('MOCK'))).toBe(true);
   expect(p.cases.every(c => c.input.cornerReference.includes('form_tie_machine_bridge'))).toBe(true);
   expect(PROJECT_EXAMPLE_REFERENCES.loads).toContain('ACI PRC-347');
   expect(PROJECT_EXAMPLE_REFERENCES.plywood).toContain('APA');
   expect(PROJECT_EXAMPLE_REFERENCES.sections).toContain('PAP-TIS107');
 });
 
-it('attaches a populated v0.7 draft to every Project Example case without inventing resistance', () => {
+it('attaches a populated mock draft with explicitly assumed limits and no approval', () => {
   const p = projectExample('PROJECT-EXAMPLE-001', (() => {let n = 0; return () => `EX-${++n}`;})());
   expect(p.cases.every(c => c.workflowV07)).toBe(true);
   for (const c of p.cases) {
@@ -121,7 +121,7 @@ it('attaches a populated v0.7 draft to every Project Example case without invent
     expect(model.selections.material?.reference.material_id).toBe('STEEL-SSCS400');
     expect(model.selections.ringlock).toBeNull(); // CUSTOM geometry does not select a different manufacturer's component.
     expect(model.humanInputReviewed).toBe(false);
-    expect(model.ringlockRating).toBeNull();
+    expect(model.ringlockRating?.status??null).toBe(model.ringlock?'MOCK_REFERENCE_ONLY':null);
   }
   const restored = parseProjectBackup(JSON.stringify({schemaVersion: 3, project: p}));
   expect(restored.cases.every(c => c.workflowV07)).toBe(true);

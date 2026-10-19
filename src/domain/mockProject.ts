@@ -5,12 +5,14 @@ import {wallFromCase, validateWallInput, type WallInput} from './wall.js';
 import type {ElementType} from './workflowV07/common.js';
 import type {StoredWorkflowDraft} from './workflowV07/storage.js';
 import {projectExampleWorkflowDraft} from './projectExampleWorkflow.js';
+import {completeExamplePractical} from './projectExampleCompletion.js';
+import type {TitleBlock} from './titleBlock.js';
 export {projectExampleWorkflowDraft} from './projectExampleWorkflow.js';
 
 /** SYNTHETIC demonstration project: two cases for each element type. All dimensions are
  * illustrative mock-up values (mm), unconfirmed, and carry no engineering approval. Beam, slab
  * and wall inputs reuse the app's editable demo defaults; equipment SWL stays zero/unknown. */
-export interface MockCase {id: string; name: string; input: Input; workflowElementType: ElementType; workflowV07?: StoredWorkflowDraft; beam?: BeamInput; slab?: SlabInput; wall?: WallInput}
+export interface MockCase {id: string; name: string; input: Input; workflowElementType: ElementType; workflowV07?: StoredWorkflowDraft; beam?: BeamInput; slab?: SlabInput; wall?: WallInput;titleBlock?:TitleBlock}
 export interface MockProject {id: string; name: string; code: string; cases: MockCase[]}
 
 /**
@@ -49,7 +51,8 @@ export const MOCK_CASES: {code: string; name: string; type: ElementType; input: 
 ];
 
 function createMockProject(code: string, newId: () => string, name: string, caseName: (c: typeof MOCK_CASES[number]) => string): MockProject {
-  return {id: newId(), name, code,
+  const projectId=newId();
+  return {id: projectId, name, code,
     cases: MOCK_CASES.map((c): MockCase => {
       const input = validateInput({...c.input(), rhsB: 50, rhsH: 50, rhsT: 2.3, walerSectionId: MOCK_SECTION_WALER, studSectionId: MOCK_SECTION_STUD, cornerReference: MOCK_CONNECTION_REFERENCE});
       const footprint = {width: input.width, length: input.length, height: input.height};
@@ -71,7 +74,8 @@ function createMockProject(code: string, newId: () => string, name: string, case
         return {...base, wall: validateWallInput({...wall, ...(c.code === 'W02' ? {system: 'SINGLE_SIDED' as const} : {}), braceReference: MOCK_BRACE_REFERENCE})};
       }
       return base;
-    }).map(c => name === 'Project Example' ? {...c, workflowV07: projectExampleWorkflowDraft(c.input, c.workflowElementType, c.id, c)} : c)};
+    }).map(c => {if(name!=='Project Example')return c;const filled=completeExamplePractical(c);
+      return {...filled,workflowV07:projectExampleWorkflowDraft(filled.input,filled.workflowElementType,filled.id,{...filled,projectId})};})};
 }
 
 /** Existing generic demo name kept for backwards-compatible imports and tests. */

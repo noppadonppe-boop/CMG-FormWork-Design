@@ -1,4 +1,5 @@
 import {canonical, clone, finite, identifier, record, signed, uniqueIds} from './common.js';
+import {definitionHash} from './definitionHash.js';
 import {TIE_ROLES, type TieRole, type TieAssembly} from './assemblies.js';
 import type {Topology} from './geometry.js';
 import type {SideLayoutDefinition, SideTieDefinition} from './sideLayout.js';
@@ -100,7 +101,7 @@ export function tieGeometryContext(topology: Topology, layout: Pick<SideLayoutDe
   return {definition: canonical({schemaVersion: '1', tieId: tie.id, stageId: layout.stageId, vertices: topology.vertices, heightMm: topology.heightMm, diameterMm: diameter, ends}), chordMm, ends};
 }
 export function tieDossierBinding(d: TieDossier, context: ReturnType<typeof tieGeometryContext>) {
-  return canonical({route: context.definition, geometryEvidenceRef: d.geometryEvidenceRef, rodScope: d.rodScope, threadScope: d.threadScope, rodGauges: d.rodGauges, threads: d.threads,
+  return definitionHash({route: context.definition, geometryEvidenceRef: d.geometryEvidenceRef, rodScope: d.rodScope, threadScope: d.threadScope, rodGauges: d.rodGauges, threads: d.threads,
     products: d.components.map(c => {const p = effectiveTieProduct(c); return {role: c.role, productId: p.productId, manufacturer: p.manufacturer, model: p.model, materialRef: p.materialRef, threadMark: p.threadMark, lengthDatumRef: p.lengthDatumRef,
       geometry: Object.fromEntries(TIE_PROPERTIES.filter(k => !['capacityKN', 'E_MPa'].includes(k)).map(k => [k, p.properties[k]]))};})});
 }

@@ -96,7 +96,7 @@ function withLocalProjectExample(projects:Project[]):Project[]{
  if(!found)return [...projects,PROJECT_EXAMPLE_LOCAL];
  // Upgrade only recognized example cases, including the old empty v1 seed.
  // An authored revision is preserved, even if it still has missing data.
- return projects.map(p=>p.name!=='Project Example'&&!p.code.startsWith('PROJECT-EXAMPLE-')?p:{...p,cases:p.cases.map(upgradeProjectExampleCase)});
+ return projects.map(p=>p.name!=='Project Example'&&!p.code.startsWith('PROJECT-EXAMPLE-')?p:{...p,cases:p.cases.map(c=>upgradeProjectExampleCase(c,p.id))});
 }
 // An explicitly stored empty list stays empty (all projects deleted); missing or corrupt data seeds the demo.
 function stored():Project[]{if(configured)return [];try{const v=JSON.parse(localStorage.getItem(KEY)||'null');if(!Array.isArray(v))return initial;const result=hydrate(v);return result.length||!v.length?withLocalProjectExample(result):initial;}catch{return initial;}}
@@ -221,6 +221,7 @@ function App(){
       if(cancelled)return;
       if(!canProject(userProfile,project.id,'edit'))continue;
       const next=visible.find(p=>p.id===project.id)!;
+      if(next.cases.some(c=>{const old=project.cases.find(o=>o.id===c.id)!;return c.input!==old.input||c.beam!==old.beam||c.slab!==old.slab||c.wall!==old.wall;}))await saveProject(next);
       for(const old of project.cases){
         const updated=next.cases.find(c=>c.id===old.id)!;
         if(updated.workflowV07&&updated.workflowV07!==old.workflowV07){await saveWorkflowDraft(project.id,old.id,updated.workflowV07);upgraded++;}

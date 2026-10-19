@@ -38,9 +38,40 @@ describe.each(example.cases)('$name',c=>{
       expect(p.supports?.rows.length).toBe(m.ringlock!.legs.length);
       expect(p.blockers.filter(b=>/STALE|MAPPING_STALE|GLOBAL_LOAD_BALANCE_FAILED|GLOBAL_MOMENT_BALANCE_FAILED/.test(b))).toEqual([]);
     }
-    expect(m.humanInputReviewed).toBe(false);expect(m.ringlockRating).toBeNull();
+    expect(m.humanInputReviewed).toBe(false);
+    if(m.ringlock)expect(m.ringlockRating?.status).toBe('MOCK_REFERENCE_ONLY');
+    else expect(m.ringlockRating).toBeNull();
+    expect(m.closureInputs).toHaveLength(5);
+    for(const worksheet of m.closureInputs!){
+      expect(Object.entries(worksheet.inputs).filter(([,v])=>v===null||v===''||Array.isArray(v)&&v.length===0)).toEqual([]);
+      expect(worksheet.confirmed).toBe(false);expect(worksheet.review.trustedVerificationStatus).toBe('NOT_VERIFIED');
+    }
+    for(const tie of m.sideLayout?.ties??[]){
+      expect(tie.dossier?.components).toHaveLength(13);
+      for(const component of tie.dossier!.components)expect(Object.values(component.reference.properties).every(v=>v!==null&&Number.isFinite(v))).toBe(true);
+      expect(tie.dossier?.threads).toHaveLength(6);
+    }
+    for(const leg of m.ringlockAssembly?.legs??[])for(const jack of [leg.baseJack,leg.headJack])expect(Object.values(jack).every(v=>v!==null&&v!=='')).toBe(true);
+    for(const element of m.frameLayout?.elements??[]){expect(element.resistance).toHaveLength(7);expect(element.resistance!.every(e=>e.capacity!==null&&e.status==='REFERENCE_ONLY')).toBe(true);}
+    for(const base of m.supportLayout?.bases??[])for(const contact of base.interfaces){expect(contact.declaredPressureLimitMPa).toBe(3);expect(contact.resistanceBasis).toBe('ALLOWABLE');}
     expect(p.constructionRelease).toBe('NO_GO');
   });
+});
+it('upgrades the previous filled-layout example with mock capacities without overwriting an entered value',()=>{
+  const original=structuredClone(example.cases.find(c=>c.workflowElementType==='SLAB')!);
+  const m=original.workflowV07!.model;m.revisionId='PROJECT-EXAMPLE-INPUTS-2';m.ringlockRating=null;m.closureInputs=[];
+  m.ringlockAssembly!.legs[0].headJack.maxExtensionMm=125;
+  m.ringlockAssembly!.legs[0].headJack.limitEvidenceRef='MY-JACK-125';
+  m.supportLayout!.bases[0].interfaces[0].declaredPressureLimitMPa=1.8;
+  m.supportLayout!.bases[0].interfaces[0].limitEvidenceRef='MY-SLAB-1.8';
+  const next=upgradeProjectExampleCase(original,'project-id');
+  expect(next.workflowV07!.model.revisionId).toBe(PROJECT_EXAMPLE_REVISION);
+  expect(next.workflowV07!.model.ringlockAssembly!.legs[0].headJack.maxExtensionMm).toBe(125);
+  expect(next.workflowV07!.model.supportLayout!.bases[0].interfaces[0].declaredPressureLimitMPa).toBe(1.8);
+  expect(next.workflowV07!.model.ringlockAssembly!.legs[0].headJack.limitEvidenceRef).toBe('MY-JACK-125');
+  expect(next.workflowV07!.model.supportLayout!.bases[0].interfaces[0].limitEvidenceRef).toBe('MY-SLAB-1.8');
+  expect(next.workflowV07!.model.closureInputs!.every(f=>f.context.projectId==='project-id')).toBe(true);
+  expect(upgradeProjectExampleCase(next,'project-id')).toBe(next);
 });
 it('fills a missing example draft but preserves an authored draft and unrelated cases',()=>{
   const c=example.cases[0];

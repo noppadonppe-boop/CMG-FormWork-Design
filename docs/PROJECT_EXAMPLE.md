@@ -1,4 +1,4 @@
-# Project Example — INPUTS-2
+# Project Example — INPUTS-3
 
 ชุดฝึกกรอกข้อมูล 10 ตัวอย่าง: F01/F02, C01/C02, W01/W02, B01/B02, S01/S02
 สร้างซ้ำด้วย `node scripts/generate-project-example.mjs` และนำเข้า `examples/Project-Example-v0.7.json`
@@ -30,16 +30,43 @@
 โมเดลตัวอย่างอาจแสดง FAIL สำหรับรูปแบบที่เลือกได้ การมีข้อมูลและผลแรงไม่ใช่การยืนยันว่าขนาดสมาชิกเหมาะสม
 Custom grid/ความยาวเสาเป็นค่าตัวอย่าง ไม่อ้างว่าเข้ากับโมดูล TCB หรือ Doka; reference ท่อไม่ใช่ system rating
 
-## ค่าที่ยังไม่สามารถเติมเป็นตัวเลขจริงได้
+## Mock Design Basis
 
-กำลังชุดไทร์, net area/เกลียว/น็อต/แหวน, ระยะหลบเหล็กเสริมที่ตรวจแล้ว, Ringlock configuration rating,
-ขีดจำกัดยืด/ฝัง Jack, stiffness/strength จุดต่อและค้ำยึดจริง, ค่ากำลัง/การทรุดพื้นรองรับและพุก,
-service-condition resistance ของไม้/เหล็ก/ไม้อัด และการตรวจ/อนุมัติ ยังคง UNKNOWN พร้อมระบุเหตุผลใน UI
-ไม่ใช้ 0 แทนกำลังที่ไม่ทราบ และไม่เปลี่ยน `confirmed` หรือ `humanInputReviewed` เป็น true
-ช่องที่เป็นทางเลือกอื่น (เช่น soil spring เมื่อเลือกพื้นเดิม หรือ joint spring เมื่อใช้ beam-column) ไม่ต้องกรอก
+Owner ขอข้อมูลสมมติเต็มชุดเพื่อฝึกกรอก จึงเพิ่ม **EX-DB-01 (MOCK)** เป็นสมมติฐานของโครงการตัวอย่าง
+ค่าต่อไปนี้เป็นค่าที่เลือกสำหรับแบบฝึกหัด ไม่ใช่ค่ารับรองผลิตภัณฑ์หรือผลตรวจหน้างาน และแก้ไขได้จากฟอร์ม:
+
+| ช่อง / Method | ค่าและเหตุผลของตัวอย่าง |
+|---|---|
+| Form Tie | ชุดแบ่ง Inner/Outer แบบสมมติ M16×2 RH, ทุกองค์ประกอบ 30 kN ALLOWABLE; Ae 157 mm², A stiffness = π16²/4; E 200,000 MPa; รายการครบ 13 บทบาท |
+| เกลียว / ระยะหลบ | ฝังจริง 40 mm, ขั้นต่ำสมมติ 2d = 32 mm; ระยะหลบเหล็กเสริมสมมติ 25 mm; gauge Inner ตามระยะผิวจริง, Outer ซ้าย/ขวาข้างละ 250 mm ไม่ทับกัน |
+| Jack | ชิ้นสมมติยาว 250 mm; ยืดจริง/สูงสุด 150 mm; ฝังจริง/ขั้นต่ำ 100 mm; ตัวอย่างไม่ได้ใช้ Jack Doka |
+| Ringlock Custom | ค่าประกาศสมมติ 30 kN/ขา, หัวและฐาน 30 kN, ค้ำ 20 kN; ระบุมิติ/ช่วง/รูปแบบยึดตาม case; scope second-order และ imperfections ของ rating เป็น false โดยชัดแจ้ง |
+| จุดต่อมุม / พุก | มุม Cx=Cy=30 kN, interaction เชิงเส้น; พุกแรงดึงและเฉือน 20 kN เป็นค่าประกาศสมมติ |
+| EX-STEEL-Fy245-Omega1.67 | กำลังดัด gross = (245/1.67)×Ix/(H/2); เฉือน (0.6×245/1.67)×2t(H−2t), ใช้ตาราง PAP เฉพาะ geometry ไม่อ้างว่าเป็น capacity ของหน้าตัดจริงครบทุก failure mode |
+| EX-PLY-Fb8-Fv0.6 | สมมติ service Fb=8 MPa, rolling shear 0.6 MPa; แถบกว้าง 1000 หนา18 mm: M=Fb bt²/6, V=Fv bt/1.5; เป็นสมมติฐานตัวอย่างแยกจาก UPM E/density |
+| EX-TUBE-01 | ท่อเทียบเท่า gross Fy235 MPa, Ω1.67, K1; อัด=min(Fy A,π²EI/L²)/Ω, ดึง=Fy A/Ω, shear=0.3Fy A/Ω; radius เทียบเท่า √(2I/A) สำหรับ M/T; เป็นแบบฝึกหัด section-level ไม่ใช่ buckling/connection certification |
+| EX-SLS-01 | สมาชิกโก่งไม่เกิน min(L/360,3 mm); frame แนวดิ่ง3mm, แนวราบ max(H/500,3mm), rotation0.005rad; ปากไทร์2mm |
+| EX-PDELTA | sway เริ่มต้น z/500 ใน X ของโครงท้อง; ฐานคงที่; วงรัดเสาใช้ค่าเริ่มต้น0; iterations20, tolerance displacement1e−6mm / axial1e−3N |
+| น้ำหนักเฟรม | gross volume ×7850kg/m³ ×g; แบ่งแรงครึ่งหนึ่งเข้าสองปลายแต่ละสมาชิก ไม่มีน้ำหนักคอนกรีต/คร่าวซ้ำ |
+| พื้นรองรับที่ใช้อยู่ | RC หนา200 mm, fc28=24 MPa, อายุ28วัน, DB12@150 สองแกนบน/ล่าง, bay3m; พื้นที่รับ150×150 mm; ค่า allowable local bearing สมมติ3MPa; settlement3mm |
+| ทางเลือกดิน | worksheet แยก ไม่ได้ใส่ใน path พื้นเดิม: footprint1×1m, allowable100kPa, resultant100kN, k20,000kN/m³, settlement10mm / differential5mm ระยะ2m |
+
+ค่าที่ระบุ EX-GEOMETRY-01 เป็นผังสมมติของตัวอย่างที่แสดงพิกัดในฟอร์ม ส่วน EX-REVIEW (UNSIGNED)
+และ EXAMPLE-ENGINEER เป็นตัวอย่างการกรอก metadata ไม่มีบุคคลจริงลงนาม; `confirmed=false`,
+`humanInputReviewed=false`, `REFERENCE_ONLY`, `NOT_VERIFIED` คงสถานะตามจริง ไม่สร้างผล PASS หรือการอนุมัติ
+ช่องทางเลือกที่ไม่ใช้ เช่นสปริงดินของพื้นเดิม หรือ joint spring ของ beam-column จะแสดงว่าไม่ใช้กับระบบที่เลือก
+ครบทั้ง 5 worksheets: Ringlock, พื้น, ดินทางเลือก, Serviceability และ Stage request พร้อมตัวเลขและคำอธิบาย
+
+## เอกสารที่ตรวจประกอบ
+
+- หนังสือ `Text Book/หนังสือ Design Form Work.pdf` และข้อมูลถอดตารางใน Form Tie bridge ใช้อธิบาย anatomy ของระบบ
+- PAP TIS107 และ `materials.json` ใช้ค่า E/I/mass ของสมาชิกตามตารางข้างต้น
+- [Doka Monotec 12/2017 p.9](https://direct.doka.com/_ext/downloads/downloadcenter/999805702_2017_12_online.pdf) ระบุ tie rod 15.0 ตาม DIN 18216 ที่ 90 kN; เป็นผลิตภัณฑ์คนละชุดกับ EX-M16 จึงไม่ได้คัดเป็นกำลังชุดสมมติ
+- [Doka Ringlock Shoring 03/2024 p.14](https://direct.doka.com/_ext/downloads/downloadcenter/999822802_2024_03_online.pdf) ระบุหัวเกลียว60cmยืดสูงสุด41cm; ไม่ได้นำขีดจำกัดนี้มาแทน EX-JACK250
 
 ## การเปิดโครงการเดิมและการบันทึก
 
+ระบบอัปเกรด seed INPUTS-2 ที่ยังเป็น revision ของชุดตัวอย่าง เติมรายละเอียดที่ขาดโดยเก็บค่าที่กรอกไว้แล้ว และบันทึกกับ Project Example เดิม
 ระบบเติมร่างที่ยังไม่มี และแทนเฉพาะ seed รุ่นแรกที่ยังไม่มี Layout ร่างที่กรอกค่าพื้นฐานแล้วจะเก็บค่าที่กรอกและเติมส่วนที่ว่างเมื่อ Geometry ตรงกัน
 ถ้ามี Layout ที่แก้เองแล้ว จะเก็บไว้เพื่อไม่ให้พิกัด/รหัสหัวที่ผู้ใช้จัดไว้เสียหาย ไม่มีการเขียนทับโครงการทั่วไป
 ผู้มีสิทธิ์แก้ไขจะบันทึกร่างที่อัปเกรดผ่าน API ปกติทีละ case; การนำเข้าบันทึกร่างแต่ละ case ด้วย ไม่ใช่เฉพาะชื่อโครงการ
