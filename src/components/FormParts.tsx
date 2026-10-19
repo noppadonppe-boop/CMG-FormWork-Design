@@ -18,6 +18,7 @@ export function Num<T>({x, k, label, unit = 'mm', help, edit, canEdit}: FormCtx<
 /** Two-step section choice (family → size) for one member, limited to the project stock. */
 export function MemberPicker<T>({x, k, role, title, edit, canEdit, stockIds, pair}: FormCtx<T> & {k: keyof T & string; role: StockRole; title: string; stockIds?: string[]; pair?: boolean}) {
   const id = String(x[k]), s = sectionById(id), families = role === 'stud' ? STUD_FAMILIES : WALER_FAMILIES, stock = stockFor(stockIds).filter(v => v.roles.includes(role));
+  const materialInput = x as unknown as {timberGrade?: string; steelE?: number};
   const pick = (family: StockFamily) => {
     const I = s ? catalogueProperties(s).I : 0, list = stock.filter(v => v.family === family).sort((a, b) => a.A_cm2 - b.A_cm2);
     const next = list.find(v => catalogueProperties(v).I >= I) ?? list[list.length - 1];
@@ -31,7 +32,8 @@ export function MemberPicker<T>({x, k, role, title, edit, canEdit, stockIds, pai
       <label className="field"><span>ขนาด</span><select aria-label={'ขนาด' + title} value={id} disabled={!canEdit} onChange={e => edit({[k]: e.target.value} as Partial<T>)}>
         {stock.filter(v => v.family === s?.family).map(v => <option key={v.id} value={v.id}>{v.designation}{v.kg_per_m !== null ? ` · ${v.kg_per_m} kg/m` : ''}</option>)}</select></label>
     </div>
-    <Props s={s} pair={pair}/>
+    <Props s={s} pair={pair} timberGradeId={materialInput.timberGrade} steelE={materialInput.steelE}/>
+    {role === 'waler' && <p className="notice">WF และเหล็กฉากไม่เท่ายังเป็น BLOCKED: คลังที่ติดตั้งมีเฉพาะแถวที่ตรวจรับรองแล้ว และจะไม่เติมค่าหน้าตัดเอง</p>}
   </div>;
 }
 export function ChecksTable({checks}: {checks: Check[]}) {
@@ -73,7 +75,11 @@ export function PlywoodFields<T extends PlywoodSettings>(p: FormCtx<T>) {
     {x.plywoodGrade === 'CUSTOM' && <><Num<T> {...p} k={'plywoodE' as keyof T & string} label="E ไม้อัด (หน้าตัดเต็ม)" unit="MPa"/><Num<T> {...p} k={'plywoodFb' as keyof T & string} label="Fb ไม้อัด (หน้าตัดเต็ม)" unit="MPa"/></>}</div>;
 }
 export function MaterialFields<T extends MaterialSettings>(p: FormCtx<T>) {
-  return <div className="form-grid"><Num<T> {...p} k={'steelFy' as keyof T & string} label="Fy เหล็ก" unit="MPa" help="STKR400 / SS400 = 245 MPa"/><Num<T> {...p} k={'steelE' as keyof T & string} label="E เหล็ก" unit="MPa"/>
+  const standardE = [200000, 210000];
+  return <div className="form-grid"><Num<T> {...p} k={'steelFy' as keyof T & string} label="Fy เหล็ก" unit="MPa" help="STKR400 / SS400 = 245 MPa"/>
+    <label className="field"><span>มาตรฐาน E เหล็ก</span><select aria-label="มาตรฐาน E เหล็ก" disabled={!p.canEdit} value={standardE.includes(p.x.steelE) ? String(p.x.steelE) : 'CUSTOM'} onChange={e => {if (e.target.value !== 'CUSTOM') p.edit({steelE: Number(e.target.value)} as Partial<T>);}}><option value="200000">200 GPa · reference model</option><option value="210000">210 GPa · SCI/Eurocode reference model</option><option value="CUSTOM">กำหนดเอง (กรอกด้านล่าง)</option></select></label>
+    <Num<T> {...p} k={'steelE' as keyof T & string} label="E เหล็ก" unit="MPa" help="เลือกค่ามาตรฐานด้านบน หรือระบุค่าจากใบรับรองวัสดุ"/>
     <Num<T> {...p} k={'steelOmegaB' as keyof T & string} label="Ωb (ดัด)" unit="—"/><Num<T> {...p} k={'steelOmegaShear' as keyof T & string} label="Ωv (เฉือน)" unit="—"/>
-    <label className="field"><span>ชั้นคุณภาพไม้ (ถ้าใช้ไม้)</span><select aria-label="ชั้นไม้" disabled={!p.canEdit} value={p.x.timberGrade} onChange={e => p.edit({timberGrade: e.target.value} as Partial<T>)}>{TIMBER_GRADES.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}</select></label></div>;
+    <label className="field"><span>ชั้นคุณภาพไม้ (ถ้าใช้ไม้)</span><select aria-label="ชั้นไม้" disabled={!p.canEdit} value={p.x.timberGrade} onChange={e => p.edit({timberGrade: e.target.value} as Partial<T>)}>{TIMBER_GRADES.map(g => <option key={g.id} value={g.id}>{g.label} · E {g.E.toLocaleString('en-US')} MPa</option>)}</select></label>
+    <p className="muted">E เหล็ก 200/210 GPa เป็น reference model จากคลังวัสดุ v0.5; ต้องยืนยันเกรด/ใบรับรองจริงก่อนใช้งาน</p></div>;
 }

@@ -5,6 +5,22 @@ import {ELASTIC_KEYS, MEMBER_FAMILIES, emptyElasticBinding, resolveElasticBindin
 
 export type BindingSelections = {section: SelectionSnapshot | null; material: SelectionSnapshot | null};
 const show = (v: number | null) => v === null ? 'UNKNOWN' : v.toLocaleString('en-US', {maximumFractionDigits: 5});
+const numberValue = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : null;
+const referenceText = (v: unknown) => typeof v === 'string' && v.trim() ? v : 'UNKNOWN';
+/** Read-only preview of the currently selected reference. It deliberately shows BLOCKED when the source has no mass/weight row. */
+export function ElasticReferencePreview({selections}: {selections?: BindingSelections}) {
+  const section = selections?.section?.effective, material = selections?.material?.effective;
+  if (!section && !material) return <p className="muted">ยังไม่ได้เลือกหน้าตัดและวัสดุจากรายการอ้างอิงด้านบน</p>;
+  const ix = numberValue(section?.Ix_cm4), iy = numberValue(section?.Iy_cm4), kg = numberValue(section?.kg_per_m);
+  const props = material?.properties && typeof material.properties === 'object' ? material.properties as Record<string, unknown> : null;
+  const e = numberValue(props?.E_MPa) ?? numberValue(props?.E0_mean_MPa) ?? numberValue(props?.E_ref_MPa);
+  return <div className="notice" aria-label="ค่ามาตรฐานหน้าตัดและวัสดุที่เลือก">
+    <b>ค่ามาตรฐานจากรายการที่เลือก</b>
+    {section && <p>หน้าตัด {referenceText(section.designation)} · {referenceText(section.family)} · I<sub>x</sub> {ix === null ? 'UNKNOWN' : `${(ix * 10000).toLocaleString('en-US')} mm⁴ (${ix.toLocaleString('en-US')} cm⁴)`} / I<sub>y</sub> {iy === null ? 'UNKNOWN' : `${(iy * 10000).toLocaleString('en-US')} mm⁴ (${iy.toLocaleString('en-US')} cm⁴)`} · DL {kg === null ? 'BLOCKED (ไม่มี kg/m ในแถวอ้างอิง)' : `${(kg * 9.80665 / 1000).toFixed(3)} kN/m`}</p>}
+    {material && <p>วัสดุ {referenceText(material.material_id)} · E {e === null ? 'UNKNOWN' : `${e.toLocaleString('en-US')} MPa`} · source {referenceText(material.source_id)}</p>}
+    <small>ค่าดังกล่าวเป็น reference snapshot; ต้องผูกแกนและหลักฐานวัสดุจริงก่อนการวิเคราะห์ และสถานะยังเป็น NO_GO</small>
+  </div>;
+}
 export function ElasticBindingSummary({binding, role, label}: {binding: ElasticMemberBinding; role: ElasticMemberRole; label: string}) {
   let result: ReturnType<typeof resolveElasticBinding> | null = null, error = '';
   try {result = resolveElasticBinding(binding, role);} catch (e) {error = (e as Error).message;}
@@ -18,12 +34,12 @@ export function ElasticBindingSummary({binding, role, label}: {binding: ElasticM
   </details>;
 }
 export function ElasticBindingEditor({binding, role, label, selections, onChange}: {binding: ElasticMemberBinding | null; role: ElasticMemberRole; label: string; selections?: BindingSelections; onChange: (value: ElasticMemberBinding | null) => void}) {
-  if (!binding) return <section className="elastic-binding"><button className="btn secondary" onClick={() => onChange(emptyElasticBinding())}>ผูกข้อมูลหน้าตัดและวัสดุกับสมาชิกนี้</button></section>;
+  if (!binding) return <section className="elastic-binding"><ElasticReferencePreview selections={selections}/><button className="btn secondary" onClick={() => onChange(emptyElasticBinding())}>ผูกข้อมูลหน้าตัดและวัสดุกับสมาชิกนี้</button></section>;
   const b = binding, props = b.material?.effective.properties as Record<string, unknown> | undefined;
   const category = b.material?.effective.category;
   const keys = ELASTIC_KEYS.filter(k => props && Object.hasOwn(props, k) && (category === 'TIMBER' ? k !== 'E_MPa' : k === 'E_MPa'));
   return <section className="elastic-binding" aria-label={`กำหนดการผูก ${label}`}><h4>ผูกคุณสมบัติกับ {label}</h4>
-    <p>คัดลอกข้อมูลที่กดใช้แล้วจากรายการอ้างอิงด้านบน สำเนาที่ผูกจะคงเดิมจนกดคัดลอกใหม่ ค่า E/I คำนวณจากข้อมูลนี้ น้ำหนักตัวเองยังต้องระบุและมีหลักฐานแยก</p>
+    <p>คัดลอกข้อมูลที่กดใช้แล้วจากรายการอ้างอิงด้านบน สำเนาที่ผูกจะคงเดิมจนกดคัดลอกใหม่ ค่า E/I คำนวณจากข้อมูลนี้ น้ำหนักตัวเองยังต้องระบุและมีหลักฐานแยก</p><ElasticReferencePreview selections={selections}/>
     <label className="field"><span>แหล่งหน้าตัดของสมาชิก</span><select value={b.sectionMode} onChange={e => onChange({...emptyElasticBinding(), sectionMode: e.target.value as ElasticMemberBinding['sectionMode']})}><option value="CATALOGUE">หน้าตัด Catalog / Custom ที่ผ่านเงื่อนไข Candidate</option><option value="MEASURED_TIMBER_RECT" disabled={!(MEMBER_FAMILIES[role] as readonly string[]).includes('TIMBER_RECT')}>ไม้สี่เหลี่ยม · ใช้ขนาดวัดจริง</option></select></label>
     <button className="btn secondary" disabled={!selections?.material || (b.sectionMode === 'CATALOGUE' && !selections?.section)} onClick={() => onChange({...b,
       section: b.sectionMode === 'CATALOGUE' ? clone(selections!.section!) : null, material: clone(selections!.material!), elasticPropertyKey: null,

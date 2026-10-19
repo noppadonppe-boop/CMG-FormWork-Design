@@ -1,23 +1,35 @@
 import {Layers} from 'lucide-react';
 import type {Input} from '../domain';
-import {FAMILY_LABEL, SECTION_SOURCES, TIMBER_GRADES, catalogueProperties, sectionById, sectionsFor, type StockFamily, type StockRole, type StockSection} from '../domain/sectionStock';
+import {FAMILY_LABEL, SECTION_SOURCES, TIMBER_GRADES, catalogueProperties, sectionById, sectionsFor, timberGrade, type StockFamily, type StockRole, type StockSection} from '../domain/sectionStock';
 import {sectionProperties} from '../domain/mechanics';
 
 export const STUD_FAMILIES: StockFamily[] = ['TIMBER', 'SHS', 'RHS'];
 export const WALER_FAMILIES: StockFamily[] = ['RHS', 'SHS', 'L', 'C_LIP', 'C', 'CHS'];
 const fmt = (v: number, d = 1) => v.toLocaleString('en-US', {maximumFractionDigits: d, minimumFractionDigits: d});
+const G = 9.80665;
+export function selfWeightKNPerM(s: StockSection | undefined, pair = false) {
+  if (!s || s.kg_per_m === null) return null;
+  return s.kg_per_m * G / 1000 * (pair ? 2 : 1);
+}
+export function elasticModulusMPa(s: StockSection | undefined, timberGradeId: string | undefined, steelE: number | undefined) {
+  if (!s) return null;
+  return s.family === 'TIMBER' ? (timberGrade(timberGradeId ?? '')?.E ?? null) : (typeof steelE === 'number' ? steelE : null);
+}
 
 /** Section closest to the current stiffness inside a family: lightest with I ≥ current, else the stiffest available. */
 export function closest(role: StockRole, family: StockFamily, I: number) {
   const list = sectionsFor(role, family).map(s => ({s, p: catalogueProperties(s)})).sort((a, b) => a.p.area - b.p.area);
   return (list.find(v => v.p.I >= I) ?? list.sort((a, b) => b.p.I - a.p.I)[0])?.s;
 }
-export function Props({s, pair}: {s: StockSection | undefined; pair?: boolean}) {
+export function Props({s, pair, timberGradeId, steelE}: {s: StockSection | undefined; pair?: boolean; timberGradeId?: string; steelE?: number}) {
   if (!s) return <p className="muted">หน้าตัดกำหนดเอง (คำนวณจาก B × H × t มุมคม) · เลือกจากตารางเหล็กเพื่อใช้ค่าที่ผู้ผลิตเผยแพร่</p>;
   const src = SECTION_SOURCES.find(x => x.source_id === s.source);
+  const p = catalogueProperties(s), E = elasticModulusMPa(s, timberGradeId, steelE), dl = selfWeightKNPerM(s, pair);
   return <p className="section-props">
-    A = {fmt(s.A_cm2, 2)} cm² · I<sub>x</sub> = {fmt(s.Ix_cm4, 2)} cm⁴ · S<sub>x</sub> = {fmt(s.Sx_cm3, 2)} cm³{s.family === 'L' ? ' (ต่ำสุด)' : ''}
-    {s.kg_per_m !== null && <> · {fmt(s.kg_per_m, 2)} kg/m{pair ? ` (คู่ ${fmt(2 * s.kg_per_m, 2)} kg/m)` : ''}</>}
+    A = {fmt(s.A_cm2, 2)} cm² · I<sub>x</sub> = {fmt(p.I, 0)} mm⁴ ({fmt(s.Ix_cm4, 2)} cm⁴) · S<sub>x</sub> = {fmt(s.Sx_cm3, 2)} cm³{s.family === 'L' ? ' (ต่ำสุด)' : ''}
+    {E !== null && <> · E = {fmt(E, 0)} MPa</>}
+    {s.kg_per_m !== null && <> · DL = {fmt(dl!, 3)} kN/m{pair ? ` (คู่ ${fmt(2 * s.kg_per_m, 2)} kg/m)` : ''}</>}
+    {s.kg_per_m === null && <> · DL = BLOCKED (ตารางไม่มี kg/m ต้องระบุน้ำหนักจริง)</>}
     <br/><small>ที่มา: {src ? <a href={src.url} target="_blank" rel="noreferrer">{src.title}</a> : s.source}{s.ref ? ` · ${s.ref}` : ''} · {s.status === 'REVIEW_REQUIRED' ? 'ค่าจากแคตตาล็อก ต้องตรวจใบรับรองวัสดุ' : s.status}</small>
   </p>;
 }
@@ -53,7 +65,7 @@ export function SectionPicker({input: x, canEdit, onChange}: {input: Input; canE
           {studFamily === 'TIMBER' && <label className="field"><span>ชั้นคุณภาพไม้</span><select aria-label="ชั้นคุณภาพไม้" value={x.studTimberGrade} disabled={!canEdit} onChange={e => onChange({studTimberGrade: e.target.value})}>
             {TIMBER_GRADES.map(g => <option key={g.id} value={g.id}>{g.label} · Fb {g.raw_ksc.Fb_base_MPa} ksc · E {g.raw_ksc.E_ref_MPa?.toLocaleString('en-US')} ksc</option>)}</select></label>}
         </div>
-        <Props s={stud}/>
+        <Props s={stud} timberGradeId={x.studTimberGrade} steelE={x.steelE}/>
         {studFamily === 'TIMBER' && grade && <p className="notice">ค่าไม้จาก {grade.source} · ต้องยืนยันชนิดไม้ ขนาดจริงหลังไส และความชื้นหน้างาน</p>}
       </div>
       <div>
@@ -64,7 +76,8 @@ export function SectionPicker({input: x, canEdit, onChange}: {input: Input; canE
             {WALER_FAMILIES.map(f => <option key={f} value={f}>{FAMILY_LABEL[f]}</option>)}</select></label>
           <label className="field"><span>ขนาด</span>{sizes('waler', walerFamily, x.walerSectionId)}</label>
         </div>
-        <Props s={waler} pair/>
+        <Props s={waler} pair timberGradeId={x.studTimberGrade} steelE={x.steelE}/>
+        <p className="notice">รายการที่ยังไม่เปิดใช้: WF และเหล็กฉากไม่เท่า (ยังไม่มีแถวข้อมูลที่ตรวจรับรองในคลังหน้าตัดนี้) จึงไม่สร้างค่าขึ้นแทน</p>
         {walerFamily === 'L' && <p className="notice">เหล็กฉากไม่สมมาตร: ใช้ S ต่ำสุดรอบแกนเรขาคณิต ยังไม่ตรวจการดัดรอบแกนหลักและการบิด</p>}
         {walerFamily === 'CHS' && <p className="notice">ท่อกลม: ต้องออกแบบจุดรับ Tie / แผ่นรองบนผิวโค้งเพิ่มเติม</p>}
       </div>
