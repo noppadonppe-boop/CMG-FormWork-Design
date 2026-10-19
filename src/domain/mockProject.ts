@@ -3,12 +3,9 @@ import {beamFromCase, validateBeamInput, type BeamInput} from './beam.js';
 import {slabFromCase, validateSlabInput, type SlabInput} from './slab.js';
 import {wallFromCase, validateWallInput, type WallInput} from './wall.js';
 import type {ElementType} from './workflowV07/common.js';
-import {fromLegacy, type WorkflowModel} from './workflowV07/model.js';
-import {createStoredWorkflowDraft, type StoredWorkflowDraft} from './workflowV07/storage.js';
-import {selectReference} from './workflowV07/catalogues.js';
-import {selectRinglockResearch} from './workflowV07/ringlockResearch.js';
-import {selectRinglockPlan} from './workflowV07/ringlockPlan.js';
-import {references} from '../workflowV07References.js';
+import type {StoredWorkflowDraft} from './workflowV07/storage.js';
+import {projectExampleWorkflowDraft} from './projectExampleWorkflow.js';
+export {projectExampleWorkflowDraft} from './projectExampleWorkflow.js';
 
 /** SYNTHETIC demonstration project: two cases for each element type. All dimensions are
  * illustrative mock-up values (mm), unconfirmed, and carry no engineering approval. Beam, slab
@@ -34,76 +31,6 @@ const MOCK_SECTION_STUD = 'PAP-TIS107-SHS-50x50x2.3';
 const MOCK_CONNECTION_REFERENCE = `MOCK-UP only · ${PROJECT_EXAMPLE_REFERENCES.formTie}; ${PROJECT_EXAMPLE_REFERENCES.ringlock}`;
 const MOCK_SHORING_REFERENCE = `MOCK-UP only · SWL ยังไม่ระบุ; ${PROJECT_EXAMPLE_REFERENCES.ringlock}`;
 const MOCK_BRACE_REFERENCE = `MOCK-UP only · SWL ค้ำ/พุกยังไม่ระบุ; ${PROJECT_EXAMPLE_REFERENCES.ringlock}`;
-const MOCK_V07_SOURCE = `PROJECT-EXAMPLE · ${PROJECT_EXAMPLE_REFERENCES.sections}`;
-const MOCK_V07_BASIS = `PROJECT-EXAMPLE-v0.7 · ${PROJECT_EXAMPLE_REFERENCES.loads}`;
-const MOCK_V07_EVIDENCE = 'MOCK-UP / REFERENCE_ONLY / ตรวจสอบกับสินค้าจริงและแบบโครงการก่อนใช้';
-const MOCK_V07_SECTION_ID = 'PAP-2026-CLIP-100x50x20x3.2';
-const MOCK_V07_MATERIAL_ID = 'STEEL-SS400';
-const MOCK_V07_RINGLOCK_ID = 'DOKA21-301011500';
-const MOCK_V07_PLYWOOD_ID = 'PLY-UPM007-18';
-const MOCK_DRAFT_SAVED_AT_MS = Date.parse('2026-10-19T00:00:00+07:00');
-
-function referenceRow(rows: Record<string, unknown>[], key: string, id: string) {
-  const row = rows.find(value => value[key] === id);
-  if (!row) throw Error(`Project Example reference row missing: ${key}=${id}`);
-  return row;
-}
-
-function numericReference(row: Record<string, unknown>, key: string, label: string) {
-  const value = row[key];
-  if (typeof value !== 'number' || !Number.isFinite(value)) throw Error(`Project Example reference value missing: ${label}`);
-  return value;
-}
-
-function projectExampleCheckCatalogue() {
-  return {version: '0.7', specifications: references.checks.map(row => ({
-    id: String(row.check_id), group: String(row.group), description: String(row.description), appliesTo: String(row.applicable_to),
-  }))};
-}
-
-/** Build a v0.7 walkthrough draft for every Project Example case.  The values are
- * deliberately labelled mock-up/reference-only; no unknown product resistance is invented. */
-export function projectExampleWorkflowDraft(input: Input, elementType: ElementType, caseId: string): StoredWorkflowDraft {
-  const section = referenceRow(references.sections, 'section_id', MOCK_V07_SECTION_ID);
-  const material = referenceRow(references.materials, 'material_id', MOCK_V07_MATERIAL_ID);
-  const ringlockComponent = referenceRow(references.ringlock, 'component_id', MOCK_V07_RINGLOCK_ID);
-  const plywood = referenceRow(references.materials, 'material_id', MOCK_V07_PLYWOOD_ID);
-  const memberE = numericReference((material.properties as Record<string, unknown>), 'E_MPa', 'steel E_MPa');
-  numericReference(section, 'Ix_cm4', 'Ix_cm4');
-  numericReference((plywood.properties as Record<string, unknown>), 'Eb0_mean_MPa', 'plywood Eb0_mean_MPa');
-  const base = fromLegacy(input, caseId);
-  let model: WorkflowModel = {...base, revisionId: 'PROJECT-EXAMPLE-v0.7', elementType,
-    humanInputReviewed: false, sourceRef: MOCK_V07_SOURCE, designBasisRef: MOCK_V07_BASIS,
-    sideTopology: elementType === 'SLAB' ? null : elementType === 'COLUMN' ? 'COLUMN_YOKE' : 'THROUGH_TIE',
-    gammaKNm3: input.gamma, slabThicknessMm: elementType === 'SLAB' ? input.height : elementType === 'BEAM' ? 0 : null,
-    beamWidthMm: elementType === 'BEAM' ? input.length : null, concreteStripMm: elementType === 'BEAM' ? input.length : null,
-    deadStripMm: elementType === 'BEAM' ? input.length : null, liveStripMm: elementType === 'BEAM' ? input.length : null,
-    additionalDeadKPa: elementType === 'BEAM' || elementType === 'SLAB' ? 0.25 : null,
-    constructionLiveKPa: elementType === 'BEAM' || elementType === 'SLAB' ? 1.5 : null,
-    selections: {section: selectReference(section, 'PAP-TIS107-2026'), material: selectReference(material, 'workflow-v07-materials@0.5.0'), ringlock: selectReference(ringlockComponent, 'workflow-v07-ringlock@2026')},
-    checkCatalogue: projectExampleCheckCatalogue(), ringlock: null, ringlockResearch: null};
-
-  if (elementType === 'BEAM' || elementType === 'SLAB') {
-    const ringlock = selectRinglockPlan(null, '1200x1500');
-    const widthX = Math.max(...model.vertices.map(point => point.x)) - Math.min(...model.vertices.map(point => point.x));
-    const widthY = Math.max(...model.vertices.map(point => point.y)) - Math.min(...model.vertices.map(point => point.y));
-    model = {...model, ringlock: {...ringlock, manufacturer: String(ringlockComponent.manufacturer), systemId: String(ringlockComponent.system_id),
-      configurationId: 'PROJECT-EXAMPLE-GEOMETRY-ONLY', ratingId: 'UNVERIFIED-NO-RATING', liftHeightsMm: [1500], totalHeightMm: model.heightMm + 300,
-      headExtensionMm: 150, baseExtensionMm: 150, headEngagementMm: 100, baseEngagementMm: 100,
-      braceXRef: 'UNVERIFIED-BRACE-X', braceYRef: 'UNVERIFIED-BRACE-Y', planRestraintRef: 'UNVERIFIED-PLAN-RESTRAINT',
-      topRestraintRef: 'UNVERIFIED-TOP-RESTRAINT', baseRestraintRef: 'UNVERIFIED-BASE-RESTRAINT', jointStiffnessRef: 'UNVERIFIED-JOINT',
-      groundOrSlabEvidence: `${MOCK_V07_EVIDENCE} · ${PROJECT_EXAMPLE_REFERENCES.ringlock}`,
-      legs: [{id: 'LEG-1', headNodeId: 'HEAD-1', xMm: 0, yMm: 0, headElevationMm: model.heightMm + 300, baseElevationMm: 0},
-        {id: 'LEG-2', headNodeId: 'HEAD-2', xMm: widthX, yMm: 0, headElevationMm: model.heightMm + 300, baseElevationMm: 0},
-        {id: 'LEG-3', headNodeId: 'HEAD-3', xMm: widthX, yMm: widthY, headElevationMm: model.heightMm + 300, baseElevationMm: 0},
-        {id: 'LEG-4', headNodeId: 'HEAD-4', xMm: 0, yMm: widthY, headElevationMm: model.heightMm + 300, baseElevationMm: 0}]},
-      ringlockResearch: selectRinglockResearch(references.ringlockResearch, references.ringlockResearchSha256,
-        {groupId: 'TCB-FOOT-BASED-REFERENCE', role: 'STANDARD', sectionId: 'CHS-48.3x3.2', materialGrade: 'Q235B', useElasticReference: true,
-          hypothesisRef: `${MOCK_V07_EVIDENCE} · product group and metric plan compatibility remain unverified`})};
-  }
-  return createStoredWorkflowDraft(model, input, MOCK_DRAFT_SAVED_AT_MS);
-}
-
 const footing = (o: Partial<Input>): Input => validateInput({...defaults, kind: 'FOOTING', confirmed: false, ...o});
 const column = (o: Partial<Input>): Input => validateInput({...defaults, kind: 'COLUMN', confirmed: false, ...o});
 
@@ -123,12 +50,11 @@ export const MOCK_CASES: {code: string; name: string; type: ElementType; input: 
 
 function createMockProject(code: string, newId: () => string, name: string, caseName: (c: typeof MOCK_CASES[number]) => string): MockProject {
   return {id: newId(), name, code,
-    cases: MOCK_CASES.map(c => {
+    cases: MOCK_CASES.map((c): MockCase => {
       const input = validateInput({...c.input(), rhsB: 50, rhsH: 50, rhsT: 2.3, walerSectionId: MOCK_SECTION_WALER, studSectionId: MOCK_SECTION_STUD, cornerReference: MOCK_CONNECTION_REFERENCE});
       const footprint = {width: input.width, length: input.length, height: input.height};
       const id = newId();
-      const base = {id, name: caseName(c), input, workflowElementType: c.type,
-        ...(name === 'Project Example' ? {workflowV07: projectExampleWorkflowDraft(input, c.type, id)} : {})};
+      const base = {id, name: caseName(c), input, workflowElementType: c.type};
       if (c.type === 'BEAM') {
         const beam = beamFromCase(null, footprint);
         const example = c.code === 'B01'
@@ -145,7 +71,7 @@ function createMockProject(code: string, newId: () => string, name: string, case
         return {...base, wall: validateWallInput({...wall, ...(c.code === 'W02' ? {system: 'SINGLE_SIDED' as const} : {}), braceReference: MOCK_BRACE_REFERENCE})};
       }
       return base;
-    })};
+    }).map(c => name === 'Project Example' ? {...c, workflowV07: projectExampleWorkflowDraft(c.input, c.workflowElementType, c.id, c)} : c)};
 }
 
 /** Existing generic demo name kept for backwards-compatible imports and tests. */

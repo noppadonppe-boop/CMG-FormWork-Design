@@ -2,7 +2,7 @@
 export type ElementType = 'FOOTING' | 'COLUMN' | 'WALL' | 'BEAM' | 'SLAB';
 export type Point2 = {x: number; y: number};
 export type CheckState = 'BLOCKED' | 'FAIL' | 'CHECKED_IN_SCOPE' | 'NOT_APPLICABLE';
-export const WORKFLOW_VERSION = '0.7.0-preview.32';
+export const WORKFLOW_VERSION = '0.7.0-preview.33';
 export const NOTICE = 'DRAFT / NO_GO / NOT FOR CONSTRUCTION';
 
 export function finite(value: unknown, name: string, allowZero = false): number {

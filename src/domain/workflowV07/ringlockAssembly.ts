@@ -1,4 +1,5 @@
 import {canonical, clone, finite, identifier, record, signed, uniqueIds} from './common.js';
+import {definitionHash} from './definitionHash.js';
 import {installedHeight, type HeightContributions} from './ringlock.js';
 import type {WorkflowModel} from './model.js';
 import type {AppliedFrameLayout} from './frameWorkflow.js';
@@ -62,7 +63,7 @@ export function validateRinglockAssembly(raw: unknown): asserts raw is AppliedRi
   if (canonical(a.legs).length > 1000000) throw Error('ASSEMBLY_DETAIL_SIZE_LIMIT; no leg omitted');
 }
 export function ringlockAssemblyInputDefinition(model: WorkflowModel) {
-  return canonical({id: model.id, elementType: model.elementType, vertices: model.vertices, heightMm: model.heightMm, designBasisRef: model.designBasisRef,
+  return definitionHash({id: model.id, elementType: model.elementType, vertices: model.vertices, heightMm: model.heightMm, designBasisRef: model.designBasisRef,
     soffitLayout: model.soffitLayout ?? null, ringlock: model.ringlock, research: model.ringlockResearch ?? null, analysisCase: model.analysisCase ?? null});
 }
 export function stampRinglockAssembly(model: WorkflowModel, definition: RinglockAssemblyDefinition): AppliedRinglockAssembly {

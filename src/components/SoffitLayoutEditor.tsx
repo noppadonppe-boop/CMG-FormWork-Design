@@ -212,7 +212,7 @@ export function SoffitLayoutEditor({layout, beam, topology = null, onApply, onPe
     <SpatialLoadingEditor value={form.loading} onChange={loading => change({...form, loading})} memberIds={[...form.joistXMm.split(',').filter(s => s.trim()).map((_, i) => `JOIST-${i + 1}`), ...form.bearers.map(b => b.id)]}/>
     <p>การวิเคราะห์แรงยังไม่ตรวจกำลังไม้อัด รอยต่อ แรงลม และเสถียรภาพ Ringlock น้ำหนักอุปกรณ์อื่นต้องระบุในโหลดพร้อมหลักฐาน</p>
     {error && <p role="alert">{error}</p>}
-    <p className="pending-save-note" role="status">ค่าที่กำลังกรอกและแปลนสดด้านบนยังเป็น <b>ข้อมูลค้าง · ยังไม่บันทึก</b> จนกว่าจะกดปุ่มตรวจและวิเคราะห์แรงแบบท้อง</p>
+    <p className="pending-save-note" role="status">{canonical(form)!==canonical(formOf(layout))||!layout?<>ค่าที่กำลังกรอกและแปลนสดด้านบนยังเป็น <b>ข้อมูลค้าง · ยังไม่บันทึก</b> จนกว่าจะกดปุ่มตรวจและวิเคราะห์แรงแบบท้อง</>:<>ค่าที่แสดงตรงกับแบบท้องที่นำไปใช้แล้ว · ดูสถานะการบันทึกร่างด้านบน</>}</p>
     <button className="btn secondary" aria-label="ตรวจตำแหน่งและวิเคราะห์แรงแบบท้อง · ใช้ค่าและบันทึก" onClick={() => {try {onApply(layoutOf(form)); onPendingChange(false); setError('');} catch (e) {setError((e as Error).message);}}}>ตรวจตำแหน่งและวิเคราะห์แรงแบบท้อง</button>
     <button className="btn secondary" onClick={() => {change(formOf(layout)); onPendingChange(false);}}>คืนค่าแบบท้องที่นำไปใช้ล่าสุด</button>
   </fieldset>;

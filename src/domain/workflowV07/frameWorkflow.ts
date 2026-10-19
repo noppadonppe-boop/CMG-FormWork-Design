@@ -1,4 +1,5 @@
 import {canonical, clone, finite, identifier, record, signed, uniqueIds} from './common.js';
+import {definitionHash} from './definitionHash.js';
 import {analyzeLinearFrame, type FrameAction, type FrameBoundary, type FrameElement, type FrameNode, type FrameVector, type LinearFrameInput} from './frameLinear.js';
 import {transferSoffitReactionsToFrame, type FrameHeadMapping} from './frameLoadTransfer.js';
 import type {WorkflowModel} from './model.js';
@@ -149,7 +150,7 @@ export function validateFrameLayout(raw: unknown): asserts raw is AppliedFrameLa
   }
 }
 export function frameInputDefinition(model: WorkflowModel) {
-  return canonical({id: model.id, elementType: model.elementType, vertices: model.vertices, heightMm: model.heightMm,
+  return definitionHash({id: model.id, elementType: model.elementType, vertices: model.vertices, heightMm: model.heightMm,
     gammaKNm3: model.gammaKNm3, designBasisRef: model.designBasisRef, selections: model.selections, ringlockResearch: model.ringlockResearch ?? null,
     soffitLayout: model.soffitLayout ?? null, sideLayout: model.sideLayout ?? null, ringlockAssembly: model.ringlockAssembly ?? null, analysisCase: model.analysisCase ?? null, members: model.members, actions: model.actions, ringlock: model.ringlock});
 }

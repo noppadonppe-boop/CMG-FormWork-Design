@@ -118,8 +118,8 @@ it('attaches a populated v0.7 draft to every Project Example case without invent
     expect(model.sourceRef).toContain('PROJECT-EXAMPLE');
     expect(model.designBasisRef).toContain('ACI PRC-347');
     expect(model.selections.section?.reference.section_id).toBe('PAP-2026-CLIP-100x50x20x3.2');
-    expect(model.selections.material?.reference.material_id).toBe('STEEL-SS400');
-    expect(model.selections.ringlock?.reference.component_id).toBe('DOKA21-301011500');
+    expect(model.selections.material?.reference.material_id).toBe('STEEL-SSCS400');
+    expect(model.selections.ringlock).toBeNull(); // CUSTOM geometry does not select a different manufacturer's component.
     expect(model.humanInputReviewed).toBe(false);
     expect(model.ringlockRating).toBeNull();
   }

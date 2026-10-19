@@ -4,6 +4,7 @@ import {canonical, WORKFLOW_VERSION, type ElementType, type Point2} from '../dom
 import {createStoredWorkflowDraft, restoreWorkflowDraft, type StoredWorkflowDraft} from '../domain/workflowV07/storage';
 import {emptyReviewRecord, type ReviewActor, type ReviewRecord} from '../domain/workflowV07/review';
 import {ReviewPanel} from './ReviewPanel';
+import {ProjectExampleGuide} from './ProjectExampleGuide';
 import {contentHash} from '../domain/workflowV07/snapshot';
 import {outstandingRegister, STEP_GROUPS, WIZARD_STEP_LABEL, wizardSteps, type WizardStep} from '../domain/workflowV07/register';
 import {OutstandingRegister} from './OutstandingRegister';
@@ -398,6 +399,7 @@ export default function WorkflowV07Panel({input, caseId, initialElementType, sto
     <h2>Workflow v0.7 · ร่างตรวจข้อมูล</h2>
     <p>สำเนาสำหรับตรวจรูปทรง คู่ด้าน และโหลด · ข้อมูลที่ไม่ทราบให้เว้นว่าง · การเปลี่ยนค่าที่นี่ไม่แก้โครงการเดิม</p>
     <div className="notice">DRAFT / NO_GO · ยังรอหลักฐานสินค้าจริงและชุดกำลัง Form Tie / Ringlock ที่ตรวจครบ</div>
+    <ProjectExampleGuide model={model}/>
     <p className="muted" role="status" aria-label="สถานะการบันทึกร่าง v0.7">
       {!onPersist ? 'ร่างนี้ไม่ถูกบันทึก (ไม่มีปลายทางบันทึก)' : !canPersist ? 'สิทธิ์ดูอย่างเดียว · การแก้ไขไม่ถูกบันทึก'
         : saveState.status === 'SAVING' ? 'กำลังบันทึกร่าง…' : saveState.status === 'FAILED' ? `บันทึกร่างไม่สำเร็จ: ${saveState.message}`
@@ -410,8 +412,8 @@ export default function WorkflowV07Panel({input, caseId, initialElementType, sto
     {initialElementType && model.elementType !== initialElementType && <div className="warning" role="alert"><p>ร่างที่บันทึกเป็น {model.elementType} แต่แบบนี้ถูกเลือกเป็น {initialElementType} ระบบใช้ร่างที่บันทึกไว้ก่อน</p>
       <button className="btn secondary" disabled={anyPending} onClick={() => edit('elementType', initialElementType)}>เปลี่ยนประเภทร่างเป็น {initialElementType}</button></div>}
     <nav className="wizard-steps" aria-label="ขั้นตอนตามเส้นทางแรง">{steps.map((s, i) => <button key={s} className={`btn ${s === step ? '' : 'secondary'} wizard-step`} aria-current={s === step ? 'step' : undefined} onClick={() => setStepChoice(s)}>
-      {i + 1}. {WIZARD_STEP_LABEL[s].replace(/^1 · /, '')}{stepCount(s) ? ` · ขาด ${stepCount(s)}` : ''}</button>)}</nav>
-    <p className="muted">ร่างทั้งหมด: ข้อมูลที่ยังขาด {register.total} รายการ · สถานะ {analysis.preview?.status ?? 'ANALYSIS_FAILED'} · NO_GO</p>
+      {i + 1}. {WIZARD_STEP_LABEL[s].replace(/^1 · /, '')}{stepCount(s) ? ` · รอตรวจ ${stepCount(s)}` : ''}</button>)}</nav>
+    <p className="muted">รายการรอตรวจ {register.total} รายการ (รวมข้อมูล หลักฐาน และข้อจำกัดวิธีคำนวณ ไม่ใช่จำนวนช่องว่าง) · สถานะ {analysis.preview?.status ?? 'ANALYSIS_FAILED'} · NO_GO</p>
     <div hidden={step !== 'GEOMETRY'}>
     <div className="grid two"><div>
       <label className="field"><span>ประเภทองค์อาคาร</span><select value={model.elementType} onChange={e => edit('elementType', e.target.value as ElementType)}>
@@ -424,9 +426,9 @@ export default function WorkflowV07Panel({input, caseId, initialElementType, sto
         const next = values.map(v => ({x: v[0], y: v[1]})); previewWorkflow({...model, vertices: next}); edit('vertices', next);
       } catch (e) {setError((e as Error).message);}}}>ตรวจและใช้พิกัด</button>
       <div className="form-grid">{numeric('heightMm', 'ความสูง/ความลึกคอนกรีต', 'mm')}{numeric('gammaKNm3', 'น้ำหนักคอนกรีตสด', 'kN/m³')}</div>
-      <label className="field"><span>ระบบแบบข้าง</span><select value={model.sideTopology ?? ''} onChange={e => edit('sideTopology', (e.target.value || null) as WorkflowModel['sideTopology'])}>
+      {model.elementType!=='SLAB'&&<label className="field"><span>ระบบแบบข้าง</span><select value={model.sideTopology ?? ''} onChange={e => edit('sideTopology', (e.target.value || null) as WorkflowModel['sideTopology'])}>
         <option value="">ยังไม่ทราบ</option><option value="THROUGH_TIE">Through tie</option><option value="SEGMENTED_TIE">Inner / Outer tie</option><option value="COLUMN_YOKE">Column yoke / clamp</option><option value="GROUND_BRACED">Ground braced</option>
-      </select></label>
+      </select></label>}
       {(model.elementType === 'BEAM' || model.elementType === 'SLAB') && <div className="form-grid">
         {numeric('slabThicknessMm', 'ความหนาพื้น (คานแยกพื้นใส่ 0)', 'mm')}{numeric('additionalDeadKPa', 'Additional Dead Load', 'kPa')}{numeric('constructionLiveKPa', 'Construction Live Load', 'kPa')}
         {model.elementType === 'BEAM' && <>{numeric('beamWidthMm', 'ความกว้างคาน b', 'mm')}{numeric('concreteStripMm', 'แถบคอนกรีต Bc รวม b', 'mm')}{numeric('deadStripMm', 'แถบ DL', 'mm')}{numeric('liveStripMm', 'แถบ LL', 'mm')}</>}
@@ -452,7 +454,7 @@ export default function WorkflowV07Panel({input, caseId, initialElementType, sto
         return <div key={key} aria-label={`ข้อมูลอ้างอิง ${key}`}><label className="field"><span>{key === 'section' ? 'หน้าตัด' : key === 'material' ? 'วัสดุ' : 'อุปกรณ์ Ringlock (ขนาด/มวล)'}</span><select disabled={!!referencePending[key]} value={String(current?.reference[idKey] ?? '')} onChange={e => {
           const row = rows.find(r => r[idKey] === e.target.value);
           edit('selections', {...model.selections, [key]: row ? selectReference(row, key === 'section' ? '0.4' : key === 'material' ? '0.5.0' : '0.7.0') : null});
-        }}><option value="">ยังไม่เลือก</option>{rows.map(r => <option key={String(r[idKey])} value={String(r[idKey])} disabled={r.candidate_selectable === false}>
+        }}><option value="">{key==='ringlock'&&model.ringlock?.systemId==='EX-CUSTOM'?'Custom — ใช้ข้อมูลเรขาคณิตตัวอย่าง':key==='ringlock'&&!soffitSystem?'ไม่ใช้ในแบบข้างนี้':'ยังไม่เลือก'}</option>{rows.map(r => <option key={String(r[idKey])} value={String(r[idKey])} disabled={r.candidate_selectable === false}>
           {String(r.designation ?? r.label_th ?? r.label ?? r[idKey])}{r.candidate_selectable === false ? ' · ห้ามเลือก/รอตรวจ' : ' · Reference'}
         </option>)}</select></label>{current && <CustomReference key={`${caseId}:${String(current.reference[idKey])}`} selection={current} slot={key} onPendingChange={onReferencePending} onChange={next => edit('selections', {...model.selections, [key]: next})}/>}</div>;
       })}

@@ -42,7 +42,7 @@ export function RinglockPlanFields({config, onChange}: {config: RinglockConfigur
   return <fieldset className="ringlock-plan">
     <legend>แปลนตั้ง Ringlock</legend>
     <label className="field"><span>ขนาดแปลน Ringlock (X × Y)</span><select value={selected?.id ?? ''} onChange={e => onChange(e.target.value)}>
-      {!selected && <option value="" disabled>เลือกขนาดแปลน</option>}
+      {!selected && <option value="" disabled>{config.bayXMm&&config.bayYMm?`กำหนดเอง · ${config.bayXMm} × ${config.bayYMm} mm`:'เลือกขนาดแปลน'}</option>}
       {RINGLOCK_PLAN_PRESETS.map(p => <option key={p.id} value={p.id}>
         {metres(p.xMm)} × {metres(p.yMm)} ม. · {p.xMm === p.yMm ? 'สี่เหลี่ยมจัตุรัส' : 'สี่เหลี่ยมผืนผ้า'}
       </option>)}

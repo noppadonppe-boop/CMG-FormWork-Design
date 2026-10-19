@@ -1,4 +1,5 @@
 import {canonical, clone, identifier, record, uniqueIds, WORKFLOW_VERSION} from './common.js';
+import {definitionHash} from './definitionHash.js';
 import {CASE_ACTIONS, actionFactor, validateAnalysisCase, type AnalysisCase} from './caseFactors.js';
 import {previewSingleWorkflow, regenerateDraftLayouts, parseWorkflowModel, type WorkflowModel} from './model.js';
 import type {RequiredCheck} from './coverage.js';
@@ -6,7 +7,7 @@ export interface LoadCasesDefinition {schemaVersion: '1'; cases: AnalysisCase[]}
 export interface AppliedLoadCases extends LoadCasesDefinition {revisionId: string; inputDefinition: string}
 export function loadCasesInputDefinition(model: WorkflowModel) {
   const {loadCases: _book, analysisCase: _context, stageStudy: _stages, representatives: _reps, coverage: _coverage, coverageReview: _review, ...inputs} = model;
-  return canonical({engineVersion: WORKFLOW_VERSION, inputs});
+  return definitionHash({engineVersion: WORKFLOW_VERSION, inputs});
 }
 export function validateLoadCases(raw: unknown): asserts raw is AppliedLoadCases {
   const p = record(raw), keys = ['schemaVersion', 'cases', 'revisionId', 'inputDefinition'];

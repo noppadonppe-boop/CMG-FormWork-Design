@@ -3,7 +3,8 @@ import {createRoot} from 'react-dom/client';
 import {LayoutDashboard,FolderOpen,Layers,Upload,Settings2,FileText,CheckCircle2,AlertTriangle,Plus,Save,Download,ChevronRight,Building2,RotateCcw,LogIn,Users,Bell,BookOpen,Trash2,Link2,ShieldCheck} from 'lucide-react';
 import {calculate,columnDefaults,defaults,extensionDefaults,polygon,positions,segmentInside,validateInput,type Input,type Result} from './domain';
 import {parseProjectBackup} from './domain/projectBackup';
-import {PROJECT_EXAMPLE_REFERENCES, projectExample, projectExampleWorkflowDraft} from './domain/mockProject';
+import {PROJECT_EXAMPLE_REFERENCES, projectExample} from './domain/mockProject';
+import {upgradeProjectExampleCase} from './domain/projectExampleWorkflow';
 import {WalerDetails} from './components/WalerDetails';
 import {AssemblyDetail} from './components/AssemblyDetail';
 import {ColumnCriteria,ColumnYokeDetails} from './components/ColumnYokeDetails';
@@ -93,10 +94,9 @@ function storedRegistry():Registry{if(configured)return emptyRegistry();try{cons
 function withLocalProjectExample(projects:Project[]):Project[]{
  const found=projects.find(p=>p.name==='Project Example'||p.code==='PROJECT-EXAMPLE-001');
  if(!found)return [...projects,PROJECT_EXAMPLE_LOCAL];
- // Older Project Example records were saved before v0.7 drafts were attached. Rehydrate only
- // the synthetic example's missing drafts from the same deterministic reference source; user
- // projects and existing drafts are left untouched.
- return projects.map(p=>p!==found?p:{...p,cases:p.cases.map(c=>c.workflowV07?c:{...c,workflowV07:projectExampleWorkflowDraft(c.input,c.workflowElementType??c.input.kind,c.id)})});
+ // Upgrade only recognized example cases, including the old empty v1 seed.
+ // An authored revision is preserved, even if it still has missing data.
+ return projects.map(p=>p.name!=='Project Example'&&!p.code.startsWith('PROJECT-EXAMPLE-')?p:{...p,cases:p.cases.map(upgradeProjectExampleCase)});
 }
 // An explicitly stored empty list stays empty (all projects deleted); missing or corrupt data seeds the demo.
 function stored():Project[]{if(configured)return [];try{const v=JSON.parse(localStorage.getItem(KEY)||'null');if(!Array.isArray(v))return initial;const result=hydrate(v);return result.length||!v.length?withLocalProjectExample(result):initial;}catch{return initial;}}
@@ -214,6 +214,19 @@ function App(){
     setProjects(visible);
     if(loaded.length){setProjectId(loaded[0].id);setCaseId(loaded[0].cases[0].id);setMessage('เชื่อมต่อ Firebase แล้ว · แสดงเฉพาะโครงการที่คุณมีสิทธิ์เข้าถึง พร้อม Project Example แบบ local read-only');}
     else {setProjectId(PROJECT_EXAMPLE_LOCAL_ID);setCaseId(PROJECT_EXAMPLE_LOCAL.cases[0].id);setMessage(hasRole(userProfile,'MasterAdmin')?'ยังไม่มีโครงการใน Firebase · เปิด Project Example แบบ local แล้ว กด “สร้าง Project Example” เพื่อบันทึกเข้า Firebase':'ยังไม่มีโครงการที่ได้รับมอบหมายจาก MasterAdmin · เปิด Project Example แบบ local read-only ให้แล้ว');}
+    // Persist upgraded template drafts through the ordinary per-case API, under
+    // the signed-in user's project permission. Never rewrite the project document.
+    let upgraded=0;
+    for(const project of loaded){
+      if(cancelled)return;
+      if(!canProject(userProfile,project.id,'edit'))continue;
+      const next=visible.find(p=>p.id===project.id)!;
+      for(const old of project.cases){
+        const updated=next.cases.find(c=>c.id===old.id)!;
+        if(updated.workflowV07&&updated.workflowV07!==old.workflowV07){await saveWorkflowDraft(project.id,old.id,updated.workflowV07);upgraded++;}
+      }
+    }
+    if(upgraded&&!cancelled)setMessage(`เติมและบันทึกร่าง Project Example ${upgraded} ตัวอย่างแล้ว · เก็บร่างที่คุณแก้เองไว้`);
    }catch(e){if(!cancelled)setMessage((e as Error).message);}
    finally{if(!cancelled)setBusy(false);}
   })();
@@ -285,7 +298,7 @@ function App(){
    if(!canManageProjects)return;
    const z:Project=projectExample('PROJECT-EXAMPLE-'+String(projects.filter(q=>q.id!==PROJECT_EXAMPLE_LOCAL_ID).length+1).padStart(3,'0'));
    setProjects(v=>[...v,z]);setProjectId(z.id);setCaseId(z.cases[0].id);setWorkflowElementType(z.cases[0].workflowElementType??'FOOTING');setTab('overview');
-   const done='สร้าง Project Example แล้ว · ฐานราก เสา ผนัง คาน พื้น อย่างละ 2 แบบ · ทุกฟิลด์มีค่าและแหล่งอ้างอิงตัวอย่าง · SWL ที่ไม่มีหลักฐานเป็น 0/UNKNOWN · NO_GO';
+   const done='สร้าง Project Example แล้ว · ฐานราก เสา ผนัง คาน พื้น อย่างละ 2 แบบ พร้อมผังและแหล่งอ้างอิง · รายการหลักฐานที่ยังขาดแสดงในร่างแต่ละ Case';
    if(!configured){setMessage(done+' · โหมดออฟไลน์');return;}
    setBusy(true);
    try{await saveProject(z,'overview',z.cases[0].id);for(const exampleCase of z.cases)if(exampleCase.workflowV07)await saveWorkflowDraft(z.id,exampleCase.id,exampleCase.workflowV07);setMessage(done+' · บันทึกไป Firebase แล้ว รวม Draft v0.7 ของทั้ง 10 Case');}
@@ -315,10 +328,10 @@ function App(){
  }
  async function importProject(file:File){
    try{
-     if(file.size>2*1024*1024)throw Error('ไฟล์โครงการเกิน 2 MB');
+     if(file.size>10*1024*1024)throw Error('ไฟล์โครงการเกิน 10 MB');
      const project:Project=parseProjectBackup(await file.text());
      setProjects(v=>[...v,project]);setProjectId(project.id);setCaseId(project.cases[0].id);setSourceName(null);setTab('geometry');
-     if(configured){await saveProject(project,'geometry',project.cases[0].id);setMessage('นำเข้าโครงการและบันทึกไป Firebase แล้ว · หมวด geometry');}
+     if(configured){await saveProject(project,'geometry',project.cases[0].id);for(const c of project.cases)if(c.workflowV07)await saveWorkflowDraft(project.id,c.id,c.workflowV07);setMessage('นำเข้าโครงการและร่าง v0.7 บันทึกไป Firebase แล้ว · หมวด geometry');}
      else setMessage('นำเข้าโครงการแล้ว กรุณาตรวจยืนยันมิติใหม่ก่อนคำนวณ');
    }catch(e){setMessage((e as Error).message);}
  }

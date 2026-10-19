@@ -1,4 +1,5 @@
 import {canonical, finite, identifier, record, signed, uniqueIds, type Point2} from './common.js';
+import {definitionHash} from './definitionHash.js';
 import type {PathMember} from './loadPath.js';
 import {beamLoads, loadOwnershipIssues, slabLoads, type LoadAction} from './loads.js';
 import type {WorkflowModel} from './model.js';
@@ -228,6 +229,11 @@ export function buildSoffitCandidate(model: WorkflowModel, layout: SoffitLayout)
   const ringlock: RinglockConfiguration = {...model.ringlock, legs};
   if (individualBases && (layout.baseDatumsByHead!.length !== legs.length || layout.baseDatumsByHead!.some(r => !legs.some(l => l.headNodeId === r.headNodeId)))) throw Error('Unknown, missing or stale per-head base datum; no fallback to shared base');
   const requiredChecks: RequiredCheck[] = [];
+  // Store one digest per check instead of copying the entire authored layout into
+  // every applicability row. All inputs remain in the model and are recomputed.
+  const analysisDefinition = definitionHash({layout, analysisCase: model.analysisCase ?? null, vertices: model.vertices, gamma: model.gammaKNm3,
+    heightMm: model.heightMm, slabThicknessMm: model.slabThicknessMm, concreteStripMm: model.concreteStripMm, deadStripMm: model.deadStripMm, liveStripMm: model.liveStripMm,
+    additionalDeadKPa: model.additionalDeadKPa, constructionLiveKPa: model.constructionLiveKPa});
   for (const spec of model.checkCatalogue?.specifications ?? []) {
     if (spec.appliesTo !== 'ALL' && !spec.appliesTo.split('|').includes(model.elementType)) continue;
     const targets = spec.group === 'RINGLOCK' ? legs.map(l => l.id) : spec.group === 'TYPICAL' ? [...members.map(m => m.beam.id), ...legs.map(l => l.id), ...(plywood?.strips.map(s => s.id) ?? [])] :
@@ -235,12 +241,11 @@ export function buildSoffitCandidate(model: WorkflowModel, layout: SoffitLayout)
       spec.id === 'SOFFIT-05' ? members.filter(m => m.role === 'JOIST').map(m => m.beam.id) : ['SOFFIT-06', 'SOFFIT-07', 'SOFFIT-08'].includes(spec.id) ? sorted.map(l => l.id) :
       ['INPUT', 'RELEASE'].includes(spec.group) || ['SOFFIT-01', 'SOFFIT-02'].includes(spec.id) ? [model.id] : [];
     for (const target of targets) requiredChecks.push({memberId: target, checkId: spec.id, loadCaseId: layout.loadCaseId, revision: model.revisionId,
-      applicability: {stageId: layout.stageId, elementType: model.elementType, layoutEvidence: layout.evidenceRef, analysisDefinition: canonical({layout, analysisCase: model.analysisCase ?? null, vertices: model.vertices, gamma: model.gammaKNm3,
-        heightMm: model.heightMm, slabThicknessMm: model.slabThicknessMm, concreteStripMm: model.concreteStripMm, deadStripMm: model.deadStripMm, liveStripMm: model.liveStripMm,
-        additionalDeadKPa: model.additionalDeadKPa, constructionLiveKPa: model.constructionLiveKPa}), memberId: target}});
+      applicability: {stageId: layout.stageId, elementType: model.elementType, layoutEvidence: layout.evidenceRef, analysisDefinition, memberId: target}});
   }
   const configurationIssues: string[] = [];
-  if (sorted.some((line, i) => (i > 0 && line.yMm - sorted[i - 1].yMm !== ringlock.bayYMm) || line.headsXMm.some((x, n) => n > 0 && x - line.headsXMm[n - 1] !== ringlock.bayXMm))) configurationIssues.push('ACTUAL_HEAD_SPACING_DIFFERS_FROM_SELECTED_RINGLOCK_PLAN');
+  if (sorted.some((line, i) => (i > 0 && (ringlock.bayYMm === null || Math.abs(line.yMm - sorted[i - 1].yMm - ringlock.bayYMm) > 1e-7)) ||
+    line.headsXMm.some((x, n) => n > 0 && (ringlock.bayXMm === null || Math.abs(x - line.headsXMm[n - 1] - ringlock.bayXMm) > 1e-7)))) configurationIssues.push('ACTUAL_HEAD_SPACING_DIFFERS_FROM_SELECTED_RINGLOCK_PLAN');
   const additionalForceN = (spatial?.totals.additional ?? 0) + (direct.byKindN.PLACEMENT ?? 0) + (direct.byKindN.OTHER ?? 0);
   return {members, actions, ringlock, requiredChecks, configurationIssues, plywood, additionalForceN,
     spatialLoading: spatial ? {scopeEvidenceRef: layout.loading!.evidenceRef, omittedAreasEvidenceRef: layout.loading!.omittedAreasEvidenceRef, regions: spatial.rows, memberActions: direct.resolved, additionalForceN} : null,

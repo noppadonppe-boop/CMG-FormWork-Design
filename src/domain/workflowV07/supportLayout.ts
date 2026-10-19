@@ -1,4 +1,5 @@
 import {canonical, clone, finite, identifier, record, signed, uniqueIds} from './common.js';
+import {definitionHash} from './definitionHash.js';
 import {currentProducedFrame, frameInputDefinition, type evaluateFrameLayout} from './frameWorkflow.js';
 import type {FrameVector} from './frameLinear.js';
 import type {WorkflowModel} from './model.js';
@@ -60,7 +61,7 @@ export function validateSupportLayout(raw: unknown): asserts raw is AppliedSuppo
   if (new Set(mapped).size !== mapped.length) throw Error('Duplicate base-to-support mapping');
   if (canonical(p.bases).length > 1000000) throw Error('Support definition exceeds 1000000 characters; no base omitted');
 }
-export function supportInputDefinition(m: WorkflowModel) {return canonical({frameInputs: frameInputDefinition(m), frameLayout: m.frameLayout ?? null, assembly: m.ringlockAssembly ?? null});}
+export function supportInputDefinition(m: WorkflowModel) {return definitionHash({frameInputs: frameInputDefinition(m), frameLayout: m.frameLayout ?? null, assembly: m.ringlockAssembly ?? null});}
 export function stampSupportLayout(m: WorkflowModel, d: SupportLayoutDefinition): AppliedSupportLayout {
   const result = {...clone(d), revisionId: m.revisionId, inputDefinition: supportInputDefinition(m)}; validateSupportLayout(result); return result;
 }
