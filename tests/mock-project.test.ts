@@ -1,5 +1,9 @@
 import {expect, it} from 'vitest';
+import {readFileSync} from 'node:fs';
 import {calculate} from '../src/domain';
+import {calculateBeam} from '../src/domain/beam';
+import {calculateSlab} from '../src/domain/slab';
+import {calculateWall} from '../src/domain/wall';
 import {MOCK_CASES, mockProject} from '../src/domain/mockProject';
 import {parseProjectBackup} from '../src/domain/projectBackup';
 import {fromLegacy, previewWorkflow} from '../src/domain/workflowV07/model';
@@ -11,8 +15,28 @@ it('creates a mock-up project with exactly two cases per element type and unconf
   expect(p.cases).toHaveLength(10);
   for (const type of ['FOOTING', 'COLUMN', 'WALL', 'BEAM', 'SLAB']) expect(p.cases.filter(c => c.workflowElementType === type)).toHaveLength(2);
   expect(new Set(p.cases.map(c => c.id)).size).toBe(10);
-  expect(p.cases.every(c => c.input.confirmed === false && c.name.includes('ตัวอย่าง'))).toBe(true);
+  expect(p.name).toContain('MOCK-UP');
+  expect(p.cases.every(c => c.input.confirmed === false && c.name.includes('MOCK'))).toBe(true);
   expect(MOCK_CASES.map(c => c.code)).toEqual(['F01', 'F02', 'C01', 'C02', 'W01', 'W02', 'B01', 'B02', 'S01', 'S02']);
+});
+
+it('stores editable Beam, Slab and Wall mock inputs with unknown equipment capacities', () => {
+  const p = mockProject('CMG-DEMO-001');
+  const beams = p.cases.filter(c => c.workflowElementType === 'BEAM'), slabs = p.cases.filter(c => c.workflowElementType === 'SLAB'), walls = p.cases.filter(c => c.workflowElementType === 'WALL');
+  expect(beams).toHaveLength(2); expect(slabs).toHaveLength(2); expect(walls).toHaveLength(2);
+  for (const c of beams) {
+    expect(c.beam).toMatchObject({confirmed: false, length: c.input.width, b: c.input.length, h: c.input.height, shoreSWL: 0, tieSWL: 0});
+    expect(calculateBeam(c.beam).status).not.toBe('PASS');
+  }
+  for (const c of slabs) {
+    expect(c.slab).toMatchObject({confirmed: false, lx: c.input.width, ly: c.input.length, t: c.input.height, shoreSWL: 0});
+    expect(calculateSlab(c.slab).status).not.toBe('PASS');
+  }
+  for (const c of walls) {
+    expect(c.wall).toMatchObject({confirmed: false, length: c.input.width, t: c.input.length, height: c.input.height, tieSWL: 0, braceSWL: 0, anchorSWL: 0});
+    expect(calculateWall(c.wall).status).not.toBe('PASS');
+  }
+  expect(walls.map(c => c.wall?.system)).toEqual(['TWO_SIDED', 'SINGLE_SIDED']);
 });
 
 it('runs the legacy footing/column screening and opens every beam/slab/wall case as a blocked v0.7 draft', () => {
@@ -36,6 +60,19 @@ it('survives the project backup round trip used for import/export', () => {
   expect(restored.cases).toHaveLength(10);
   expect(restored.cases.map(c => c.name)).toEqual(p.cases.map(c => c.name));
   expect(restored.cases.map(c => c.workflowElementType)).toEqual(p.cases.map(c => c.workflowElementType));
+  expect(restored.cases.filter(c => c.workflowElementType === 'BEAM').every(c => c.beam?.confirmed === false && c.beam.shoreSWL === 0)).toBe(true);
+  expect(restored.cases.filter(c => c.workflowElementType === 'SLAB').every(c => c.slab?.confirmed === false && c.slab.shoreSWL === 0)).toBe(true);
+  expect(restored.cases.filter(c => c.workflowElementType === 'WALL').every(c => c.wall?.confirmed === false && c.wall.tieSWL === 0)).toBe(true);
   const bad = JSON.parse(JSON.stringify({schemaVersion: 3, app: 'x', project: p})); bad.project.cases[0].workflowElementType = 'ROOF';
   expect(() => parseProjectBackup(JSON.stringify(bad))).toThrow(/ประเภทองค์อาคาร/);
+});
+
+it('ships an importable mock project backup with all five element workflows', () => {
+  const text = readFileSync(new URL('../examples/RC-FormWork-Mockup-Project-v0.7.json', import.meta.url), 'utf8');
+  const restored = parseProjectBackup(text);
+  expect(restored.code).toBe('CMG-DEMO-001');
+  expect(restored.cases).toHaveLength(10);
+  expect(new Set(restored.cases.map(c => c.workflowElementType))).toEqual(new Set(['FOOTING', 'COLUMN', 'WALL', 'BEAM', 'SLAB']));
+  expect(restored.cases.every(c => !c.input.confirmed)).toBe(true);
+  expect(restored.cases.every(c => c.beam?.confirmed !== true && c.slab?.confirmed !== true && c.wall?.confirmed !== true)).toBe(true);
 });

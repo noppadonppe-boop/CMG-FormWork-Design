@@ -1,11 +1,13 @@
 import {defaults, validateInput, type Input} from './index.js';
+import {beamFromCase, type BeamInput} from './beam.js';
+import {slabFromCase, type SlabInput} from './slab.js';
+import {wallFromCase, type WallInput} from './wall.js';
 import type {ElementType} from './workflowV07/common.js';
 
 /** SYNTHETIC demonstration project: two cases for each element type. All dimensions are
  * illustrative mock-up values (mm), unconfirmed, and carry no engineering approval. Beam, slab
- * and wall cases only seed the Workflow v0.7 footprint/height; every engineering input there
- * (layouts, loads, products, evidence) stays UNKNOWN until a user enters it. */
-export interface MockCase {id: string; name: string; input: Input; workflowElementType: ElementType}
+ * and wall inputs reuse the app's editable demo defaults; equipment SWL stays zero/unknown. */
+export interface MockCase {id: string; name: string; input: Input; workflowElementType: ElementType; beam?: BeamInput; slab?: SlabInput; wall?: WallInput}
 export interface MockProject {id: string; name: string; code: string; cases: MockCase[]}
 
 const footing = (o: Partial<Input>): Input => validateInput({...defaults, kind: 'FOOTING', confirmed: false, ...o});
@@ -26,6 +28,16 @@ export const MOCK_CASES: {code: string; name: string; type: ElementType; input: 
 ];
 
 export function mockProject(code: string, newId: () => string = () => globalThis.crypto.randomUUID()): MockProject {
-  return {id: newId(), name: 'โครงการตัวอย่าง (Mock-up) · ฐานราก เสา ผนัง คาน พื้น', code,
-    cases: MOCK_CASES.map(c => ({id: newId(), name: `${c.code} · ${c.name} · ตัวอย่าง`, input: c.input(), workflowElementType: c.type}))};
+  return {id: newId(), name: 'โครงการตัวอย่าง MOCK-UP · ห้ามใช้ก่อสร้าง · ฐานราก เสา ผนัง คาน พื้น', code,
+    cases: MOCK_CASES.map(c => {
+      const input = c.input(), footprint = {width: input.width, length: input.length, height: input.height};
+      const base = {id: newId(), name: `${c.code} · ${c.name} · MOCK`, input, workflowElementType: c.type};
+      if (c.type === 'BEAM') return {...base, beam: beamFromCase(null, footprint)};
+      if (c.type === 'SLAB') return {...base, slab: slabFromCase(null, footprint)};
+      if (c.type === 'WALL') {
+        const wall = wallFromCase(null, footprint);
+        return {...base, wall: c.code === 'W02' ? {...wall, system: 'SINGLE_SIDED' as const} : wall};
+      }
+      return base;
+    })};
 }

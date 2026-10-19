@@ -264,6 +264,7 @@ export default function WorkflowV07Panel({input, caseId, initialElementType, sto
   const candidateSourcePending = geometryPending || soffitPending || sidePending || framePending || supportPending || assemblyPending || coveragePending || loadCasesPending || stagePending || referencesPending || supplierPending;
   const currentCandidateSourcesPending = useRef(candidateSourcePending); currentCandidateSourcesPending.current = candidateSourcePending;
   const anyPending = candidateSourcePending || candidatePending;
+  const unsaved = anyPending || draftIdentity !== lastPersisted.current;
   const fresh = view?.freshness === 'CURRENT' && snapshot?.inputHash === view.inputHash && canonical(snapshot.content.model) === draftIdentity && !anyPending;
   function requireAppliedReferences() {
     if (geometryPending) throw Error('มีพิกัดที่ยังไม่ได้นำไปใช้ กรุณาตรวจและใช้พิกัดก่อนวิเคราะห์');
@@ -400,7 +401,7 @@ export default function WorkflowV07Panel({input, caseId, initialElementType, sto
     <p className="muted" role="status" aria-label="สถานะการบันทึกร่าง v0.7">
       {!onPersist ? 'ร่างนี้ไม่ถูกบันทึก (ไม่มีปลายทางบันทึก)' : !canPersist ? 'สิทธิ์ดูอย่างเดียว · การแก้ไขไม่ถูกบันทึก'
         : saveState.status === 'SAVING' ? 'กำลังบันทึกร่าง…' : saveState.status === 'FAILED' ? `บันทึกร่างไม่สำเร็จ: ${saveState.message}`
-          : saveState.status === 'SAVED' && saveState.atMs !== null ? `บันทึกร่างแล้ว ${new Date(saveState.atMs).toLocaleString('th-TH')} · engine ${WORKFLOW_VERSION}` : 'ยังไม่มีการแก้ไขที่ต้องบันทึก'}
+          : unsaved ? 'มีข้อมูลแก้ไขค้าง · ยังไม่บันทึก (กดปุ่มตรวจ/วิเคราะห์ของส่วนนั้นก่อน)' : saveState.status === 'SAVED' && saveState.atMs !== null ? `บันทึกร่างแล้ว ${new Date(saveState.atMs).toLocaleString('th-TH')} · engine ${WORKFLOW_VERSION}` : 'ยังไม่มีการแก้ไขที่ต้องบันทึก'}
       {' · Revision '}{model.revisionId}
     </p>
     {restored.staleEngine && <div className="warning" role="alert"><p>ร่างนี้บันทึกด้วย engine {restored.savedEngineVersion} (ปัจจุบัน {WORKFLOW_VERSION}) ผลที่คำนวณไว้ทั้งหมดถือว่า stale ต้องคำนวณใหม่ก่อนใช้</p>
@@ -471,7 +472,7 @@ export default function WorkflowV07Panel({input, caseId, initialElementType, sto
     <OutstandingRegister blockers={analysis.preview?.blockers ?? []} groups={STEP_GROUPS.GEOMETRY} title="ข้อมูลที่ยังขาดในขั้นนี้"/>
     </div>
     <div hidden={step !== 'SOFFIT'}>
-    {soffitSystem && <SoffitLayoutEditor key={`soffit:${caseId}:${model.elementType}:${editorEpoch}`} layout={model.soffitLayout ?? null} selections={model.selections} beam={model.elementType === 'BEAM'} onApply={applySoffit} onPendingChange={setSoffitPending} onDraftChange={d => {pendingSoffit.current = d;}}/>}
+    {soffitSystem && <SoffitLayoutEditor key={`soffit:${caseId}:${model.elementType}:${editorEpoch}`} layout={model.soffitLayout ?? null} topology={analysis.preview?.topology ?? null} selections={model.selections} beam={model.elementType === 'BEAM'} onApply={applySoffit} onPendingChange={setSoffitPending} onDraftChange={d => {pendingSoffit.current = d;}}/>}
     {soffitSystem && <><LayoutCandidateEditor key={`candidate:${caseId}:${model.elementType}:${editorEpoch}`} model={model} sourcePending={candidateSourcePending} onPendingChange={setCandidatePending} onApply={applyCandidate}/><LayoutCandidateSummary model={model}/></>}
     {analysis.preview && soffitSystem && <SoffitResults model={model} preview={analysis.preview}/>}
     <OutstandingRegister blockers={analysis.preview?.blockers ?? []} groups={STEP_GROUPS.SOFFIT} title="ข้อมูลที่ยังขาดในขั้นนี้"/>

@@ -59,3 +59,31 @@ it('panel shows the wizard with per-step missing counts and keeps hidden steps m
     expect(Array.from(host.querySelectorAll('section.workflow-v07 > div[hidden]')).length).toBe(6);
   } finally {await act(async () => root.unmount()); host.remove();}
 });
+
+it('marks required soffit inputs, shows the live geometry, and reports pending unsaved edits', async () => {
+  vi.stubGlobal('crypto', webcrypto); vi.stubGlobal('TextEncoder', TextEncoder);
+  (globalThis as unknown as {IS_REACT_ACT_ENVIRONMENT: boolean}).IS_REACT_ACT_ENVIRONMENT = true;
+  const host = document.createElement('div'), root = createRoot(host);
+  document.body.append(host);
+  try {
+    await act(async () => root.render(<WorkflowV07Panel input={{...defaults}} caseId="B-LIVE" initialElementType="BEAM"/>));
+    const step = Array.from(host.querySelectorAll('nav.wizard-steps button')).find(b => b.textContent?.includes('แบบท้อง'))!;
+    await act(async () => step.click());
+    expect(host.querySelector('[data-testid="soffit-live-geometry"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="soffit-graphic-guide"]')).not.toBeNull();
+    expect(host.querySelectorAll('.formwork-graphic-card')).toHaveLength(3);
+    expect(host.textContent).toContain('ลำดับเตรียมและกรอกข้อมูล');
+    expect(host.querySelectorAll('.required-mark').length).toBeGreaterThan(8);
+    const joist = Array.from(host.querySelectorAll('label')).find(l => l.textContent?.includes('ตำแหน่งคร่าว X'))!.querySelector('input')!;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+    await act(async () => {setter.call(joist, '0,1000,2000'); joist.dispatchEvent(new Event('input', {bubbles: true}));});
+    expect(host.querySelectorAll('[data-role="joist"]')).toHaveLength(3);
+    expect(host.textContent).toContain('ข้อมูลค้าง · ยังไม่บันทึก');
+    expect(host.textContent).toContain('เส้นทอง = คร่าว');
+    const graphicSummary = host.querySelector('.field-graphic-help > summary') as HTMLElement;
+    expect(graphicSummary).not.toBeNull();
+    await act(async () => graphicSummary.click());
+    expect(host.querySelector('.field-graphic-popover')).not.toBeNull();
+    expect(host.textContent).toContain('แรงลง q');
+  } finally {await act(async () => root.unmount()); host.remove();}
+});
