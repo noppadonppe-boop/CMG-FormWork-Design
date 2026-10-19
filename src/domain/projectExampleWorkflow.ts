@@ -226,8 +226,17 @@ export function isOldExampleSeed(d:StoredWorkflowDraft):boolean {
   return m.revisionId==='PROJECT-EXAMPLE-v0.7'&&m.sourceRef?.startsWith('PROJECT-EXAMPLE · PAP-TIS107')===true&&
     !m.humanInputReviewed&&!m.soffitLayout&&!m.sideLayout&&!m.frameLayout&&!m.supportLayout&&!m.members.length&&!m.actions.length;
 }
-export function upgradeProjectExampleCase<T extends {id:string;name:string;input:Input;workflowElementType?:ElementType;workflowV07?:StoredWorkflowDraft}&ExampleContext>(c:T,projectId?:string):T {
-  if(!/^Project Example · (F0[12]|C0[12]|W0[12]|B0[12]|S0[12]) · /.test(c.name))return c;
+const EXAMPLE_TYPES:Record<string,ElementType>={F:'FOOTING',C:'COLUMN',W:'WALL',B:'BEAM',S:'SLAB'};
+export function upgradeProjectExampleCase<T extends {id:string;name:string;input:Input;workflowElementType?:ElementType;workflowV07?:StoredWorkflowDraft}&ExampleContext>(stored:T,projectId?:string):T {
+  const code=/^Project Example · ([FCWBS])0[12] · /.exec(stored.name);
+  if(!code)return stored;
+  // Example names are canonical: an element button click could retype a case (e.g. S01 stored as FOOTING),
+  // so restore the type from the name and drop an example-generated draft of another element type.
+  const type=EXAMPLE_TYPES[code[1]];
+  let c=stored.workflowElementType===type?stored:{...stored,workflowElementType:type};
+  if(c.workflowV07&&c.workflowV07.model.elementType!==type&&c.workflowV07.model.sourceRef?.startsWith('PROJECT-EXAMPLE')){
+    c={...c,workflowV07:undefined};delete (c as typeof c & {review?:unknown}).review;
+  }
   const previous=c.workflowV07?.model;
   const hasMockBasis=previous?.closureInputs?.some(f=>f.form_type==='support_slab'&&String(f.inputs.notes).startsWith('EX-DB-01 (MOCK)'));
   if(previous?.sourceRef?.startsWith('PROJECT-EXAMPLE')&&

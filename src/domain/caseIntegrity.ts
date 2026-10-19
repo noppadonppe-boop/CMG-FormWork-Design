@@ -35,7 +35,7 @@ const isElementType = (value: unknown): value is ElementType => typeof value ===
 const PREFIX_TYPES: Record<string, ElementType> = {F: 'FOOTING', C: 'COLUMN', W: 'WALL', B: 'BEAM', S: 'SLAB'};
 
 export function suggestedElementTypeFromName(name: string): ElementType | undefined {
-  const match = /^\s*([FCWBS])\s*\d+/i.exec(name);
+  const match = /^\s*(?:Project Example\s*·\s*)?([FCWBS])\s*\d+/i.exec(name);
   return match ? PREFIX_TYPES[match[1].toUpperCase()] : undefined;
 }
 

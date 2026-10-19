@@ -104,6 +104,16 @@ export function Table({x, y, cols, rows, rh = 6, s = 2.2, title}: {x: number; y:
   </g>;
 }
 
+/** Element name in the title block: one line when it fits the cell, otherwise two lines split at a " · " separator (never overflowing into the next cell). */
+function ElementCell({x, y, w, text}: {x: number; y: number; w: number; text: string}) {
+  const fits = (t: string, s: number) => t.length * s * 0.52 <= w - 3;
+  const label = <Txt x={x + 1.5} y={y + 3} s={1.8} fill="#555">องค์อาคาร / ELEMENT</Txt>;
+  if (fits(text, 2.6)) return <g>{label}<Txt x={x + 1.5} y={y + 7.2} s={2.6} b>{text}</Txt></g>;
+  const parts = text.split(' · '), cut = Math.max(1, Math.ceil(parts.length / 2));
+  const lines = parts.length > 1 ? [parts.slice(0, cut).join(' · '), parts.slice(cut).join(' · ')] : [text];
+  const s = Math.max(1.6, Math.min(2.4, ...lines.map(l => (w - 3) / (l.length * 0.52))));
+  return <g>{label}{lines.map((l, i) => <Txt key={i} x={x + 1.5} y={y + 7 + i * (s + 1.2)} s={s} b>{l}</Txt>)}</g>;
+}
 export interface TitleInfo {company: string; project: string; code: string; caseName: string; elementLabel: string;
   designedBy: string; drawnBy: string; checkedBy: string; approvedBy: string; rev: string; date: string}
 /** A3 frame with CMG title strip and a permanent preliminary stamp while the engine reports no construction release. */
@@ -136,7 +146,7 @@ export function Sheet({no, total, code, title, info, children, svgRef}: {no: num
       <Txt x={xs[0] + 3} y={ty + 28} s={1.8} fill="#555">หน่วยมิลลิเมตร เว้นแต่ระบุเป็นอื่น</Txt>
     </g>
     <g>{small(xs[1], ty, 'โครงการ / PROJECT', info.project, 2.8)}{small(xs[1], ty + 9, 'รหัสโครงการ / CODE', info.code)}
-      {small(xs[1], ty + 18, 'องค์อาคาร / ELEMENT', `${info.caseName} · ${info.elementLabel}`)}<line x1={xs[1]} y1={ty + 9} x2={xs[2]} y2={ty + 9} stroke="#111" strokeWidth={LW.hair}/>
+      <ElementCell x={xs[1]} y={ty + 18} w={cells[1]} text={`${info.caseName} · ${info.elementLabel}`}/><line x1={xs[1]} y1={ty + 9} x2={xs[2]} y2={ty + 9} stroke="#111" strokeWidth={LW.hair}/>
       <line x1={xs[1]} y1={ty + 18} x2={xs[2]} y2={ty + 18} stroke="#111" strokeWidth={LW.hair}/></g>
     <g><Txt x={xs[2] + 1.5} y={ty + 3} s={1.8} fill="#555">ชื่อแบบ / DRAWING TITLE</Txt>
       <Txt x={xs[2] + 1.5} y={ty + 11} s={3.4} b>{title}</Txt>

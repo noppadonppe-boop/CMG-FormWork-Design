@@ -99,9 +99,11 @@ export function A3Set({sheets, project, code, caseName, elementLabel, confirmed,
     onTitleBlockChange({...info, rev, date: today(), revisions: [...info.revisions, {rev, date: today(), description: note.trim().slice(0, 120)}].slice(-12)});
     setNote('');
   }
+  const root = useRef<HTMLDivElement>(null);
   function print() {
-    document.body.classList.add('print-a3');
-    const done = () => {document.body.classList.remove('print-a3'); window.removeEventListener('afterprint', done);};
+    // Several sets can share the page (Project Example: construction set + installation book); print only this one.
+    document.body.classList.add('print-a3'); root.current?.classList.add('print-target');
+    const done = () => {document.body.classList.remove('print-a3'); root.current?.classList.remove('print-target'); window.removeEventListener('afterprint', done);};
     window.addEventListener('afterprint', done);
     window.print();
   }
@@ -111,7 +113,7 @@ export function A3Set({sheets, project, code, caseName, elementLabel, confirmed,
     a.href = url; a.download = `${code || 'CMG'}-${caseName.replace(/[^\w\u0E00-\u0E7F-]+/g, '_')}-${SHEETS[i].code}.svg`; a.click(); URL.revokeObjectURL(url);
   }
   const field = (k: 'rev' | 'date' | 'designedBy' | 'drawnBy' | 'checkedBy' | 'approvedBy', label: string) => <label className="field"><span>{label}</span><input value={info[k]} maxLength={40} disabled={!canEdit} onChange={e => onTitleBlockChange({...info, [k]: e.target.value})}/></label>;
-  return <div className="a3-print-root">
+  return <div className="a3-print-root" ref={root}>
     <section className="card a3-controls">
       <div className="card-title"><h3>ชุดแบบก่อสร้างแบบหล่อ A3 ({SHEETS.length} แผ่น)</h3>
         <div className="source-actions"><button className="btn" onClick={print}><Printer size={16}/>พิมพ์ / บันทึก PDF (A3)</button></div></div>

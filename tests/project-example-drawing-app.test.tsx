@@ -27,9 +27,21 @@ it('opens example footing plans through the app and compiles footing plus slab i
   expect(document.querySelectorAll('[data-view="installation-plan"]')).toHaveLength(1);
   expect(document.querySelectorAll('[data-view="section-X"],[data-view="section-Y"]')).toHaveLength(2);
   expect(document.body.textContent).toContain('EX-F02-M1');
+  // The same FW-01..04 construction set as every other project comes first, then the installation book.
+  const roots=[...document.querySelectorAll('.a3-print-root')];
+  const fw=roots.findIndex(r=>!!r.querySelector('#sheet-FW-01')),book=roots.findIndex(r=>r.classList.contains('project-example-drawings'));
+  expect(fw).toBeGreaterThanOrEqual(0);expect(book).toBeGreaterThan(fw);
+  for(const code of ['FW-01','FW-02','FW-03','FW-04'])expect(document.getElementById(`sheet-${code}`)).toBeTruthy();
+  expect(document.getElementById('sheet-FW-01')!.textContent).not.toContain('Project Example · F02');
   await act(async()=>{button('รวมแบบทั้ง 2').click();});
   await until(()=>document.querySelectorAll('[data-view="installation-plan"]').length===2);
   expect(document.body.textContent).toContain('EX-S02-02');
   expect(document.body.textContent).toContain('NOT FOR CONSTRUCTION');
   expect(button('ดาวน์โหลดชุดแบบ HTML').disabled).toBe(false);
+  // Printing one set marks only that set; the print CSS hides the other set on the page.
+  const printSpy=vi.spyOn(window,'print').mockImplementation(()=>{});
+  const fwRoot=document.getElementById('sheet-FW-01')!.closest('.a3-print-root')!;
+  await act(async()=>{(fwRoot.querySelector('.a3-controls button') as HTMLButtonElement).click();});
+  expect(printSpy).toHaveBeenCalled();expect(fwRoot.classList.contains('print-target')).toBe(true);
+  expect(document.querySelectorAll('.print-target')).toHaveLength(1);
 },40000);

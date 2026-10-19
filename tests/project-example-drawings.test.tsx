@@ -44,5 +44,17 @@ describe.each(project.cases)('$name',c=>{
     // All plan vertices must lie inside the drawing space, not hundreds of pages away.
     const plan=doc.querySelector('[data-view="installation-plan"]')!;
     for(const poly of plan.querySelectorAll('polygon'))for(const pair of poly.getAttribute('points')!.split(' ')){const [x,y]=pair.split(',').map(Number);expect(x).toBeGreaterThan(20);expect(x).toBeLessThan(290);expect(y).toBeGreaterThan(40);expect(y).toBeLessThan(225);}
+    // Construction-drawing conventions: reference grids, north arrow, scale bar, member callouts and level marks.
+    expect(plan.querySelectorAll('[data-grid]').length).toBeGreaterThanOrEqual(2);
+    expect(plan.querySelector('[data-callouts]')?.textContent).toBeTruthy();
+    expect(doc.querySelector('[data-north]')).toBeTruthy();
+    expect(doc.querySelector('[data-scale-bar]')).toBeTruthy();
+    for(const s of doc.querySelectorAll('[data-view^="section-"]')){
+      const levels=[...s.querySelectorAll('[data-level]')].map(e=>Number(e.getAttribute('data-level')));
+      expect(levels).toContain(model.heightMm+(model.ringlockAssembly?.legs[0]?.soffitElevationMm??model.sideLayout?.baseElevationMm??0));
+    }
+    // The concrete cut outline is the heaviest line and is drawn in black ink.
+    const concrete=plan.querySelector('polygon[fill="url(#h-concrete)"]')!;
+    expect(concrete.getAttribute('stroke')).toBe('#111');expect(Number(concrete.getAttribute('stroke-width'))).toBe(.6);
   },15000);
 });

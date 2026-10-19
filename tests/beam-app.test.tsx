@@ -18,9 +18,17 @@ describe('beam workflow inside the app (offline)', () => {
     vi.stubEnv('VITE_FIREBASE_ENABLED', 'false');
     localStorage.clear();
     window.print = () => {};
+    // The demo has no beam/slab/wall case: the element buttons offer to create one (they never retype the open footing).
+    window.confirm = () => true;
+    window.prompt = (_m?: string, value?: string) => value ?? null;
     document.body.innerHTML = '<div id="root"></div>';
     await act(async () => {await import('../src/main'); await wait();});
+    const caseSelect = () => document.querySelector('.case-selector select') as HTMLSelectElement;
+    const footingId = caseSelect().value, footingName = caseSelect().selectedOptions[0].textContent;
     await act(async () => {button('คาน', document.querySelector('.element-menu')!).click(); await wait();});
+    expect(caseSelect().value).not.toBe(footingId);
+    expect(caseSelect().selectedOptions[0].textContent).toMatch(/^B\d+/);
+    expect([...caseSelect().options].find(o => o.value === footingId)?.textContent).toBe(footingName);
     await act(async () => {button('รูปทรงและมิติ', document.querySelector('nav')!).click(); await wait();});
     const b = document.querySelector('input[aria-label="ความกว้างคาน b"]') as HTMLInputElement;
     expect(b).toBeTruthy();
@@ -41,7 +49,7 @@ describe('beam workflow inside the app (offline)', () => {
     // Slab: same menus, slab screens.
     await act(async () => {button('พื้น', document.querySelector('.element-menu')!).click(); await wait();});
     await act(async () => {button('รูปทรงและมิติ', document.querySelector('nav')!).click(); await wait();});
-    // The demo footing (2.5 m deep) is outside the slab range, so the slab draft falls back to the defaults.
+    // A new slab case starts from the slab defaults.
     expect((document.querySelector('input[aria-label="ความหนาพื้น"]') as HTMLInputElement).value).toBe('150');
     await act(async () => {button('รายการคำนวณ', document.querySelector('nav')!).click(); await wait();});
     expect(document.body.textContent).toContain('ไม้อัดท้องพื้น');
