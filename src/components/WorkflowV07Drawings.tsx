@@ -22,7 +22,7 @@ function GeometrySheet({view}: {view: View}) {
   const {model} = view.report, topology = view.drawing.topology;
   const xs = topology.vertices.map(p => p.x), ys = topology.vertices.map(p => p.y);
   const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-  const scale = fitScale(maxX - minX, maxY - minY, 188, 158), P = (p: Point): V => [42 + (p.x - minX) * scale, 203 - (p.y - minY) * scale];
+  const scale = 1 / fitScale(maxX - minX, maxY - minY, 188, 158), P = (p: Point): V => [42 + (p.x - minX) * scale, 203 - (p.y - minY) * scale];
   const pairs = topology.pairs.map(pair => {
     const mid = (pair.startMm + pair.endMm) / 2;
     const a = pair.normalAxis === 'X' ? {x: pair.normalAMm, y: mid} : {x: mid, y: pair.normalAMm};
@@ -41,7 +41,7 @@ function GeometrySheet({view}: {view: View}) {
     {faces}{pairs}
     <Dim a={first} b={right} o={[0, 10]} text={`${fmt(maxX - minX)} mm overall X`} s={1.8}/>
     <Dim a={first} b={top} o={[-10, 0]} text={`${fmt(maxY - minY)} mm overall Y`} s={1.8}/>
-    <Txt x={40} y={219} s={1.8}>Scale 1:{scale} · coordinates in mm · plan is model geometry only</Txt>
+    <Txt x={40} y={219} s={1.8}>Scale 1:{Math.round(1/scale)} · coordinates in mm · plan is model geometry only</Txt>
     <Table x={245} y={31} title="PHYSICAL FACES" rh={5.2} s={1.7} cols={[{t: 'Face', w: 24}, {t: 'Length mm', w: 35, a: 'end'}, {t: 'Normal X/Y', w: 34, a: 'middle'}]}
       rows={topology.faces.map(face => [face.id, fmt(face.lengthMm), `${face.normal.x.toFixed(0)} / ${face.normal.y.toFixed(0)}`])}/>
     <Table x={245} y={Math.min(119, 44 + topology.faces.length * 5.2)} title="OPPOSING PAIR REGIONS" rh={5.2} s={1.65}
@@ -61,7 +61,7 @@ function SideFaceSheet({view, faceIndex}: {view: View; faceIndex: number}) {
   const model = view.report.model, topology = view.drawing.topology, applied = model.sideLayout;
   const face = topology.faces[faceIndex], layout = applied?.faces.find(row => row.faceId === face?.id);
   if (!face) return null;
-  const width = 300, height = 140, scale = fitScale(face.lengthMm, model.heightMm, width, height), x0 = 58, y0 = 205;
+  const width = 300, height = 140, scale = 1 / fitScale(face.lengthMm, model.heightMm, width, height), x0 = 58, y0 = 205;
   const px = (x: number) => x0 + x * scale, py = (z: number) => y0 - z * scale;
   return <>
     <Txt x={25} y={31} s={3} b>{face.id} SIDE LAYOUT · {layout ? 'AUTHORED POSITIONS' : 'NO AUTHORED LAYOUT'}</Txt>
@@ -97,7 +97,7 @@ function SoffitSheet({view}: {view: View}) {
     <HashStamp view={view}/>
   </>;
   const xs = topology.vertices.map(p => p.x), ys = topology.vertices.map(p => p.y), minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-  const scale = fitScale(maxX - minX, maxY - minY, 290, 150), x0 = 50, y0 = 202;
+  const scale = 1 / fitScale(maxX - minX, maxY - minY, 290, 150), x0 = 50, y0 = 202;
   const px = (x: number) => x0 + (x - minX) * scale, py = (y: number) => y0 - (y - minY) * scale;
   const outline = topology.vertices.map(p => [px(p.x), py(p.y)] as V);
   return <>
@@ -108,7 +108,7 @@ function SoffitSheet({view}: {view: View}) {
     {layout.bearers.map(row => <g key={row.id}><line x1={px(minX + (layout.bearerStartXMm ?? 0))} y1={py(minY + row.yMm)} x2={px(minX + (layout.bearerEndXMm ?? 0))} y2={py(minY + row.yMm)} stroke="#267a76" strokeWidth={0.8}/>
       {row.headsXMm.map((x, i) => <circle key={i} cx={px(minX + x)} cy={py(minY + row.yMm)} r={1.5} fill="#173e62"/>)}
       <Txt x={px(minX + (layout.bearerEndXMm ?? 0)) + 3} y={py(minY + row.yMm) + 1} s={1.7}>{row.id}</Txt></g>)}
-    <Txt x={50} y={220} s={1.8}>Orange: joist axes · teal: bearer axes · blue dots: authored U-head stations · Scale 1:{scale}</Txt>
+    <Txt x={50} y={220} s={1.8}>Orange: joist axes · teal: bearer axes · blue dots: authored U-head stations · Scale 1:{Math.round(1/scale)}</Txt>
     <Table x={300} y={45} title="LAYOUT DATA" rh={6} s={1.8} cols={[{t: 'Item', w: 45}, {t: 'Authored value', w: 55}]}
       rows={[["Joist X mm", layout.joistXMm.map(fmt).join(', ')], ['Bearer Y mm', layout.bearers.map(b => fmt(b.yMm)).join(', ')],
         ['Heads per bearer', layout.bearers.map(b => `${b.id}:${b.headsXMm.length}`).join(', ')], ['Head elevation mm', fmt(layout.headNodeElevationMm)], ['Base elevation mm', fmt(layout.baseElevationMm)], ['Stage / case', `${layout.stageId} / ${layout.loadCaseId}`]]}/>
@@ -135,7 +135,7 @@ function FrameSheet({view}: {view: View}) {
   const points = frame.nodes.map(n => n.pointMm).filter((p): p is [number, number, number] => p.every(v => v !== null));
   const xValues = points.map(p => p[0]), zValues = points.map(p => p[2]);
   const minX = Math.min(...xValues, 0), maxX = Math.max(...xValues, 1), minZ = Math.min(...zValues, 0), maxZ = Math.max(...zValues, 1);
-  const scale = fitScale(maxX - minX, maxZ - minZ, 250, 135), x0 = 60, y0 = 202;
+  const scale = 1 / fitScale(maxX - minX, maxZ - minZ, 250, 135), x0 = 60, y0 = 202;
   const px = (x: number) => x0 + (x - minX) * scale, py = (z: number) => y0 - (z - minZ) * scale;
   return <>
     <Txt x={25} y={31} s={3} b>FRAME ELEVATION · AUTHORED NODES AND MEMBERS</Txt>

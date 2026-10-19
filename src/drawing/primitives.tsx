@@ -130,7 +130,7 @@ export function Sheet({no, total, code, title, info, children, svgRef}: {no: num
     <g>
       <rect x={xs[0] + 3} y={ty + 4} width={13} height={13} fill="#173e62"/>
       <Txt x={xs[0] + 9.5} y={ty + 12.3} s={4} a="middle" b fill="#fff">CMG</Txt>
-      <Txt x={xs[0] + 19} y={ty + 9} s={2.6} b>{info.company}</Txt>
+      <Txt x={xs[0] + 19} y={ty + 9} s={Math.min(2.6, 80 / Math.max(1, info.company.length))} b>{info.company}</Txt>
       <Txt x={xs[0] + 19} y={ty + 13.5} s={1.9} fill="#444">FORMWORK DESIGN DEPARTMENT</Txt>
       <Txt x={xs[0] + 3} y={ty + 24} s={1.8} fill="#555">หมายเหตุ: ห้ามวัดขนาดจากแบบ ใช้ตัวเลขที่ระบุ</Txt>
       <Txt x={xs[0] + 3} y={ty + 28} s={1.8} fill="#555">หน่วยมิลลิเมตร เว้นแต่ระบุเป็นอื่น</Txt>

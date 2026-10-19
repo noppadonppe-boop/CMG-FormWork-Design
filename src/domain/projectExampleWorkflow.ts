@@ -5,7 +5,7 @@ import type {WallInput} from './wall.js';
 import {sectionById} from './sectionStock.js';
 import {references} from '../workflowV07References.js';
 import {selectReference} from './workflowV07/catalogues.js';
-import {canonical, type ElementType} from './workflowV07/common.js';
+import {canonical, WORKFLOW_VERSION, type ElementType} from './workflowV07/common.js';
 import {fromLegacy, regenerateDraftLayouts, type WorkflowModel} from './workflowV07/model.js';
 import {createStoredWorkflowDraft, type StoredWorkflowDraft} from './workflowV07/storage.js';
 import {buildSoffitCandidate, type MemberStiffness} from './workflowV07/soffit.js';
@@ -230,8 +230,9 @@ export function upgradeProjectExampleCase<T extends {id:string;name:string;input
   if(!/^Project Example · (F0[12]|C0[12]|W0[12]|B0[12]|S0[12]) · /.test(c.name))return c;
   const previous=c.workflowV07?.model;
   const hasMockBasis=previous?.closureInputs?.some(f=>f.form_type==='support_slab'&&String(f.inputs.notes).startsWith('EX-DB-01 (MOCK)'));
-  if(previous?.sourceRef?.startsWith('PROJECT-EXAMPLE')&&previous.revisionId!==PROJECT_EXAMPLE_REVISION&&
-    (previous.revisionId==='PROJECT-EXAMPLE-INPUTS-2'||!hasMockBasis)&&(previous.soffitLayout||previous.sideLayout)){
+  if(previous?.sourceRef?.startsWith('PROJECT-EXAMPLE')&&
+    ((previous.revisionId!==PROJECT_EXAMPLE_REVISION&&(previous.revisionId==='PROJECT-EXAMPLE-INPUTS-2'||!hasMockBasis))||c.workflowV07?.engineVersion!==WORKFLOW_VERSION)&&
+    (previous.soffitLayout||previous.sideLayout)){
     const next=structuredClone(previous);
     next.revisionId=PROJECT_EXAMPLE_REVISION;next.humanInputReviewed=false;next.representatives=[];next.coverage=[];next.coverageReview=null;
     // A previously edited example can have a UUID revision. Complete its saved

@@ -1,4 +1,5 @@
 import {analyzeSidePanel} from './sidePanel.js';
+import {definitionHash} from './definitionHash.js';
 import {analyzeBeam} from './beam.js';
 import {canonical, clone, finite, identifier, signed, uniqueIds, type Point2} from './common.js';
 import {pairFaces, tieRouteIssues, type PhysicalFace, type TieRoute} from './geometry.js';
@@ -242,7 +243,10 @@ export function analyzeSideLayout(model: WorkflowModel, layout: AppliedSideLayou
   const requiredChecks: RequiredCheck[] = [];
   // Physical demand inputs are shared. Keep dossier data local to its actual entity rather
   // than repeating every product/history record on every plywood/stud requirement.
-  const layoutDefinition = canonical({...layout, ties: layout.ties.map(({assembly: _assembly, dossier: _dossier, ...geometry}) => geometry)});
+  // Every required check binds the same authored layout. Retain the full layout
+  // once in the model and bind its digest here instead of copying tens of kB
+  // into thousands of checks (which can exceed the JS string limit in a snapshot).
+  const layoutDefinition = definitionHash({...layout, ties: layout.ties.map(({assembly: _assembly, dossier: _dossier, ...geometry}) => geometry)});
   const assemblyEntities = layout.ties.flatMap(t => t.dossier ? [
     ...t.dossier.components.map(c => ({id: `TIE:${t.id}:ROLE:${c.role}`, input: c})),
     ...t.dossier.threads.map(j => ({id: `TIE:${t.id}:THREAD:${j.id}`, input: j})),
