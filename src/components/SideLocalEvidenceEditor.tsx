@@ -35,8 +35,8 @@ export function SideLocalEvidenceEditor({value, memberEvidenceRef, faceId, onCha
     {value.map((row, i) => <fieldset key={i}><legend>รายการ {i + 1}</legend><div className="form-grid">
       <label className="field"><span>ชนิดการตรวจ</span><select value={row.kind ?? ''} onChange={e => onChange(value.map((old, j) => j === i ? emptySideLocalEvidence((e.target.value || null) as SideLocalCheckKind | null, memberEvidenceRef) : old))}>
         <option value="">ยังไม่ระบุ</option>{kinds.map(k => <option key={k} value={k}>{sideLocalKindNames[k]}</option>)}</select></label>
-      {row.kind && <label className="field"><span>เติมจากคลังที่รีวิวแล้ว</span><select value="" onChange={e => {if (e.target.value) fromRegistry(i, row.kind!, e.target.value);}}>
-        <option value="">เลือกรายการ…</option>{entriesForCheck(registry, row.kind).map(({entry, reviewed}) => <option key={entry.id} value={entry.id}>{entry.name || entry.id} · {reviewed ? 'REVIEWED' : 'DRAFT → REFERENCE_ONLY'}</option>)}
+      {row.kind && <label className="field"><span>เปลี่ยนค่าโดยเลือกจากคลัง</span><select data-action-only="true" value="" onChange={e => {if (e.target.value) fromRegistry(i, row.kind!, e.target.value);}}>
+        <option value="">{row.limit!==null?'ใช้ค่าที่กรอกอยู่ · เลือกคลังเพื่อแทนที่':'เลือกรายการ…'}</option>{entriesForCheck(registry, row.kind).map(({entry, reviewed}) => <option key={entry.id} value={entry.id}>{entry.name || entry.id} · {reviewed ? 'REVIEWED' : 'DRAFT → REFERENCE_ONLY'}</option>)}
       </select></label>}
       <label className="field"><span>หน่วย / limit</span><span>{row.unit ?? 'UNKNOWN'} · </span><input type="number" min="0" step="any" value={row.limit ?? ''} onChange={e => update(i, {limit: number(e.target.value)})}/></label>
       <label className="field"><span>ฐานแรงที่วิเคราะห์</span><select value={row.actionBasis ?? ''} onChange={e => update(i, {actionBasis: (e.target.value || null) as SideLocalEvidence['actionBasis']})}><option value="">ยังไม่ระบุ</option><option value="SERVICE">SERVICE</option>{row.kind !== 'CORNER_OPENING' && <option value="FACTORED">FACTORED</option>}</select></label>

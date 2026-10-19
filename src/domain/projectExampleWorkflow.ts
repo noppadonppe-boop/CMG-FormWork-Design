@@ -1,5 +1,5 @@
 import type {Input} from './index.js';
-import type {BeamInput} from './beam.js';
+import {beamFromCase, type BeamInput} from './beam.js';
 import type {SlabInput} from './slab.js';
 import type {WallInput} from './wall.js';
 import {sectionById} from './sectionStock.js';
@@ -229,10 +229,15 @@ export function isOldExampleSeed(d:StoredWorkflowDraft):boolean {
 export function upgradeProjectExampleCase<T extends {id:string;name:string;input:Input;workflowElementType?:ElementType;workflowV07?:StoredWorkflowDraft}&ExampleContext>(c:T,projectId?:string):T {
   if(!/^Project Example · (F0[12]|C0[12]|W0[12]|B0[12]|S0[12]) · /.test(c.name))return c;
   const previous=c.workflowV07?.model;
-  if(previous?.revisionId==='PROJECT-EXAMPLE-INPUTS-2'&&previous.sourceRef?.startsWith('PROJECT-EXAMPLE')){
+  const hasMockBasis=previous?.closureInputs?.some(f=>f.form_type==='support_slab'&&String(f.inputs.notes).startsWith('EX-DB-01 (MOCK)'));
+  if(previous?.sourceRef?.startsWith('PROJECT-EXAMPLE')&&previous.revisionId!==PROJECT_EXAMPLE_REVISION&&
+    (previous.revisionId==='PROJECT-EXAMPLE-INPUTS-2'||!hasMockBasis)&&(previous.soffitLayout||previous.sideLayout)){
     const next=structuredClone(previous);
     next.revisionId=PROJECT_EXAMPLE_REVISION;next.humanInputReviewed=false;next.representatives=[];next.coverage=[];next.coverageReview=null;
-    const completed=completeExamplePractical(c);
+    // A previously edited example can have a UUID revision. Complete its saved
+    // geometry in place instead of skipping it or replacing its arrangement.
+    const completed=completeExamplePractical(previous.elementType==='BEAM'&&!c.beam
+      ?{...c,beam:beamFromCase(null,{width:c.input.width,length:c.input.length,height:c.input.height})}:c);
     const result={...completed,workflowV07:storeCompletedExample(next,completed.input,projectId)};
     delete (result as typeof result & {review?:unknown}).review;
     return result;

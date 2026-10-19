@@ -22,6 +22,7 @@ it('shows populated required soffit fields, saves a real edit, and restores it o
     const fields=[...host.querySelectorAll<HTMLInputElement>('.soffit-editor input[aria-required="true"]')];
     expect(fields.length).toBeGreaterThan(10);expect(fields.filter(f=>!f.value.trim())).toHaveLength(0);
     expect(host.querySelector('[data-testid="project-example-guide"]')?.textContent).toContain('18 แนวคร่าว');
+    expect(host.querySelectorAll('.side-editor input')).toHaveLength(0);
     for(const selector of ['.ringlock-assembly-editor','.frame-editor','.support-layout-editor','.closure-input-editor']){
       const inputs=[...host.querySelectorAll<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>(`${selector} input:not([type="file"]):not([type="checkbox"]),${selector} select,${selector} textarea`)];
       expect(inputs.length,selector).toBeGreaterThan(0);
@@ -37,4 +38,15 @@ it('shows populated required soffit fields, saves a real edit, and restores it o
     await act(async()=>{render();});await act(async()=>{chooseSoffit();});
     expect([...host.querySelectorAll('.soffit-editor label')].find(l=>l.textContent?.startsWith('หลักฐานตำแหน่งและโหลด'))!.querySelector('input')!.value).toBe('EXAMPLE edited source');
   }finally{await act(async()=>root.unmount());host.remove();vi.unstubAllGlobals();}
+},30000);
+
+it('shows an explicit non-applicable branch instead of empty frame and support fields in side-only examples',async()=>{
+  const c=projectExample().cases.find(c=>c.name.includes('F02'))!;
+  const host=document.createElement('div');document.body.append(host);const root=createRoot(host);
+  try{
+    await act(async()=>{root.render(<WorkflowV07Panel input={c.input} caseId={c.id} initialElementType="FOOTING" stored={c.workflowV07!}/>);});
+    expect(host.querySelector('.frame-editor')?.textContent).toContain('ไม่ใช้เฟรมค้ำในตัวอย่างนี้');
+    expect(host.querySelector('.support-layout-editor')?.textContent).toContain('ไม่ใช้ฐาน Jack ในตัวอย่างนี้');
+    expect(host.querySelectorAll('.frame-editor input,.support-layout-editor input')).toHaveLength(0);
+  }finally{await act(async()=>root.unmount());host.remove();}
 },30000);

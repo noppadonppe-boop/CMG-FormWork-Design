@@ -77,10 +77,11 @@ function definitionOf(f: Form): SideLayoutDefinition {
       ...(face.localEvidence.length ? {localEvidence: face.localEvidence} : {})})),
     ties: f.ties.map(t => ({id: t.id, a: endpoint(t.a), b: endpoint(t.b), diameterMm: number(t.diameter), assembly: t.assembly, ...(t.dossier ? {dossier: t.dossier} : {})}))};
 }
-export function SideLayoutEditor({topology, layout, onApply, onPendingChange, onDraftChange, selections, segmentedTie = false, revisionId}: {topology: Topology; layout: AppliedSideLayout | null;
+export function SideLayoutEditor({topology, layout, onApply, onPendingChange, onDraftChange, selections, segmentedTie = false, revisionId, notApplicableReason}: {topology: Topology; layout: AppliedSideLayout | null;
   onApply: (definition: SideLayoutDefinition) => void; onPendingChange: (pending: boolean) => void;
-  onDraftChange?: (definition: SideLayoutDefinition | null) => void; selections?: BindingSelections; segmentedTie?: boolean; revisionId?: string}) {
+  onDraftChange?: (definition: SideLayoutDefinition | null) => void; selections?: BindingSelections; segmentedTie?: boolean; revisionId?: string; notApplicableReason?:string}) {
   const [form, setForm] = useState(() => formOf(layout)), [error, setError] = useState(''), [newFace, setNewFace] = useState(''), [productEpoch, setProductEpoch] = useState(0);
+  const [addOptional,setAddOptional]=useState(false);
   // Revision restamping from an explicit soffit analysis must not erase unsaved side field edits.
   const identity = canonical(formOf(layout));
   const formRef = useRef(form), identityRef = useRef(identity), draftCallback = useRef(onDraftChange), nestedPending = useRef(new Set<string>());
@@ -107,6 +108,7 @@ export function SideLayoutEditor({topology, layout, onApply, onPendingChange, on
     return points.map(p => ({value: endpointValue({faceId: f.faceId, walerId: w.id, supportId: p.id}),
       label: `${f.faceId}/${w.id}/${p.id} · x ${p.xMm} / z ${w.z || '?'} mm`}));
   }));
+  if(!layout&&notApplicableReason&&!addOptional)return <fieldset className="side-editor"><legend>แบบข้าง</legend><p>{notApplicableReason}</p><button className="btn secondary" onClick={()=>setAddOptional(true)}>เพิ่มแบบข้างในตัวอย่างนี้</button></fieldset>;
   return <fieldset className="side-editor"><legend>แบบข้าง · ไม้อัด → คร่าว → คานรัดคู่ → จุดรองรับจริง</legend>
     <p>พิกัด x ตามผิวจากจุดเริ่ม A ไป B ส่วน z วัดขึ้นจากฐานคอนกรีต ใช้แรงดัน Hydrostatic ตามหัวเทที่ระบุ แยกจาก DL/LL แนวดิ่ง</p>
     <div className="form-grid">{([['stage', 'Stage แบบข้าง'], ['loadCase', 'Load case แบบข้าง'], ['evidence', 'หลักฐานแบบข้าง'], ['head', 'หัวคอนกรีตเหนือฐานแบบข้าง · mm'], ['base', 'ระดับฐานคอนกรีตแบบข้าง · mm'], ['rebar', 'หลักฐานตรวจช่องเหล็กเสริม/ไทร์']] as const).map(([key, label]) => <label className="field" key={key}><span>{label}</span><input type={key === 'head' || key === 'base' ? 'number' : 'text'} step="any" value={form[key]} onChange={e => change({...form, [key]: e.target.value})}/></label>)}</div>

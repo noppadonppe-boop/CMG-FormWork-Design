@@ -18,15 +18,17 @@ const slsNames: Record<string, string> = {TRANSLATION_X: 'เลื่อน X �
 function definitionOf(layout: AppliedFrameLayout | null): FrameLayoutDefinition {
   if (!layout) return emptyFrameLayout(); const {revisionId: _revision, inputDefinition: _input, ...definition} = layout; return clone(definition);
 }
-export function FrameLayoutEditor({layout, headIds, captureEnabled, onCapture, onApply, onPendingChange, onDraftChange, referenceSnapshot = null, captureAssemblyEnabled = false, onCaptureAssembly, sideSources = [], captureSideEnabled = false, onCaptureSide, sideTieIds = [], sideWalers = []}: {
+export function FrameLayoutEditor({layout, headIds, captureEnabled, onCapture, onApply, onPendingChange, onDraftChange, referenceSnapshot = null, captureAssemblyEnabled = false, onCaptureAssembly, sideSources = [], captureSideEnabled = false, onCaptureSide, sideTieIds = [], sideWalers = [], notApplicableReason}: {
   layout: AppliedFrameLayout | null; headIds: string[]; captureEnabled: boolean; onCapture: () => FrameLayoutDefinition;
   onApply: (definition: FrameLayoutDefinition) => void; onPendingChange: (pending: boolean) => void; onDraftChange: (definition: FrameLayoutDefinition) => void;
   referenceSnapshot?: RinglockResearchSnapshot | null;
   captureAssemblyEnabled?: boolean; onCaptureAssembly?: () => FrameLayoutDefinition;
   sideSources?: SideEndpoint[]; captureSideEnabled?: boolean; onCaptureSide?: () => FrameLayoutDefinition;
   sideTieIds?: string[]; sideWalers?: {faceId: string; walerId: string}[];
+  notApplicableReason?: string;
 }) {
   const [form, setForm] = useState(() => definitionOf(layout)), [error, setError] = useState('');
+  const [addOptional,setAddOptional]=useState(false);
   const identity = canonical(definitionOf(layout));
   useEffect(() => {setForm(definitionOf(layout)); setError(''); onPendingChange(false);}, [identity, onPendingChange]);
   useEffect(() => () => onPendingChange(false), [onPendingChange]);
@@ -39,6 +41,7 @@ export function FrameLayoutEditor({layout, headIds, captureEnabled, onCapture, o
   function updateSls(i: number, patch: Partial<SlsLimitEvidence>) {change({...form, sls: (form.sls ?? []).map((r, j) => j === i ? {...r, ...patch} : r)});}
   function chooseNode(value: string, update: (id: string) => void) {return <select value={value} onChange={e => update(e.target.value)}><option value="">ยังไม่เลือกจุด</option>{form.nodes.map(n => <option key={n.id} value={n.id}>{n.id} · {n.role ?? 'ยังไม่ระบุหน้าที่'}</option>)}</select>;}
   function addId(prefix: string, ids: string[]) {let n = 1; while (ids.includes(`${prefix}${n}`)) n++; return `${prefix}${n}`;}
+  if(!layout&&notApplicableReason&&!addOptional)return <fieldset className="frame-editor"><legend>เฟรม 3D</legend><p>{notApplicableReason}</p><button className="btn secondary" onClick={()=>setAddOptional(true)}>เพิ่มเฟรมอื่นในตัวอย่างนี้</button></fieldset>;
   return <fieldset className="frame-editor"><legend>เฟรม 3D · ร่างแรงอันดับหนึ่ง</legend>
     <p>ใช้กรอกสมมติฐานเพื่อดูแรงและการเคลื่อนตัว ยังไม่ตรวจ P–Delta/P–delta เสถียรภาพ กำลังสมาชิกหรือจุดต่อ ค่าที่ไม่ทราบให้เว้นว่าง</p>
     <div className="form-grid">{([['stageId', 'Stage เฟรม'], ['loadCaseId', 'Load case เฟรม'], ['assumptionEvidenceRef', 'หลักฐาน/สมมติฐานของเฟรม']] as const).map(([key, label]) => <label className="field" key={key}><span>{label}</span><input value={form[key]} onChange={e => change({...form, [key]: e.target.value})}/></label>)}</div>

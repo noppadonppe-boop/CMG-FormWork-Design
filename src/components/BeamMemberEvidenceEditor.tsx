@@ -28,8 +28,8 @@ export function BeamMemberEvidenceEditor({value, memberEvidenceRef, onChange}: {
             const next = e.target.value as BeamMemberQuantity | '';
             onChange(value.map((old, i) => i === index ? emptyBeamMemberEvidence(next || null, memberEvidenceRef) : old));
           }}><option value="">ยังไม่ระบุ</option>{Object.entries(labels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
-          {quantity && <label className="field"><span>เติมจากคลังที่รีวิวแล้ว</span><select value="" onChange={e => {if (e.target.value) fromRegistry(index, quantity, e.target.value);}}>
-            <option value="">เลือกรายการ…</option>{entriesForCheck(registry, quantity).map(({entry, reviewed}) => <option key={entry.id} value={entry.id}>{entry.name || entry.id} · {reviewed ? 'REVIEWED' : 'DRAFT → REFERENCE_ONLY'}</option>)}
+          {quantity && <label className="field"><span>เปลี่ยนค่าโดยเลือกจากคลัง</span><select data-action-only="true" value="" onChange={e => {if (e.target.value) fromRegistry(index, quantity, e.target.value);}}>
+            <option value="">{row.limit!==null?'ใช้ค่าที่กรอกอยู่ · เลือกคลังเพื่อแทนที่':'เลือกรายการ…'}</option>{entriesForCheck(registry, quantity).map(({entry, reviewed}) => <option key={entry.id} value={entry.id}>{entry.name || entry.id} · {reviewed ? 'REVIEWED' : 'DRAFT → REFERENCE_ONLY'}</option>)}
           </select></label>}
           <label className="field"><span>หน่วย / limit</span><span>{row.unit ?? 'UNKNOWN'} · </span><input type="number" min="0" step="any" value={row.limit ?? ''} onChange={e => update(index, {limit: number(e.target.value)})}/></label>
           <label className="field"><span>ฐานแรงที่วิเคราะห์</span><select value={row.actionBasis ?? ''} onChange={e => update(index, {actionBasis: (e.target.value || null) as BeamMemberActionBasis})}>

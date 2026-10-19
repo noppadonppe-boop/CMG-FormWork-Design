@@ -24,8 +24,8 @@ export const PROJECT_EXAMPLE_REFERENCES = {
   plywood: 'APA Concrete Forming Design/Construction Guide V345 (2012) Tables 12–13 · ต้องยืนยันแผ่นจริง',
   sections: 'PAP-TIS107-2026 · TIS 107-2566 Table ข.1 p16 / Table ค.1 p22 · gross properties, REVIEW_REQUIRED',
   timber: 'Design Form Work ตาราง 3.4 (อ้าง ว.ส.ท.) · ต้องยืนยันชนิดไม้ ขนาดหลังไส และความชื้น',
-  ringlock: 'src/reference/workflow-v07/ringlock-research-2026-10-15.json · REFERENCE_ONLY_REQUIRES_PROJECT_PRODUCT_EVIDENCE · NO_GO',
-  formTie: 'docs/closure-pack-preview26-v1/data/form_tie_machine_bridge.json และ baseline/formtie_v0.6.2 · reference-only · capacity UNKNOWN',
+  ringlock: 'ringlock-research-2026-10-15.json · ข้อมูลท่ออ้างอิง; EX-DB-01 (MOCK) · Custom ตัวอย่าง 30 kN/ขา',
+  formTie: 'form_tie_machine_bridge.json / formtie_v0.6.2 · รูปแบบชิ้นส่วน; EX-DB-01 (MOCK) · ชุด M16 ตัวอย่าง 30 kN',
 } as const;
 
 const MOCK_SECTION_WALER = 'PAP-TIS107-RHS-100x50x3.2';

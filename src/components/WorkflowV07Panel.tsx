@@ -481,7 +481,7 @@ export default function WorkflowV07Panel({input, caseId, initialElementType, sto
     </div>
     <div hidden={step !== 'SIDE'}>
     {!soffitSystem && <><LayoutCandidateEditor key={`candidate:${caseId}:${model.elementType}:${editorEpoch}`} model={model} sourcePending={candidateSourcePending} onPendingChange={setCandidatePending} onApply={applyCandidate}/><LayoutCandidateSummary model={model}/></>}
-    {analysis.preview && <SideLayoutEditor key={`side:${caseId}:${model.elementType}:${editorEpoch}`} topology={analysis.preview.topology} layout={model.sideLayout ?? null} selections={model.selections} segmentedTie={model.sideTopology === 'SEGMENTED_TIE'} revisionId={model.revisionId} onApply={applySide} onPendingChange={setSidePending} onDraftChange={d => {pendingSide.current = d;}}/>}
+    {analysis.preview && <SideLayoutEditor key={`side:${caseId}:${model.elementType}:${editorEpoch}`} topology={analysis.preview.topology} layout={model.sideLayout ?? null} selections={model.selections} segmentedTie={model.sideTopology === 'SEGMENTED_TIE'} revisionId={model.revisionId} onApply={applySide} onPendingChange={setSidePending} onDraftChange={d => {pendingSide.current = d;}} notApplicableReason={model.sourceRef?.startsWith('PROJECT-EXAMPLE')&&model.elementType==='SLAB'?'ไม่ใช้แบบข้างในตัวอย่างนี้: แสดงแผงแบบท้องพื้นและระบบค้ำยันภายในช่วงพื้น':undefined}/>}
     {analysis.preview && <SideResults model={model} preview={analysis.preview}/>}
     <OutstandingRegister blockers={analysis.preview?.blockers ?? []} groups={STEP_GROUPS.SIDE} title="ข้อมูลที่ยังขาดในขั้นนี้"/>
     </div>
@@ -490,6 +490,7 @@ export default function WorkflowV07Panel({input, caseId, initialElementType, sto
       captureEnabled={!!analysis.preview?.loadPath && !geometryPending && !soffitPending && !sidePending && !framePending && !referencesPending && !supplierPending && !supportPending}
       onCapture={() => captureRinglockAssembly(model)} onApply={applyAssembly} onPendingChange={setAssemblyPending} onDraftChange={d => {pendingAssembly.current = d;}}/>}
     {<FrameLayoutEditor key={`frame:${caseId}:${model.elementType}:${editorEpoch}`} layout={model.frameLayout ?? null}
+      notApplicableReason={model.sourceRef?.startsWith('PROJECT-EXAMPLE')&&!model.soffitLayout&&!model.frameLayout?'ไม่ใช้เฟรมค้ำในตัวอย่างนี้: แรงแบบข้างถ่ายผ่านชุดไทร์ระหว่างผิวคู่':undefined}
       referenceSnapshot={model.ringlockResearch ?? null}
       headIds={model.ringlock?.legs.map(l => l.headNodeId) ?? []} captureEnabled={!!model.soffitLayout && !!analysis.preview?.loadPath && !supportPending}
       onCapture={() => frameGeometryFromSoffit(model, analysis.preview?.loadPath?.reactions.filter(r => r.kind === 'U_HEAD') ?? [])}
@@ -509,6 +510,7 @@ export default function WorkflowV07Panel({input, caseId, initialElementType, sto
     </div>
     <div hidden={step !== 'SUPPORT'}>
     <SupportLayoutEditor key={`support:${caseId}:${model.elementType}:${editorEpoch}`} layout={model.supportLayout ?? null}
+      notApplicableReason={model.sourceRef?.startsWith('PROJECT-EXAMPLE')&&!model.soffitLayout&&!model.frameLayout?.nodes.some(n=>n.role==='BASE')?'ไม่ใช้ฐาน Jack ในตัวอย่างนี้: ระบบไทร์หรือวงรัดรับแรงระหว่างแบบข้าง ไม่มีขาค้ำลงพื้น':undefined}
       baseIds={model.frameLayout?.nodes.filter(n => n.role === 'BASE').map(n => n.id) ?? []}
       frameWeightOwners={model.frameLayout?.additionalActions.filter(a => a.kind === 'SELF_WEIGHT').map(a => a.ownershipId) ?? []}
       captureEnabled={!!analysis.preview?.frame?.analysis && !geometryPending && !soffitPending && !sidePending && !framePending && !assemblyPending && !referencesPending && !supplierPending && !loadCasesPending && !stagePending && !coveragePending && !candidatePending}

@@ -4,17 +4,20 @@ import {emptyBaseSupport, emptyBearingInterface, emptySupportLayout, emptySuppor
 
 const value = (s: string) => s.trim() === '' || !Number.isFinite(Number(s)) ? null : Number(s);
 function definition(p: AppliedSupportLayout | null): SupportLayoutDefinition {if (!p) return emptySupportLayout(); const {revisionId: _r, inputDefinition: _i, ...d} = p; return clone(d);}
-export function SupportLayoutEditor({layout, baseIds, frameWeightOwners, captureEnabled, onCapture, onApply, onPendingChange, onDraftChange}: {
+export function SupportLayoutEditor({layout, baseIds, frameWeightOwners, captureEnabled, onCapture, onApply, onPendingChange, onDraftChange, notApplicableReason}: {
   layout: AppliedSupportLayout | null; baseIds: string[]; frameWeightOwners: string[]; captureEnabled: boolean; onCapture: () => SupportLayoutDefinition;
   onApply: (d: SupportLayoutDefinition) => void; onPendingChange: (pending: boolean) => void; onDraftChange: (d: SupportLayoutDefinition) => void;
+  notApplicableReason?: string;
 }) {
   const [form, setForm] = useState(() => definition(layout)), [error, setError] = useState(''); const identity = canonical(definition(layout));
+  const [addOptional,setAddOptional]=useState(false);
   useEffect(() => {setForm(definition(layout)); setError(''); onPendingChange(false);}, [identity, onPendingChange]);
   useEffect(() => () => onPendingChange(false), [onPendingChange]);
   function change(d: SupportLayoutDefinition) {setForm(d); setError(''); onDraftChange(d); onPendingChange(canonical(d) !== canonical(definition(layout)));}
   function base(i: number, patch: Partial<BaseSupport>) {change({...form, bases: form.bases.map((b, j) => j === i ? {...b, ...patch} : b)});}
   function contact(i: number, j: number, patch: Partial<BearingInterface>) {base(i, {interfaces: form.bases[i].interfaces.map((c, k) => j === k ? {...c, ...patch} : c)});}
   function vector(v: (number | null)[], labels: string[], apply: (v: (number | null)[]) => void) {return <div className="form-grid">{v.map((n, i) => <label className="field" key={i}><span>{labels[i]}</span><input type="number" step="any" value={n ?? ''} onChange={e => apply(v.map((old, j) => j === i ? value(e.target.value) : old))}/></label>)}</div>;}
+  if(!layout&&notApplicableReason&&!addOptional)return <fieldset className="support-layout-editor"><legend>ฐานรองรับ</legend><p>{notApplicableReason}</p><button className="btn secondary" onClick={()=>setAddOptional(true)}>เพิ่มฐานรองรับในตัวอย่างนี้</button></fieldset>;
   return <fieldset className="support-layout-editor"><legend>ฐาน Jack → แผ่นรอง → พื้นรองรับ · ร่างแรงรายฐาน</legend>
     <p>ใช้แรงครบ 6 แกนจากจุดฐานเฟรมที่วิเคราะห์ปัจจุบัน ข้อมูลกำลังดิน เกณฑ์การทรุดตัว และพื้นอายุน้อยยังไม่มี ให้เว้นว่าง ค่าที่กรอกเป็นข้อมูลอ้างอิงร่างและยังไม่ใช่การอนุมัติ</p>
     <div className="form-grid">{([['stageId', 'Stage พื้นรองรับ'], ['loadCaseId', 'Load case พื้นรองรับ'], ['evidenceRef', 'หลักฐานขอบเขตทางถ่ายแรงสู่พื้นรองรับ']] as const).map(([k, label]) => <label className="field" key={k}><span>{label}</span><input value={form[k]} onChange={e => change({...form, [k]: e.target.value})}/></label>)}</div>

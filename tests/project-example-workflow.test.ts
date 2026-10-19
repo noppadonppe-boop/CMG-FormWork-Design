@@ -81,6 +81,20 @@ it('fills a missing example draft but preserves an authored draft and unrelated 
   const ordinary={...c,name:'My real footing',workflowV07:undefined};expect(upgradeProjectExampleCase(ordinary)).toBe(ordinary);
 });
 
+it('completes a saved tutorial with a UUID revision while keeping its entered geometry and load',()=>{
+  const c=structuredClone(example.cases.find(c=>c.workflowElementType==='BEAM')!);
+  c.workflowV07!.model.revisionId='saved-edit-uuid';c.workflowV07!.model.closureInputs=[];
+  c.workflowV07!.model.ringlockAssembly!.legs[0].headJack.maxExtensionMm=null;
+  c.workflowV07!.model.additionalDeadKPa=1.7;
+  const before=structuredClone(c.workflowV07!.model.vertices);
+  const next=upgradeProjectExampleCase(c,'live-example');
+  expect(next.workflowV07!.model.vertices).toEqual(before);
+  expect(next.workflowV07!.model.additionalDeadKPa).toBe(1.7);
+  expect(next.workflowV07!.model.ringlockAssembly!.legs[0].headJack.maxExtensionMm).toBe(150);
+  expect(next.workflowV07!.model.closureInputs).toHaveLength(5);
+  expect(upgradeProjectExampleCase(next,'live-example')).toBe(next);
+});
+
 it('fills a saved basic-input draft without replacing entered loads or geometry',()=>{
   const c=example.cases.find(c=>c.workflowElementType==='SLAB')!;
   const original={...c,workflowV07:{...c.workflowV07!,model:{...c.workflowV07!.model,revisionId:'MY-BASIC-INPUTS',sourceRef:'My example dimensions',constructionLiveKPa:5,
