@@ -1,4 +1,4 @@
-import {useMemo, type ReactNode} from 'react';
+import {useMemo, type ReactElement, type ReactNode} from 'react';
 import {usesTies, type Check, type Result} from '../domain';
 import {buildFormworkLayout} from '../domain/formworkLayout';
 import {buildScene} from '../domain/scene';
@@ -11,6 +11,8 @@ import {ColumnYokeDetails} from './ColumnYokeDetails';
 import {generalNotes} from './DrawingSet';
 import {ACI_REFERENCE, type PressureModel} from '../domain/pressure';
 import {PLYWOOD_GRADE_LABEL} from '../domain/plywoodGrades';
+import {REPORT_SECTIONS, legacyCheckGroups, numberChecks, type NumberedCheck, type NumberedGroup} from '../domain/reportOutline';
+import {ScreenPill} from './FormParts';
 
 const n = (v: number | null, d = 2) => v === null ? '—' : v.toLocaleString('en-US', {minimumFractionDigits: d, maximumFractionDigits: d});
 export function Fig({w, h, no, caption, children}: {w: number; h: number; no?: number; caption: string; children: ReactNode}) {
@@ -61,7 +63,7 @@ export function BeamDiagram({L, w, title, unit = 'N/mm'}: {L: number; w: number;
 }
 export function CheckCard({c, no}: {c: Check; no: string}) {
   return <section className="rp-check">
-    <h4><span>{no}</span> {c.label} <em className={'pill ' + (c.status === 'FAIL' ? 'red' : 'amber')}>{c.status}</em></h4>
+    <h4><span>{no}</span> {c.label} <ScreenPill c={c}/></h4>
     <ol className="rp-steps">
       <li><b>สูตร</b><div className="equation">{c.formula}</div></li>
       <li><b>แทนค่า</b><p>{c.substitution}</p></li>
@@ -71,18 +73,36 @@ export function CheckCard({c, no}: {c: Check; no: string}) {
   </section>;
 }
 
-const SECTIONS = ['ขอบเขตและเกณฑ์การออกแบบ', 'รูปทรงและการจัดวางแบบหล่อ', 'แรงดันคอนกรีตสด', 'การตรวจสอบองค์อาคาร', 'สรุปผลการตรวจสอบและคำแนะนำ', 'ปริมาณวัสดุ', 'แบบประกอบ', 'ข้อจำกัดและรายการที่ยังขาด', 'เอกสารอ้างอิง'];
+/** Numbered check groups of one report section ('4' members, '5' bracing/restraints/stability); figures keyed by group number. */
+export function CheckSections({groups, section, figs = {}}: {groups: NumberedGroup[]; section: '4' | '5'; figs?: Record<string, ReactNode>}) {
+  return <>{groups.filter(g => g.no.startsWith(section + '.')).map(g => <div className="rp-group" key={g.no}><h3>{g.no} {g.title}</h3>{figs[g.no]}
+    {g.items.map(i => <CheckCard key={i.check.id} c={i.check} no={i.no}/>)}</div>)}</>;
+}
+/** Section 6 summary: every check in report order with its number. */
+export function SummaryTable({items}: {items: NumberedCheck[]}) {
+  return <table className="rp-tab"><thead><tr><th>ข้อ</th><th>รายการ</th><th>ค่าที่เกิด</th><th>เกณฑ์</th><th>อัตราส่วน</th><th/><th>สถานะ</th></tr></thead>
+    <tbody>{items.map(({no, check: c}) => <tr key={c.id}><td>{no}</td><td>{c.label}</td><td>{n(c.demand)} {c.unit}</td><td>{c.limit === null ? 'ยังไม่ทราบ' : `${n(c.limit)} ${c.unit}`}</td><td>{n(c.utilization, 3)}</td><td><RatioBar ratio={c.utilization}/></td><td><ScreenPill c={c}/></td></tr>)}</tbody></table>;
+}
+/** Reference list shared by every report; `extra` adds system-specific sources. */
+export function ReportReferences({extra = []}: {extra?: ReactElement[]}) {
+  return <ol>
+    <li>ACI PRC-347-14(21) Guide to Formwork for Concrete — §4.2.1 น้ำหนักแนวดิ่ง, §4.2.2 แรงดันด้านข้าง, §4.2.3 แรงด้านข้างและลม, §4.3 กำลังอุปกรณ์จากผู้ผลิต, Table 4.4 ส่วนปลอดภัยอุปกรณ์</li>
+    <li>APA Concrete Forming Design/Construction Guide V345 (2012) — ไม้อัดคานต่อเนื่อง ตาราง 12–13</li>
+    <li>มอก. 107-2566 / มอก. 1227-2558 / มอก. 1228 — ตารางหน้าตัดเหล็ก (แคตตาล็อกผู้ผลิต) · มอก. 24 — เหล็กข้ออ้อย (Tie)</li>
+    <li>หนังสือ Design Form Work ตาราง 3.4 (อ้าง ว.ส.ท.) — หน่วยแรงที่ยอมให้ของไม้</li>
+    <li>AISC 360 (ASD) — ตัวหารกำลัง Ωb, Ωv สำหรับการคัดกรองหน่วยแรง</li>
+    {extra}
+  </ol>;
+}
+
+const SECTIONS = REPORT_SECTIONS;
 
 export function CalcReport({r, project, code, caseName, caseId, titleBlock: tb, revisionBinding}: {r: Result; project: string; code: string; caseName: string; caseId: string; titleBlock: TitleBlock; revisionBinding?: DesignRevisionBinding}) {
   const {L, scene} = useMemo(() => ({L: buildFormworkLayout(r), scene: buildScene(r)}), [r]);
   const advice = useMemo(() => adviseLayout(r.input), [r]);
   const pm = r.pressureModel, x = r.input, docNo = `CAL-${code || 'CMG'}-${caseId.replace(/[^\w]/g, '').slice(0, 6).toUpperCase()}`;
-  const groups: [string, Check[], ReactNode][] = [
-    ['ไม้อัด (Plywood)', r.checks.filter(c => c.id.startsWith('ply-')), <Fig key="f" no={4} w={150} h={68} caption={`แบบจำลองไม้อัดแถบกว้าง 1 m พาดระหว่างคร่าว @ ${x.studSpacing} mm (${r.plywoodDesign.spans === 1 ? 'ช่วงเดี่ยว' : `ต่อเนื่อง ${r.plywoodDesign.spans} ช่วง ตาม APA V345`}; แสดงหนึ่งช่วง) · แรงดันที่รับได้ ${n(r.plywoodDesign.allowablePressure, 1)} kPa`}><BeamDiagram L={x.studSpacing} w={r.pressure} title="ไม้อัดแถบ 1 m"/></Fig>],
-    ['คร่าว (Stud)', r.checks.filter(c => c.id.startsWith('stud-')), <Fig key="f" no={5} w={150} h={68} caption={`แบบจำลองคร่าวพาดระหว่างคานคู่ ช่วงจริง ${n(r.waler.verticalSpan, 0)} mm`}><BeamDiagram L={r.waler.verticalSpan} w={r.pressure / 1000 * x.studSpacing} title={`คร่าว ${L.stud.label}`}/></Fig>],
-    ['คานคู่ (Twin waler)', r.checks.filter(c => c.id.startsWith('waler-')), <WalerDetails key="w" r={r} report/>],
-    [x.kind === 'COLUMN' ? (x.columnTies ? 'Tie rod + ชุดรัดเสา (Column yoke)' : 'ชุดรัดเสา (Column yoke)') : 'Tie rod', r.checks.filter(c => c.id.startsWith('tie') || c.id.startsWith('column-')), x.kind === 'COLUMN' ? <ColumnYokeDetails key="c" r={r} report/> : null],
-  ];
+  const numbered = numberChecks(legacyCheckGroups(x.kind, !!x.columnTies), r.checks);
+  const figs: Record<string, ReactNode> = {'4.1': <Fig key="f" no={4} w={150} h={68} caption={`แบบจำลองไม้อัดแถบกว้าง 1 m พาดระหว่างคร่าว @ ${x.studSpacing} mm (${r.plywoodDesign.spans === 1 ? 'ช่วงเดี่ยว' : `ต่อเนื่อง ${r.plywoodDesign.spans} ช่วง ตาม APA V345`}; แสดงหนึ่งช่วง) · แรงดันที่รับได้ ${n(r.plywoodDesign.allowablePressure, 1)} kPa`}><BeamDiagram L={x.studSpacing} w={r.pressure} title="ไม้อัดแถบ 1 m"/></Fig>, '4.2': <Fig key="f" no={5} w={150} h={68} caption={`แบบจำลองคร่าวพาดระหว่างคานคู่ ช่วงจริง ${n(r.waler.verticalSpan, 0)} mm`}><BeamDiagram L={r.waler.verticalSpan} w={r.pressure / 1000 * x.studSpacing} title={`คร่าว ${L.stud.label}`}/></Fig>, '4.3': <WalerDetails key="w" r={r} report/>, '4.4': x.kind === 'COLUMN' ? <ColumnYokeDetails key="c" r={r} report/> : null};
   const fails = r.checks.filter(c => c.status === 'FAIL');
   return <article className="calc-report">
     <section className="rp-page rp-cover">
@@ -108,7 +128,7 @@ export function CalcReport({r, project, code, caseName, caseId, titleBlock: tb, 
       <p className="muted">หน่วยที่ใช้: ความยาว mm · แรง N/kN · หน่วยแรง MPa · แรงดัน kPa · น้ำหนักหน่วย kN/m³</p></section>
 
     <section className="rp-sec"><h2>1. {SECTIONS[0]}</h2>
-      <p>รายการคำนวณนี้คัดกรองแบบหล่อด้านข้างของ{x.kind === 'COLUMN' ? 'เสา' : 'ฐานราก'}ด้วยวิธียืดหยุ่นเบื้องต้น (engine {r.engineVersion}) ใช้แรงดันคอนกรีตสด{pm.method === 'ACI347' ? ` ตาม ${ACI_REFERENCE} (สมการ ${pm.equation})` : 'แบบของเหลวเต็มความสูง'} เทจากด้านบน ไม้อัดและคร่าวเป็นคานช่วงเดี่ยว คานคู่รับแรงจุดจากคร่าวเป็นช่วงอิสระระหว่างจุดรองรับ ผลลัพธ์ใช้คัดกรองเท่านั้น ไม่ใช่การรับรองตามมาตรฐานครบทุกสภาวะขีดจำกัด</p>
+      <p>รายการคำนวณนี้คัดกรองแบบหล่อด้านข้างของ{x.kind === 'COLUMN' ? 'เสา' : 'ฐานราก'}ด้วยวิธียืดหยุ่นเบื้องต้น (engine {r.engineVersion}) ใช้แรงดันคอนกรีตสด{pm.method === 'ACI347' ? ` ตาม ${ACI_REFERENCE} (สมการ ${pm.equation})` : 'แบบของเหลวเต็มความสูง'} เทจากด้านบน ไม้อัดใช้วิธีคานต่อเนื่องของ APA V345 คร่าวเป็นคานช่วงเดี่ยวระหว่างคานคู่ คานคู่รับแรงจุดจากคร่าวเป็นช่วงอิสระระหว่างจุดรองรับ ผลลัพธ์ใช้คัดกรองเท่านั้น ไม่ใช่การรับรองตามมาตรฐานครบทุกสภาวะขีดจำกัด</p>
       <table className="rp-tab"><thead><tr><th>รายการ</th><th>ค่า</th><th>สถานะข้อมูล</th></tr></thead><tbody>
         <tr><td>น้ำหนักคอนกรีตสด γ</td><td>{x.gamma} kN/m³ (ρ = {n(pm.rho, 0)} kg/m³)</td><td>สมมติฐานโครงการ</td></tr>
         <tr><td>วิธีคำนวณแรงดันด้านข้าง</td><td>{pm.method === 'ACI347' ? `ACI PRC-347-14(21) · R = ${x.pourRate} m/h · T = ${x.concreteTemp} °C · ยุบตัว ${x.slump} mm · จี้ลึก ${x.vibrationDepth} m · Cc = ${x.chemistryCc}` : 'แรงดันของเหลว ρgh เต็มความสูง'}</td><td>{pm.method === 'ACI347' ? 'ต้องยืนยันวิธีเทหน้างาน' : 'ปลอดภัยเสมอ'}</td></tr>
@@ -127,7 +147,9 @@ export function CalcReport({r, project, code, caseName, caseId, titleBlock: tb, 
       </div>
       <table className="rp-tab"><thead><tr><th>ด้าน</th><th>ความยาว (mm)</th><th>คร่าว (ตัว)</th><th>Tie ต่อระดับ</th><th>แรงดันรวมต่อด้าน (kN)</th></tr></thead>
         <tbody>{L.faces.map((f, i) => <tr key={f.id}><td>{f.id}</td><td>{n(f.length, 0)}</td><td>{f.studs.length}</td><td>{f.ties.length || '—'}</td><td>{n(r.faces[i].force)}</td></tr>)}</tbody></table>
-      <p>ระยะคร่าวสูงสุด {x.studSpacing} mm · ระยะคานคู่สูงสุด {x.walerSpacing} mm ({L.levels.length} ระดับ, ช่วงพาดคร่าวจริง {n(r.waler.verticalSpan, 0)} mm){usesTies(x) ? ` · ระยะ Tie สูงสุด ${x.tieSpacing} mm` : ''} · ระยะเท่ากันไม่เกินค่าที่กำหนด</p></section>
+      <p>ระยะคร่าวสูงสุด {x.studSpacing} mm · ระยะคานคู่สูงสุด {x.walerSpacing} mm ({L.levels.length} ระดับ, ช่วงพาดคร่าวจริง {n(r.waler.verticalSpan, 0)} mm){usesTies(x) ? ` · ระยะ Tie สูงสุด ${x.tieSpacing} mm` : ''} · ระยะเท่ากันไม่เกินค่าที่กำหนด</p>
+      <table className="rp-tab"><thead><tr><th>เลขที่แบบ</th><th>ชื่อแบบ</th><th>ขนาด</th></tr></thead><tbody>
+        {[['FW-01', 'แปลนแบบหล่อ'], ['FW-02', 'รูปตัดและรูปด้าน'], ['FW-03', 'รายละเอียดขยายและภาพ 3 มิติ'], ['FW-04', 'ตารางวัสดุและข้อมูลออกแบบ']].map(([a, b]) => <tr key={a}><td>{a}</td><td>{b}</td><td>A3</td></tr>)}</tbody></table></section>
 
     <section className="rp-sec"><h2>3. {SECTIONS[2]}</h2>
       <p>{pm.method === 'ACI347' ? <>ตาม {ACI_REFERENCE}: ตาราง 4.2.2.1b เลือกสมการจากค่ายุบตัว ความลึกการจี้ ชนิดองค์อาคาร (เสา = ไม่มีด้านใดเกิน 2 m) ความสูง และอัตราการเท แรงดันเพิ่มแบบของเหลวจนถึง CCPmax แล้วคงที่ (รูปที่ 4.2.2)</> : <>ใช้แรงดันแบบของเหลว p = ρgh ตลอดความสูงเท ซึ่ง ACI PRC-347-14(21) §4.2.2 กำหนดให้ใช้เมื่อไม่เข้าเงื่อนไขของสมการลดแรงดัน หรือยังไม่ทราบอัตราการเท อุณหภูมิ และส่วนผสม</>}</p>
@@ -138,38 +160,31 @@ export function CalcReport({r, project, code, caseName, caseId, titleBlock: tb, 
       <p>การตรวจไม้อัด คร่าว คานคู่ และ Tie ใช้ pmax = {n(pm.pmax, 2)} kPa คงที่ตลอดความสูง (ซองแรงคัดกรอง) · ไม่รวมแรงกระแทกจากการเท การปั๊มจากด้านล่าง หรือคอนกรีตที่มีสารหน่วงพิเศษ ซึ่งต้องพิจารณาเพิ่มตามวิธีเทจริง</p></section>
 
     <section className="rp-sec"><h2>4. {SECTIONS[3]}</h2>
-      {groups.map(([title, checks, extra], gi) => <div key={title} className="rp-group">
-        <h3>4.{gi + 1} {title}</h3>
-        {extra}
-        {checks.map((c, i) => <CheckCard key={c.id} c={c} no={`4.${gi + 1}.${i + 1}`}/>)}
-      </div>)}</section>
+      <CheckSections groups={numbered.groups} section="4" figs={figs}/></section>
 
     <section className="rp-sec"><h2>5. {SECTIONS[4]}</h2>
-      <table className="rp-tab"><thead><tr><th>รายการ</th><th>ค่าที่เกิด</th><th>เกณฑ์</th><th>อัตราส่วน</th><th/><th>สถานะ</th></tr></thead>
-        <tbody>{r.checks.map(c => <tr key={c.id}><td>{c.label}</td><td>{n(c.demand)} {c.unit}</td><td>{c.limit === null ? 'ยังไม่ทราบ' : `${n(c.limit)} ${c.unit}`}</td><td>{n(c.utilization, 3)}</td><td><RatioBar ratio={c.utilization}/></td><td>{c.status}</td></tr>)}</tbody></table>
-      <p><b>สรุป:</b> {fails.length ? `มี ${fails.length} รายการเกินเกณฑ์คัดกรอง ต้องปรับแก้ก่อนใช้งาน` : 'ไม่มีรายการเกินเกณฑ์คัดกรอง'} · สถานะรวม {r.status} (ยังไม่ใช่การอนุมัติก่อสร้าง)</p>
-      {advice.length > 0 && <><h3>คำแนะนำปรับแก้ (จากการคำนวณซ้ำ)</h3><ul>{advice.map(a => <li key={a.checkId}><b>{a.label}</b> ({n(a.ratio)}): {a.text}</li>)}</ul></>}</section>
-
-    <section className="rp-sec"><h2>6. {SECTIONS[5]}</h2>
-      <table className="rp-tab"><thead><tr><th>#</th><th>รายการ</th><th>ขนาด / สเปก</th><th>หน่วย</th><th>จำนวน</th><th>ยาวตัด (mm)</th><th>รวม</th><th>หมายเหตุ</th></tr></thead>
-        <tbody>{L.bom.map((b, i) => <tr key={i}><td>{i + 1}</td><td>{b.item}</td><td>{b.spec}</td><td>{b.unit}</td><td>{b.qty ?? '—'}</td><td>{b.cutLength ?? '—'}</td><td>{b.total}</td><td>{b.remark}</td></tr>)}</tbody></table></section>
-
-    <section className="rp-sec"><h2>7. {SECTIONS[6]}</h2>
-      <table className="rp-tab"><thead><tr><th>เลขที่แบบ</th><th>ชื่อแบบ</th><th>ขนาด</th></tr></thead><tbody>
-        {[['FW-01', 'แปลนแบบหล่อ'], ['FW-02', 'รูปตัดและรูปด้าน'], ['FW-03', 'รายละเอียดขยายและภาพ 3 มิติ'], ['FW-04', 'ตารางวัสดุและข้อมูลออกแบบ']].map(([a, b]) => <tr key={a}><td>{a}</td><td>{b}</td><td>A3</td></tr>)}</tbody></table>
+      <p>{x.kind === 'COLUMN' ? <>ค้ำยันเสารับลมออกแบบ w = {n(x.windPressure)} kPa (ACI §4.2.3.1 ไม่น้อยกว่า 0.72 kPa) บนความกว้างแบบตลอดความสูง ฐานแบบเป็นจุดหมุน ค้ำยันแบบดัน-ดึง {x.bracesPerDirection} ตัวต่อทิศ{x.braceHeight > 0 ? ` ยึดที่ ${x.braceHeight} mm มุม ${x.braceAngle}°` : ' (ยังไม่กรอกระดับยึด)'} · ยังไม่ตรวจพุกตีนค้ำยัน</> : <>ปลายคานคู่แต่ละด้านส่งแรงเข้าชุดยึดมุม ตรวจเทียบกำลังจุดต่อที่ผู้ใช้กรอก · ไม้ค้ำ/ไม้กันตีน แรงยก และการยึดฐานยังต้องออกแบบแยกตามข้อ 8</>} · รายละเอียดจุดยึดตามแบบ FW-03:</p>
+      <CheckSections groups={numbered.groups} section="5"/>
       <div className="rp-two">
         <Fig no={6} w={150} h={96} caption={x.kind === 'COLUMN' && !x.columnTies ? 'รายละเอียดคานคู่ชุดรัด (FW-03)' : 'รายละเอียดชุด Tie rod (FW-03)'}><TieDetail L={L} box={{x: 0, y: 0, w: 150, h: 96}} titled={false}/></Fig>
         <Fig no={7} w={150} h={96} caption="รายละเอียดมุมแบบหล่อ (FW-03)"><CornerDetail L={L} box={{x: 0, y: 0, w: 150, h: 96}} titled={false}/></Fig>
       </div></section>
 
+    <section className="rp-sec"><h2>6. {SECTIONS[5]}</h2>
+      <SummaryTable items={numbered.ordered}/>
+      <p><b>สรุป:</b> {fails.length ? `มี ${fails.length} รายการเกินเกณฑ์คัดกรอง ต้องปรับแก้ก่อนใช้งาน` : 'ไม่มีรายการเกินเกณฑ์คัดกรอง'} · สถานะรวม {r.status} (ยังไม่ใช่การอนุมัติก่อสร้าง)</p>
+      {advice.length > 0 && <><h3>คำแนะนำปรับแก้ (จากการคำนวณซ้ำ)</h3><ul>{advice.map(a => <li key={a.checkId}><b>{numbered.byId[a.checkId] ?? ''} {a.label}</b> ({n(a.ratio)}): {a.text}</li>)}</ul></>}</section>
+
+    <section className="rp-sec"><h2>7. {SECTIONS[6]}</h2>
+      <table className="rp-tab"><thead><tr><th>#</th><th>รายการ</th><th>ขนาด / สเปก</th><th>หน่วย</th><th>จำนวน</th><th>ยาวตัด (mm)</th><th>รวม</th><th>หมายเหตุ</th></tr></thead>
+        <tbody>{L.bom.map((b, i) => <tr key={i}><td>{i + 1}</td><td>{b.item}</td><td>{b.spec}</td><td>{b.unit}</td><td>{b.qty ?? '—'}</td><td>{b.cutLength ?? '—'}</td><td>{b.total}</td><td>{b.remark}</td></tr>)}</tbody></table></section>
+
     <section className="rp-sec"><h2>8. {SECTIONS[7]}</h2><ol>{[...r.blockers, ...generalNotes(L, r).slice(5)].map((b, i) => <li key={i}>{b}</li>)}</ol></section>
 
-    <section className="rp-sec"><h2>9. {SECTIONS[8]}</h2><ol>
-      <li>ACI 347R-14, Guide to Formwork for Concrete — หลักการแรงดันคอนกรีตสด §4.2.2</li>
-      <li>กลศาสตร์คาน Euler–Bernoulli: สมดุลแรง/โมเมนต์ และ EIδ″ = −M</li>
-      <li><a href="https://www.tatasteelthailand.com/wp-content/uploads/2020/07/Seismic-Bar-SD40-Super-Ductile1561008786.pdf" target="_blank" rel="noreferrer">Tata Steel Thailand — TIS 24-2559 / TIS 20-2559</a> (ค่าตัวอย่าง SD40/SR24)</li>
-      <li><a href="https://ej.aisc.org/index.php/engj/article/download/888/887/887" target="_blank" rel="noreferrer">AISC Engineering Journal (2006) — ASD Safety Factors</a> (แนวคิดตัวหารกำลัง)</li>
-    </ol>
+    <section className="rp-sec"><h2>9. {SECTIONS[8]}</h2><ReportReferences extra={[
+      <li key="eb">กลศาสตร์คาน Euler–Bernoulli: สมดุลแรง/โมเมนต์ และ EIδ″ = −M (คานคู่รับแรงจุดจากคร่าว)</li>,
+      <li key="tis"><a href="https://www.tatasteelthailand.com/wp-content/uploads/2020/07/Seismic-Bar-SD40-Super-Ductile1561008786.pdf" target="_blank" rel="noreferrer">Tata Steel Thailand — TIS 24-2559 / TIS 20-2559</a> (ค่าตัวอย่าง SD40/SR24)</li>,
+      <li key="aisc"><a href="https://ej.aisc.org/index.php/engj/article/download/888/887/887" target="_blank" rel="noreferrer">AISC Engineering Journal (2006) — ASD Safety Factors</a> (แนวคิดตัวหารกำลัง)</li>]}/>
       <div className="signature"><span>ออกแบบ: {tb.designedBy || '__________________'}</span><span>ตรวจ: {tb.checkedBy || '__________________'}</span><span>อนุมัติ: {tb.approvedBy || '__________________'}</span></div>
       <footer>{docNo} · Rev {tb.rev} · CMG · DRAFT / NOT FOR CONSTRUCTION</footer></section>
   </article>;

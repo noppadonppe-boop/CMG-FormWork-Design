@@ -4,10 +4,10 @@ import {CC_VALUES,lateralPressure,type PressureMethod,type PressureModel} from '
 import {FACE_GRAINS,PLYWOOD_GRADES,PLYWOOD_SPANS,plywoodDesign,type FaceGrain,type PlywoodDesign,type PlywoodGrade,type PlywoodSpans} from './plywoodGrades.js';
 import {sectionById,timberGrade} from './sectionStock.js';
 import {equalPositions} from './mechanics.js';
-import {checker,fx,material,plywoodOptions,plywoodSource,type MemberMaterial} from './members.js';
+import {bearingCheck,checker,fx,material,plywoodOptions,plywoodSource,type MemberMaterial} from './members.js';
 import type {Check,Status} from './index.js';
 
-export const WALL_ENGINE_VERSION = 'wall-0.1.0-screening';
+export const WALL_ENGINE_VERSION = 'wall-0.2.0-screening';
 export const ACI_BRACING_REFERENCE = 'ACI PRC-347-14(21) §4.2.3.1 (ลมไม่น้อยกว่า 0.72 kPa) และ §4.2.3.3 (แรงด้านข้างไม่น้อยกว่า 1.5 kN/m ที่ยอดแบบ)';
 export type WallSystem = 'TWO_SIDED' | 'SINGLE_SIDED';
 export interface WallInput {
@@ -21,6 +21,10 @@ export interface WallInput {
   studSectionId: string; studSpacing: number; walerSectionId: string; walerSpacing: number;
   /** Through ties along each waler level at tieSpacing. Body screen Fy·Ag/Ω; assembly SWL from the manufacturer (0 = unknown). */
   tieSpacing: number; tieDiameter: number; tieFy: number; tieOmega: number; tieSWL: number;
+  /** Tie rod ultimate tensile strength (MPa) for the ACI Table 4.4 check (safety factor 2.0 on ultimate). */
+  tieFu: number;
+  /** Design wind pressure on the form (kPa) from the site/local code; ACI §4.2.3.1 minimum 0.72 kPa. */
+  windPressure: number;
   /** Push-pull braces on one face: spacing along the wall, attachment height, angle from horizontal (deg), SWL (kN, 0 = unknown). */
   braceSpacing: number; braceHeight: number; braceAngle: number; braceSWL: number; braceReference: string;
   /** Single-sided only: vertical strongbacks at every brace station (strongbackCount members), base anchor SWL per strongback (kN, 0 = unknown). */
@@ -32,12 +36,12 @@ export const wallDefaults: WallInput = {
   plywood: 20, plywoodGrade: 'PLYFORM_I', plywoodSpans: 'AUTO', plywoodFaceGrain: 'ACROSS', plywoodE: 4800, plywoodFb: 5.3,
   timberGrade: 'TIMBER-BOOK-SOFT', steelFy: 245, steelE: 200000, steelOmegaB: 1.67, steelOmegaShear: 1.67,
   studSectionId: 'PAP-TIS107-SHS-50x50x2.3', studSpacing: 300, walerSectionId: 'PAP-TIS107-RHS-100x50x3.2', walerSpacing: 600,
-  tieSpacing: 600, tieDiameter: 16, tieFy: 390, tieOmega: 1.67, tieSWL: 0,
+  tieSpacing: 600, tieDiameter: 16, tieFy: 390, tieOmega: 1.67, tieSWL: 0, tieFu: 560, windPressure: 0.72,
   braceSpacing: 2000, braceHeight: 2000, braceAngle: 60, braceSWL: 0, braceReference: '',
   strongbackSectionId: 'PAP-TIS107-RHS-100x50x3.2', strongbackCount: 2, anchorSWL: 0,
 };
 /** Fields added after the first release; stored walls without them keep the two-sided model. */
-const LATER = {system: 'TWO_SIDED', strongbackSectionId: wallDefaults.strongbackSectionId, strongbackCount: wallDefaults.strongbackCount, anchorSWL: 0};
+const LATER = {system: 'TWO_SIDED', strongbackSectionId: wallDefaults.strongbackSectionId, strongbackCount: wallDefaults.strongbackCount, anchorSWL: 0, tieFu: 560, windPressure: 0.72};
 const TEXT_KEYS = ['confirmed', 'system', 'pressureMethod', 'plywoodGrade', 'plywoodSpans', 'plywoodFaceGrain', 'timberGrade', 'studSectionId', 'walerSectionId', 'braceReference', 'strongbackSectionId', 'strongbackCount'];
 const NON_NEGATIVE = ['tieSWL', 'braceSWL', 'anchorSWL'];
 
@@ -64,6 +68,8 @@ export function validateWallInput(v: unknown): WallInput {
   if (x.pourRate > 20 || x.concreteTemp < 5 || x.concreteTemp > 45 || x.slump > 300 || x.vibrationDepth > 10) throw Error('อัตราการเท อุณหภูมิ ค่ายุบตัว หรือความลึกเครื่องจี้อยู่นอกขอบเขต');
   if (x.studSpacing > x.length || x.tieSpacing > x.length || x.braceSpacing > x.length || x.walerSpacing > x.height) throw Error('ระยะสมาชิกมากกว่าขนาดผนัง');
   if (x.braceHeight > x.height || x.braceAngle < 20 || x.braceAngle > 75) throw Error('จุดยึดค้ำยันต้องไม่สูงกว่าผนัง และมุมค้ำยัน 20–75°');
+  if (x.windPressure < 0.72 || x.windPressure > 10) throw Error('แรงลมออกแบบต้องไม่น้อยกว่า 0.72 kPa (ACI §4.2.3.1) และไม่เกิน 10 kPa');
+  if (x.tieFu < x.tieFy || x.tieFu > 2000) throw Error('Fu ของ Tie ต้องไม่น้อยกว่า Fy');
   return Object.fromEntries(keys.map(k => [k, x[k]])) as unknown as WallInput;
 }
 
@@ -123,19 +129,24 @@ export function calculateWall(raw: unknown): WallResult {
   uniform('stud', 'คร่าว (แนวตั้ง)', stud, 1, studLine, sw, `w = pmax × s = ${fx(p)} × ${fx(st, 0)} / 1000 = ${fx(studLine, 3)} N/mm; L = ระยะคานคู่ ${fx(sw, 0)} mm`);
   const walerLine = p / 1000 * sw, walerSpan = single ? sb : stt;
   uniform('waler', 'คานคู่ (แนวนอน)', waler, 2, walerLine, walerSpan, `w = pmax × ระยะคานคู่ = ${fx(p)} × ${fx(sw, 0)} / 1000 = ${fx(walerLine, 3)} N/mm (แรงจากคร่าวเฉลี่ยเป็นแรงแผ่); L = ${single ? 'ระยะ strongback' : 'ระยะ Tie'} ${fx(walerSpan, 0)} mm`);
+  const studBearing = bearingCheck(add, 'bear-stud', 'แรงกดที่จุดสัมผัส: คร่าวบนคานคู่', studLine * sw, stud, waler, 2,
+    `R = w_stud × ระยะคานคู่ = ${fx(studLine, 3)} × ${fx(sw, 0)} (คร่าวภายใน, คานคู่ 2 ตัว)`);
   const Ag = Math.PI * x.tieDiameter ** 2 / 4, tieBody = x.tieFy * Ag / x.tieOmega / 1000, tieForce = single ? 0 : walerLine * stt / 1000;
   if (!single) {
     add('tie-body', 'Tie: ตัวเหล็กเริ่มคราก', tieForce, tieBody, 'kN', 'T = pmax × sw × st ≤ Fy Ag / Ω',
       `T = ${fx(p)} kPa × ${fx(sw / 1000, 3)} m × ${fx(stt / 1000, 3)} m = ${fx(tieForce)} kN; Ag = π × ${x.tieDiameter}² / 4 = ${fx(Ag, 0)} mm²; Fy = ${x.tieFy} MPa; Ω = ${x.tieOmega}`,
       'ตรวจเฉพาะหน้าตัดเต็มของเหล็ก ไม่รวมเกลียว นัต แผ่นรอง หรือปลอก', 'Fy ตาม มอก. 24 (SD40 = 390 MPa) · ต้องยืนยันใบรับรอง');
+    const tieUlt = x.tieFu * Ag / 2 / 1000;
+    add('tie-ult', 'Tie: กำลังประลัย / 2.0 (ACI Table 4.4)', tieForce, tieUlt, 'kN', 'T ≤ Fu Ag / 2.0',
+      `T = ${fx(tieForce)} kN; Fu = ${x.tieFu} MPa; Ag = ${fx(Ag, 0)} mm² → ${fx(tieUlt)} kN`, 'ACI Table 4.4 ส่วนปลอดภัย 2.0 เทียบกำลังประลัย ใช้หน้าตัดเต็ม ถ้าเป็นเหล็กเกลียวต้องใช้พื้นที่สุทธิหรือ SWL ของชุด Tie', 'ACI PRC-347-14(21) Table 4.4 · Fu ตาม มอก. 24 (SD40 = 560 MPa)');
     add('tie-t', 'Tie: ชุดอุปกรณ์ (SWL)', tieForce, x.tieSWL > 0 ? x.tieSWL : null, 'kN', 'T ≤ SWL ชุด Tie (ผู้ผลิต)', `T = ${fx(tieForce)} kN` + (x.tieSWL > 0 ? `; SWL = ${fx(x.tieSWL)} kN` : '; ยังไม่มี SWL ชุด Tie'),
       'ACI Table 4.4: ส่วนปลอดภัย ≥ 2.0 เทียบกำลังประลัยของชุด Tie ใหม่', 'ACI PRC-347-14(21) Table 4.4 · ค่าผู้ผลิต');
   }
-  // ACI §4.2.3: overturning per metre from 1.5 kN/m at the top or 0.72 kPa wind over the height, resisted by braces at braceHeight.
-  const H = x.height / 1000, Mtop = 1.5 * H, Mwind = 0.72 * H * H / 2, braceMoment = Math.max(Mtop, Mwind), braceGoverning = Mtop >= Mwind ? '1.5 kN/m ที่ยอด' : 'ลม 0.72 kPa';
+  // ACI §4.2.3: overturning per metre from 1.5 kN/m at the top or the design wind (≥ 0.72 kPa) over the height, resisted by braces at braceHeight.
+  const H = x.height / 1000, w = x.windPressure, Mtop = 1.5 * H, Mwind = w * H * H / 2, braceMoment = Math.max(Mtop, Mwind), braceGoverning = Mtop >= Mwind ? '1.5 kN/m ที่ยอด' : `ลม ${fx(w)} kPa`;
   const rad = x.braceAngle * Math.PI / 180, cos = Math.cos(rad), lateralForce = braceMoment * sb / 1000 / (x.braceHeight / 1000 * cos);
   let braceForce = lateralForce, strongbackBase: number | null = null, strongbackBrace: number | null = null, anchorShear: number | null = null, anchorUplift: number | null = null;
-  const lateralSub = `M = max(1.5 × ${fx(H)}, 0.72 × ${fx(H)}² / 2) = ${fx(braceMoment, 3)} kN·m/m (${braceGoverning})`;
+  const lateralSub = `M = max(1.5 × ${fx(H)}, ${fx(w)} × ${fx(H)}² / 2) = ${fx(braceMoment, 3)} kN·m/m (${braceGoverning})`;
   if (single && strongback) {
     // Strongback at every brace station: pinned at the base, held by the brace at hb, overhang above; full pmax over the height (screening envelope).
     const ws = p / 1000 * sb, sbm = proppedOverhang(ws, x.height, x.braceHeight, strongback.E, strongback.I);
@@ -151,7 +162,7 @@ export function calculateWall(raw: unknown): WallResult {
       'แรงยกจากองค์ประกอบแนวดิ่งของค้ำยัน (ACI §4.1.4d) ไม่หักน้ำหนักแบบ · ต้องตรวจระยะฝังและคอนกรีตฐาน', 'ACI PRC-347-14(21) §4.1.4d · ค่าผู้ผลิตพุก');
   }
   add('brace-p', 'ค้ำยันเอียง: แรงตามแนวแกนต่อตัว', braceForce, x.braceSWL > 0 ? x.braceSWL : null, 'kN',
-    single ? 'P = R_brace / cos θ + M × sb / (hb cos θ)' : 'P = M × sb / (hb cos θ); M = max(1.5 H, 0.72 H²/2)',
+    single ? 'P = R_brace / cos θ + M × sb / (hb cos θ)' : 'P = M × sb / (hb cos θ); M = max(1.5 H, w H²/2)',
     (single ? `แรงดันคอนกรีต: ${fx(strongbackBrace!)} / cos ${x.braceAngle}° = ${fx(strongbackBrace! / cos)} kN; ` : '') +
     `${lateralSub}; แรงด้านข้าง = ${fx(braceMoment, 3)} × ${fx(sb / 1000, 3)} / (${fx(x.braceHeight / 1000)} × cos ${x.braceAngle}°) = ${fx(lateralForce)} kN` + (single ? ` → รวม ${fx(braceForce)} kN` : '') +
     (x.braceSWL > 0 ? `; SWL = ${fx(x.braceSWL)} kN` : '; ยังไม่มี SWL ค้ำยัน'),
@@ -164,6 +175,7 @@ export function calculateWall(raw: unknown): WallResult {
     ...(single && !(x.anchorSWL > 0) ? ['ต้องกรอก SWL พุกฐานแบบ/ค้ำยัน (ข้อมูลผู้ผลิต) และตรวจคอนกรีตฐาน'] : []),
     single ? 'แบบด้านเดียว: ตรวจการยึด strongback กับคานคู่ การโก่งเดาะของค้ำยัน และความแข็งของผิวที่เทชน (ดิน/ผนังเดิม)' : 'ออกแบบจุดยึดค้ำยันกับคานคู่/คร่าว และพุกฐานค้ำยัน (ดึงขึ้นและแรงเฉือน)',
     'ตรวจมุมผนัง ปลายผนัง และรอยต่อแบบ (ต้องมีชุดยึดมุมหรือ Tie มุมเพิ่ม)',
+    ...(studBearing ? [] : ['ตรวจแรงกดเฉพาะที่ของคร่าวเหล็กบนคานคู่เหล็ก (local yielding/web crippling ตาม AISC 360 หรือข้อมูลผู้ผลิต)']),
   ];
   const faces = single ? 1 : 2, formArea = faces * x.length * x.height / 1e6, sheet = 1.22 * 2.44, tieLength = x.t + 2 * (x.plywood + stud.section.H + waler.section.H + 80);
   const braceLength = x.braceHeight / Math.sin(rad), side = single ? 'ด้านเดียว' : 'สองด้าน';

@@ -108,3 +108,21 @@ export function analyzeWaler(o:{height:number;pressure:number;studSpacing:number
     stress:bending.moment/section.S,shearStress:shear.shear/section.shearArea,deflectionRatio:deflection.deflection/deflection.length,
     maxTieForce,tieFaceId,maxCornerForce};
 }
+
+/** Largest interior support reaction of a continuous beam with `spans` equal spans under uniform load, as a multiple of wL
+ * (three-moment equation: M(i-1) + 4 M(i) + M(i+1) = -wL²/2, M = 0 at the ends). 2 spans → 1.25, 3 → 1.10, 4 → 1.143; 1 span → 1. */
+export function continuousSupportFactor(spans: number): number {
+  const n = Math.round(spans) - 1;
+  if (n < 1) return 1;
+  // Thomas algorithm for the tridiagonal system (w = L = 1).
+  const c = new Array<number>(n).fill(0), d = new Array<number>(n).fill(0);
+  for (let i = 0; i < n; i++) {
+    const m = 4 - (i > 0 ? c[i - 1] : 0);
+    c[i] = 1 / m; d[i] = (-0.5 - (i > 0 ? d[i - 1] : 0)) / m;
+  }
+  const M = new Array<number>(n + 2).fill(0);
+  for (let i = n - 1; i >= 0; i--) M[i + 1] = d[i] - c[i] * M[i + 2];
+  let best = 0;
+  for (let i = 1; i <= n; i++) best = Math.max(best, 1 + M[i - 1] - 2 * M[i] + M[i + 1]);
+  return best;
+}

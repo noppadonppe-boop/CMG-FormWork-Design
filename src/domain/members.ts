@@ -1,18 +1,18 @@
 /** Shared screening helpers for soffit systems (beam, slab): member materials from the Thai section tables,
  * the check builder (bending / shear / deflection of simply supported members) and plywood settings. */
 import type {FaceGrain, PlywoodGrade, PlywoodSpans} from './plywoodGrades.js';
-import {catalogueProperties, isTimber, sectionById, timberGrade, type StockSection} from './sectionStock.js';
+import {catalogueProperties, isTimber, sectionById, timberGrade, type StockSection, type TimberGrade} from './sectionStock.js';
 import type {Check} from './index.js';
 
 export interface MaterialSettings {timberGrade: string; steelFy: number; steelE: number; steelOmegaB: number; steelOmegaShear: number}
 export interface PlywoodSettings {plywood: number; plywoodGrade: PlywoodGrade; plywoodSpans: PlywoodSpans; plywoodFaceGrain: FaceGrain; plywoodE: number; plywoodFb: number; deflectionRatio: number}
 export interface MemberMaterial {name: string; section: StockSection; timber: boolean; E: number; S: number; I: number; A: number; shearArea: number;
-  Fb: number; Fv: number | null; source: string}
+  Fb: number; Fv: number | null; /** Timber compression perpendicular to grain (MPa, textbook Table 3.4); null for steel. */ Fc90: number | null; source: string}
 
 export function material(id: string, x: MaterialSettings): MemberMaterial {
   const s = sectionById(id)!, p = catalogueProperties(s), timber = isTimber(s), g = timberGrade(x.timberGrade)!;
   return {name: s.designation, section: s, timber, E: timber ? g.E : x.steelE, S: p.S, I: p.I, A: p.area, shearArea: p.shearArea,
-    Fb: timber ? g.Fb : x.steelFy / x.steelOmegaB, Fv: timber ? g.Fv : x.steelFy / (Math.sqrt(3) * x.steelOmegaShear),
+    Fb: timber ? g.Fb : x.steelFy / x.steelOmegaB, Fv: timber ? g.Fv : x.steelFy / (Math.sqrt(3) * x.steelOmegaShear), Fc90: timber ? timberFc90(g) : null,
     source: timber ? 'หนังสือ Design Form Work ตาราง 3.4 (อ้าง ว.ส.ท.) · ' + g.label + ' · ค่าอ้างอิงเดิม ต้องยืนยันชนิดไม้/ความชื้น'
       : s.designation + ' ค่า gross จาก ' + s.source + ' · Fy ' + x.steelFy + ' MPa / Ω (AISC 360 ASD) · ไม่ตรวจ local/lateral-torsional buckling และจุดต่อ'};
 }
@@ -21,6 +21,18 @@ export function material(id: string, x: MaterialSettings): MemberMaterial {
 export const liveMinimums = (motorized: boolean) => ({liveMin: motorized ? 3.6 : 2.4, totalMin: motorized ? 6.0 : 4.8});
 
 export const fx = (v: number, d = 2) => v.toFixed(d);
+/** Timber allowable compression perpendicular to grain (MPa) from the textbook table (stored in ksc). */
+export const timberFc90 = (g: TimberGrade) => g.raw_ksc.Fc90_base_MPa == null ? null : g.raw_ksc.Fc90_base_MPa * 0.0980665;
+/** Contact bearing where member `a` crosses member `b` (contact = a.B × b.B per crossing, `crossings` members sharing the force).
+ * Checked only when a timber member is in the contact (perpendicular-to-grain crushing); steel-on-steel local bearing stays a blocker. */
+export function bearingCheck(add: ReturnType<typeof checker>['add'], id: string, label: string, force: number, a: MemberMaterial, b: MemberMaterial, crossings: number, sub: string) {
+  const timber = [a, b].filter(m => m.timber && m.Fc90 !== null);
+  if (!timber.length) return false;
+  const area = a.section.B * b.section.B * crossings, f = force / area, limit = Math.min(...timber.map(m => m.Fc90!));
+  add(id, label, f, limit, 'MPa', 'fc⊥ = R / (b₁ b₂ n) ≤ Fc⊥ (ไม้)', `${sub}; R = ${fx(force / 1000, 3)} kN; พื้นที่สัมผัส = ${fx(a.section.B, 0)} × ${fx(b.section.B, 0)} × ${crossings} = ${fx(area, 0)} mm²; Fc⊥ = ${fx(limit)} MPa`,
+    'ไม้รับแรงกดตั้งฉากเสี้ยน ไม่รวมผลขอบไม้หรือแผ่นรอง ต้องยืนยันชนิดไม้และความชื้น', timber[0].source);
+  return true;
+}
 /** Check list with screening status (FAIL when demand > limit, otherwise INCOMPLETE; never PASS). */
 export function checker(deflectionRatio: number) {
   const checks: Check[] = [];

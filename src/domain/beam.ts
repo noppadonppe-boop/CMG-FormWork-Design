@@ -4,12 +4,13 @@
 import {CC_VALUES,lateralPressure,type PressureMethod,type PressureModel} from './pressure.js';
 import {FACE_GRAINS,PLYWOOD_GRADES,PLYWOOD_SPANS,plywoodDesign,type FaceGrain,type PlywoodDesign,type PlywoodGrade,type PlywoodSpans} from './plywoodGrades.js';
 import {sectionById,timberGrade} from './sectionStock.js';
-import {checker,fx,liveMinimums,material,plywoodOptions,plywoodSource,type MemberMaterial} from './members.js';
+import {bearingCheck,checker,fx,liveMinimums,material,plywoodOptions,plywoodSource,type MemberMaterial} from './members.js';
 export type {MemberMaterial} from './members.js';
-import {equalPositions} from './mechanics.js';
+import {continuousSupportFactor, equalPositions} from './mechanics.js';
+export {continuousSupportFactor} from './mechanics.js';
 import type {Check,Status} from './index.js';
 
-export const BEAM_ENGINE_VERSION = 'beam-0.2.0-screening';
+export const BEAM_ENGINE_VERSION = 'beam-0.3.0-screening';
 export const ACI_LOADS_REFERENCE = 'ACI PRC-347-14(21) §4.2.1 (น้ำหนักบรรทุกแนวดิ่ง) และ §4.2.3.2 (แรงด้านข้างของแบบหล่อพื้นยก)';
 export interface BeamInput {
   /** Beam width b, total depth h (top of slab to soffit), slab thickness, clear length, floor-to-soffit height (mm). */
@@ -35,6 +36,8 @@ export interface BeamInput {
   tieSWL: number; walerSectionId: string;
   /** Tie rod body screen Fy·Ag/Ω (same basis as the wall module). */
   tieFy: number; tieOmega: number;
+  /** Tie rod ultimate tensile strength (MPa) for the ACI Table 4.4 check (safety factor 2.0 on ultimate). */
+  tieFu: number;
   /** Designed capacities along the beam (kN/m, user/manufacturer data): side-form bottom kicker, side-form top restraint,
    * soffit lateral bracing (ACI §4.2.3.2). 0 = not designed → INCOMPLETE. */
   kickerCapacity: number; topRestraintCapacity: number; lateralCapacity: number; restraintReference: string;
@@ -50,10 +53,10 @@ export const beamDefaults: BeamInput = {
   shoreSWL: 0, shoreReference: '',
   studSectionId: 'PAP-TIS107-SHS-50x50x2.3', studSpacing: 300, tieRows: 0, tieSpacing: 600, tieDiameter: 12,
   tieSWL: 0, walerSectionId: 'PAP-TIS107-SHS-50x50x2.3',
-  tieFy: 390, tieOmega: 1.67, kickerCapacity: 0, topRestraintCapacity: 0, lateralCapacity: 0, restraintReference: '',
+  tieFy: 390, tieOmega: 1.67, tieFu: 560, kickerCapacity: 0, topRestraintCapacity: 0, lateralCapacity: 0, restraintReference: '',
 };
 /** Fields added after beam-0.1.0; stored beams without them read these values. */
-const LATER = {tieFy: 390, tieOmega: 1.67, kickerCapacity: 0, topRestraintCapacity: 0, lateralCapacity: 0, restraintReference: ''};
+const LATER = {tieFy: 390, tieOmega: 1.67, tieFu: 560, kickerCapacity: 0, topRestraintCapacity: 0, lateralCapacity: 0, restraintReference: ''};
 const TEXT_KEYS = ['confirmed', 'motorized', 'pressureMethod', 'plywoodGrade', 'plywoodSpans', 'plywoodFaceGrain', 'timberGrade', 'joistSectionId', 'bearerSectionId',
   'studSectionId', 'walerSectionId', 'shoreReference', 'slabSides', 'bearerCount', 'restraintReference'] as const;
 const NON_NEGATIVE = ['slabT', 'slabLeft', 'slabRight', 'shoreSWL', 'tieSWL', 'tieRows', 'formDead', 'kickerCapacity', 'topRestraintCapacity', 'lateralCapacity'] as const;
@@ -74,7 +77,7 @@ export function validateBeamInput(v: unknown): BeamInput {
   if (typeof x.timberGrade !== 'string' || !timberGrade(x.timberGrade)) throw Error('ชั้นไม้ไม่ถูกต้อง');
   if (typeof x.shoreReference !== 'string' || x.shoreReference.length > 300) throw Error('แหล่งอ้างอิงค้ำยันไม่ถูกต้อง');
   if (typeof x.restraintReference !== 'string' || x.restraintReference.length > 300) throw Error('แหล่งอ้างอิงจุดยึดแบบไม่ถูกต้อง');
-  if (x.tieFy > 1000 || x.tieOmega < 1 || x.tieOmega > 10 || x.tieDiameter > 50) throw Error('ค่า Tie (Fy, Ω, Ø) อยู่นอกขอบเขต');
+  if (x.tieFy > 1000 || x.tieFu > 2000 || x.tieFu < x.tieFy || x.tieOmega < 1 || x.tieOmega > 10 || x.tieDiameter > 50) throw Error('ค่า Tie (Fy, Fu, Ω, Ø) อยู่นอกขอบเขต');
   for (const [k, role] of [['joistSectionId', 'stud'], ['studSectionId', 'stud'], ['bearerSectionId', 'waler'], ['walerSectionId', 'waler']] as const) {
     const s = typeof x[k] === 'string' ? sectionById(x[k]) : undefined;
     if (!s || !s.roles.includes(role)) throw Error('ไม่พบหน้าตัดในตารางเหล็ก/ไม้: ' + k);
@@ -111,24 +114,6 @@ export function patchBeam(L: number, patches: {a: number; c: number; w: number}[
   let Mmax = 0, xM = 0, dmax = 0;
   for (let i = 0; i <= 2000; i++) {const x = L * i / 2000, m = M(x), y = d(x); if (m > Mmax) {Mmax = m; xM = x;} if (y > dmax) dmax = y;}
   return {RA, RB, total, Mmax, xM, Vmax: Math.max(RA, RB), dmax};
-}
-
-/** Largest interior support reaction of a continuous beam with `spans` equal spans under uniform load, as a multiple of wL
- * (three-moment equation: M(i-1) + 4 M(i) + M(i+1) = -wL²/2, M = 0 at the ends). 2 spans → 1.25, 3 → 1.10, 4 → 1.143; 1 span → 1. */
-export function continuousSupportFactor(spans: number): number {
-  const n = Math.round(spans) - 1;
-  if (n < 1) return 1;
-  // Thomas algorithm for the tridiagonal system (w = L = 1).
-  const c = new Array<number>(n).fill(0), d = new Array<number>(n).fill(0);
-  for (let i = 0; i < n; i++) {
-    const m = 4 - (i > 0 ? c[i - 1] : 0);
-    c[i] = 1 / m; d[i] = (-0.5 - (i > 0 ? d[i - 1] : 0)) / m;
-  }
-  const M = new Array<number>(n + 2).fill(0);
-  for (let i = n - 1; i >= 0; i--) M[i + 1] = d[i] - c[i] * M[i + 2];
-  let best = 0;
-  for (let i = 1; i <= n; i++) best = Math.max(best, 1 + M[i - 1] - 2 * M[i] + M[i + 1]);
-  return best;
 }
 
 export interface BeamLoads {concrete: number; formDead: number; liveUsed: number; liveMin: number; totalMin: number; beam: number; slab: number; steps: string[]}
@@ -184,6 +169,8 @@ export function calculateBeam(raw: unknown): BeamResult {
     (x.slabLeft + x.slabRight > 0 ? `; แถบพื้น ${x.slabLeft}/${x.slabRight} mm w = ${fx(mm(loads.slab), 3)} N/mm` : '') + `; RA = ${fx(jb.RA / 1000, 3)} kN, RB = ${fx(jb.RB / 1000, 3)} kN`);
 
   // Bearer: line load from joist reactions, simple span between shores.
+  const joistBearing = bearingCheck(add, 'bear-joist', 'แรงกดที่จุดสัมผัส: คร่าวท้องบนคานรับ', jb.Vmax, joist, bearer, x.bearerCount,
+    `R = max(RA, RB) = ${fx(jb.Vmax / 1000, 3)} kN (ปฏิกิริยาคร่าวท้องที่แนวคานรับ)`);
   const shores = equalPositions(x.length, x.shoreSpacing), ss = x.length / (shores.length - 1), bearerLine = jb.Vmax / sj;
   member('bearer', 'คานรับท้อง (ตามยาว)', bearer, x.bearerCount, bearerLine * ss ** 2 / 8, bearerLine * ss / 2, 5 * bearerLine * ss ** 4 / (384 * bearer.E * bearer.I), ss,
     `w = Rmax / sj = ${fx(jb.Vmax / 1000, 3)} kN / ${fx(sj, 0)} mm = ${fx(bearerLine, 3)} N/mm; L = ${fx(ss, 0)} mm; M = wL²/8, V = wL/2, δ = 5wL⁴/(384EI)`);
@@ -218,7 +205,7 @@ export function calculateBeam(raw: unknown): BeamResult {
     `R = ${fx(p)} × ${fx(studSpan, 0)} / 2 / 1000 = ${fx(topForcePerM, 3)} kN/m (ช่วงบนสุดของคร่าว)` + (x.topRestraintCapacity > 0 ? `; กำลังที่ออกแบบ = ${fx(x.topRestraintCapacity)} kN/m` : '; ยังไม่มีกำลังจุดยึดบนที่ออกแบบ'),
     x.tieRows > 0 ? 'ยอดคร่าวต้องยึดกับแบบพื้น/ค้ำยัน หรือเพิ่ม Tie แถวบนชิดขอบแบบ' : 'ไม่มี Tie: แรงดันครึ่งหนึ่งของความสูงแบบข้างต้องส่งเข้าจุดยึดบน (แบบพื้น ค้ำยัน หรือเหล็กรัดบนคาน)',
     restraintSource(x.topRestraintCapacity, 'สมดุลแรง'));
-  let ties: number[] = [], tieLevels: number[] = [], tieForce: number | null = null;
+  let ties: number[] = [], tieLevels: number[] = [], tieForce: number | null = null, studOnWaler = false;
   if (x.tieRows > 0) {
     ties = equalPositions(x.length, x.tieSpacing); const stt = x.length / (ties.length - 1), ww = p / 1000 * studSpan;
     tieLevels = Array.from({length: x.tieRows}, (_, i) => studSpan * (i + 1));
@@ -229,6 +216,12 @@ export function calculateBeam(raw: unknown): BeamResult {
     add('tie-body', 'Tie ทะลุคาน: ตัวเหล็กเริ่มคราก', tieForce, tieBody, 'kN', 'T ≤ Fy Ag / Ω',
       `T = ${fx(tieForce, 2)} kN; Ag = π × ${x.tieDiameter}² / 4 = ${fx(Ag, 0)} mm²; Fy = ${x.tieFy} MPa; Ω = ${x.tieOmega} → ${fx(tieBody, 2)} kN`,
       'ตรวจเฉพาะหน้าตัดเต็มของเหล็ก ไม่รวมเกลียว นัต แผ่นรอง หรือปลอก', 'Fy ตาม มอก. 24 (SD40 = 390 MPa) · ต้องยืนยันใบรับรอง');
+    const tieUlt = x.tieFu * Ag / 2 / 1000;
+    add('tie-ult', 'Tie ทะลุคาน: กำลังประลัย / 2.0 (ACI Table 4.4)', tieForce, tieUlt, 'kN', 'T ≤ Fu Ag / 2.0',
+      `T = ${fx(tieForce, 2)} kN; Fu = ${x.tieFu} MPa; Ag = ${fx(Ag, 0)} mm² → ${fx(x.tieFu, 0)} × ${fx(Ag, 0)} / 2.0 / 1000 = ${fx(tieUlt, 2)} kN`,
+      'ACI Table 4.4 ส่วนปลอดภัย 2.0 เทียบกำลังประลัย ใช้หน้าตัดเต็ม ถ้าเป็นเหล็กเกลียวต้องใช้พื้นที่สุทธิหรือ SWL ของชุด Tie', 'ACI PRC-347-14(21) Table 4.4 · Fu ตาม มอก. 24 (SD40 = 560 MPa)');
+    studOnWaler = bearingCheck(add, 'bear-stud', 'แรงกดที่จุดสัมผัส: คร่าวข้างบนคานคู่', p / 1000 * st * studSpan, stud, waler, 2,
+      `R = pmax × s × L_stud = ${fx(p)} × ${fx(st, 0)} × ${fx(studSpan, 0)} / 1000 (คร่าวข้างที่แถว Tie, คานคู่ 2 ตัว)`);
     // Edge beam: rows are spaced over the full outer depth, but the inner side form stops at the slab soffit.
     if (sideHeights[0] !== sideHeights[1]) {
       const topTie = tieLevels[tieLevels.length - 1], innerTop = Math.min(...sideHeights) - waler.section.H / 2;
@@ -247,7 +240,8 @@ export function calculateBeam(raw: unknown): BeamResult {
     ...(x.tieRows > 0 && !(x.tieSWL > 0) ? ['ต้องกรอก SWL ชุด Tie (ข้อมูลผู้ผลิต)'] : []),
     ...(x.lateralCapacity > 0 ? ['ยืนยันเอกสารกำลังค้ำยันทแยง/ledger และตรวจเสถียรภาพนั่งร้าน'] : ['ออกแบบค้ำยันทแยง/ledger ให้รับแรงด้านข้าง ' + fx(lateralPerM) + ' kN/m และตรวจเสถียรภาพนั่งร้าน']),
     ...(x.kickerCapacity > 0 && x.topRestraintCapacity > 0 ? [] : ['ออกแบบจุดยึดแบบข้าง: ไม้กันตีน (ล่าง) และจุดยึดบน รับ ' + fx(kickerForcePerM) + ' kN/m ต่อด้าน']),
-    'ตรวจการยึดหัวค้ำ (U-head) กับคานรับ และแรงกดที่จุดสัมผัสระหว่างสมาชิก',
+    'ตรวจการยึดหัวค้ำ (U-head) กับคานรับ',
+    ...(joistBearing && (x.tieRows === 0 || studOnWaler) ? [] : ['ตรวจแรงกดเฉพาะที่ของสมาชิกเหล็กที่ซ้อนกัน (local yielding/web crippling ตาม AISC 360 หรือข้อมูลผู้ผลิต)']),
     ...(x.slabSides === 1 ? ['คานขอบ (พื้นด้านเดียว): ต้องป้องกันการหมุนของแบบคาน (ACI §4.1.4c)'] : []),
     ...(shoreLength <= 0 ? ['ความสูงใต้ท้องคานน้อยกว่าความสูงชุดแบบหล่อ'] : []),
     'ตรวจกำลังรับน้ำหนักของพื้น/ดินใต้ค้ำยัน และแผ่นรองฐาน',

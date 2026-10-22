@@ -2,11 +2,11 @@
  * Units: mm, N, MPa, kPa, kN. Status is FAIL or INCOMPLETE, never PASS. */
 import {FACE_GRAINS,PLYWOOD_GRADES,PLYWOOD_SPANS,plywoodDesign,type FaceGrain,type PlywoodDesign,type PlywoodGrade,type PlywoodSpans} from './plywoodGrades.js';
 import {sectionById,timberGrade} from './sectionStock.js';
-import {equalPositions} from './mechanics.js';
-import {checker,fx,liveMinimums,material,plywoodOptions,plywoodSource,type MemberMaterial} from './members.js';
+import {continuousSupportFactor, equalPositions} from './mechanics.js';
+import {bearingCheck,checker,fx,liveMinimums,material,plywoodOptions,plywoodSource,type MemberMaterial} from './members.js';
 import type {Check,Status} from './index.js';
 
-export const SLAB_ENGINE_VERSION = 'slab-0.1.0-screening';
+export const SLAB_ENGINE_VERSION = 'slab-0.2.0-screening';
 export interface SlabInput {
   /** Bay size: X = along the bearers, Y = along the joists; slab thickness; floor-to-soffit height (mm). */
   lx: number; ly: number; t: number; soffitHeight: number; confirmed: boolean;
@@ -81,6 +81,8 @@ export interface SlabResult {
   /** Joist stations along X, bearer lines along Y, shore stations along X (mm from the bay corner). */
   joists: number[]; bearers: number[]; shores: number[];
   joistLine: number; bearerLine: number; shoreLoad: number; shoreCount: number; shoreLength: number;
+  /** Continuous-span interior reaction factors (three-moment equation): joists over the bearers, bearers over the shores. */
+  joistFactor: number; shoreFactor: number;
   /** ACI §4.2.3.2 horizontal load per metre of slab edge for loads in X (applied along the Y edge) and in Y. */
   lateralX: number; lateralY: number; volume: number; quantities: SlabQuantity[];
 }
@@ -95,13 +97,17 @@ export function calculateSlab(raw: unknown): SlabResult {
   for (const k of plywood.checks) add(k.id, 'ไม้อัดท้องพื้น · ' + k.label, k.demand, k.limit, k.unit, k.formula, k.substitution + `; q = ${fx(q)} kPa`, k.note, plySource);
   const joistLine = q / 1000 * sj;
   uniform('joist', 'คร่าว (Joist)', joist, 1, joistLine, sb, `w = q × sj = ${fx(q)} × ${fx(sj, 0)} / 1000 = ${fx(joistLine, 3)} N/mm; L = ระยะคานรับ ${fx(sb, 0)} mm`);
-  const bearerLine = q / 1000 * sb;
-  uniform('bearer', 'คานรับ (Bearer)', bearer, x.bearerCount, bearerLine, ss, `w = q × sb = ${fx(q)} × ${fx(sb, 0)} / 1000 = ${fx(bearerLine, 3)} N/mm (แรงจากคร่าวเฉลี่ยเป็นแรงแผ่); L = ระยะค้ำยัน ${fx(ss, 0)} mm`);
-  const shoreLoad = q * sb * ss / 1e6;
-  add('shore-p', 'ค้ำยัน: แรงอัดต่อต้น (ต้นภายใน)', shoreLoad, x.shoreSWL > 0 ? x.shoreSWL : null, 'kN', 'P = q × sb × ss ≤ SWL (ผู้ผลิต)',
-    `P = ${fx(q)} kPa × ${fx(sb / 1000, 3)} m × ${fx(ss / 1000, 3)} m = ${fx(shoreLoad)} kN` + (x.shoreSWL > 0 ? `; SWL = ${fx(x.shoreSWL)} kN` : '; ยังไม่มี SWL ของค้ำยันที่ความยาวใช้งาน'),
-    'พื้นที่รับแรงต้นภายใน; ไม่รวมผลคานต่อเนื่อง (อาจเพิ่ม ~25%) ต้องยืนยันความยาวยืด ความเอียง และฐานรองรับ',
+  // Joists lap over the bearers and bearers over the shore heads: interior supports take k·wL (three-moment equation, equal spans).
+  const joistFactor = continuousSupportFactor(bearers.length - 1), shoreFactor = continuousSupportFactor(shores.length - 1);
+  const bearerLine = joistFactor * q / 1000 * sb;
+  uniform('bearer', 'คานรับ (Bearer)', bearer, x.bearerCount, bearerLine, ss, `w = kj × q × sb = ${fx(joistFactor, 3)} × ${fx(q)} × ${fx(sb, 0)} / 1000 = ${fx(bearerLine, 3)} N/mm (แรงจากคร่าวเฉลี่ยเป็นแรงแผ่); L = ระยะค้ำยัน ${fx(ss, 0)} mm`);
+  const shoreLoad = shoreFactor * bearerLine * ss / 1000;
+  add('shore-p', 'ค้ำยัน: แรงอัดต่อต้น (ต้นภายใน)', shoreLoad, x.shoreSWL > 0 ? x.shoreSWL : null, 'kN', 'P = kb × kj × q × sb × ss ≤ SWL (ผู้ผลิต)',
+    `kj = ${fx(joistFactor, 3)} (คร่าวต่อเนื่อง ${bearers.length - 1} ช่วง), kb = ${fx(shoreFactor, 3)} (คานรับต่อเนื่อง ${shores.length - 1} ช่วง); P = ${fx(shoreFactor, 3)} × ${fx(joistFactor, 3)} × ${fx(q)} kPa × ${fx(sb / 1000, 3)} m × ${fx(ss / 1000, 3)} m = ${fx(shoreLoad)} kN` + (x.shoreSWL > 0 ? `; SWL = ${fx(x.shoreSWL)} kN` : '; ยังไม่มี SWL ของค้ำยันที่ความยาวใช้งาน'),
+    'k จากสมการสามโมเมนต์ของคานต่อเนื่องช่วงเท่ากัน (1 ช่วง k = 1); ต้องยืนยันความยาวยืด ความเอียง และฐานรองรับ',
     x.shoreSWL > 0 ? 'ค่าผู้ผลิต: ' + (x.shoreReference || 'ไม่ระบุแหล่งอ้างอิง') : 'ACI PRC-347-14(21) §4.3: ใช้ค่ารับน้ำหนักที่ผู้ผลิตแนะนำพร้อมผลทดสอบ');
+  const joistBearing = bearingCheck(add, 'bear-joist', 'แรงกดที่จุดสัมผัส: คร่าวบนคานรับ', joistFactor * q * sj * sb / 1e6 * 1000, joist, bearer, x.bearerCount,
+    `R = kj × q × sj × sb = ${fx(joistFactor, 3)} × ${fx(q)} kPa × ${fx(sj / 1000, 3)} m × ${fx(sb / 1000, 3)} m (คร่าวเหนือคานรับภายใน)`);
   // ACI §4.2.3.2: max(1.5 kN/m of floor edge, 2 % of total dead load distributed along that edge).
   const DL = (loads.concrete + x.formDead) * x.lx * x.ly / 1e6, lateralX = Math.max(1.5, 0.02 * DL / (x.ly / 1000)), lateralY = Math.max(1.5, 0.02 * DL / (x.lx / 1000));
   add('lateral', 'แรงด้านข้างที่ต้องค้ำ (ACI §4.2.3.2)', Math.max(lateralX, lateralY), null, 'kN/m', 'H = max(1.5 kN/m, 2% DL / ความยาวขอบ)',
@@ -113,6 +119,7 @@ export function calculateSlab(raw: unknown): SlabResult {
     ...(x.shoreSWL > 0 ? [] : ['ต้องกรอก SWL ค้ำยันที่ความยาวใช้งาน (ข้อมูลผู้ผลิต)']),
     `ออกแบบค้ำยันทแยง/ledger ให้รับแรงด้านข้าง ${fx(lateralX)} kN/m (แนว X) และ ${fx(lateralY)} kN/m (แนว Y) และตรวจเสถียรภาพนั่งร้าน`,
     'ตรวจการยึดหัวค้ำ (U-head) กับคานรับ และการต่อทาบคานรับเหนือหัวค้ำ',
+    ...(joistBearing ? [] : ['ตรวจแรงกดเฉพาะที่ของคร่าวเหล็กบนคานรับเหล็ก (local yielding/web crippling ตาม AISC 360 หรือข้อมูลผู้ผลิต)']),
     ...(shoreLength <= 0 ? ['ความสูงใต้ท้องพื้นน้อยกว่าความสูงชุดแบบหล่อ'] : []),
     'ตรวจกำลังรับน้ำหนักของพื้น/ดินใต้ค้ำยัน แผ่นรองฐาน และลำดับการถอดค้ำ/ค้ำซ้ำ (ACI §4.5)',
   ];
@@ -124,7 +131,7 @@ export function calculateSlab(raw: unknown): SlabResult {
     {item: 'ค้ำยัน + U-head + แผ่นฐาน', spec: x.shoreReference || 'ระบุรุ่นจากผู้ผลิต', qty: shoreCount, unit: 'ต้น', note: `ยาวใช้งาน ${fx(shoreLength, 0)} mm · ${shores.length} × ${bearers.length} ต้น @ ${fx(ss, 0)} × ${fx(sb, 0)} mm`},
   ];
   return {engineVersion: SLAB_ENGINE_VERSION, input: x, status: checks.some(k => k.status === 'FAIL') ? 'FAIL' : 'INCOMPLETE', checks, blockers, loads, plywood, joist, bearer,
-    joists, bearers, shores, joistLine, bearerLine, shoreLoad, shoreCount, shoreLength, lateralX, lateralY, volume: area * x.t / 1000, quantities};
+    joists, bearers, shores, joistLine, bearerLine, shoreLoad, shoreCount, joistFactor, shoreFactor, shoreLength, lateralX, lateralY, volume: area * x.t / 1000, quantities};
 }
 
 export const SLAB_SPACINGS = [

@@ -1,5 +1,6 @@
 import React from 'react';
 import type {Check} from '../domain';
+import {SCREEN_LABEL, screenState, type NumberedCheck} from '../domain/reportOutline';
 import {CC_VALUES, type PressureMethod} from '../domain/pressure';
 import {GRAIN_LABEL, PLYWOOD_GRADE_LABEL, PLYWOOD_GRADES, PLYWOOD_SPANS, SPAN_LABEL} from '../domain/plywoodGrades';
 import type {MaterialSettings, PlywoodSettings} from '../domain/members';
@@ -36,11 +37,18 @@ export function MemberPicker<T>({x, k, role, title, edit, canEdit, stockIds, pai
     {role === 'waler' && <p className="notice">WF และเหล็กฉากไม่เท่ายังเป็น BLOCKED: คลังที่ติดตั้งมีเฉพาะแถวที่ตรวจรับรองแล้ว และจะไม่เติมค่าหน้าตัดเอง</p>}
   </div>;
 }
-export function ChecksTable({checks}: {checks: Check[]}) {
-  return <table><thead><tr><th>รายการ</th><th>แรง / ผล</th><th>เกณฑ์คัดกรอง</th><th>Ratio</th><th>สถานะ</th></tr></thead><tbody>
-    {checks.map(k => <React.Fragment key={k.id}><tr><td><b>{k.label}</b></td><td>{fmt(k.demand, 3)} {k.unit}</td><td>{k.limit === null ? 'ยังไม่ทราบ' : `${fmt(k.limit, 3)} ${k.unit}`}</td><td>{fmt(k.utilization, 3)}</td>
-      <td><span className={'pill ' + (k.status === 'FAIL' ? 'red' : 'amber')}>{k.status}</span></td></tr>
-      <tr className="explain"><td colSpan={5}><details><summary>สูตร · ที่มา · ข้อจำกัด</summary><div className="equation">{k.formula}</div><p>{k.substitution}</p><p>{k.note}</p><small>{k.source}</small></details></td></tr></React.Fragment>)}
+/** Status pill: FAIL, INCOMPLETE within the screening limit, or INCOMPLETE without a capacity. */
+export function ScreenPill({c}: {c: Check}) {
+  const state = screenState(c);
+  return <span className={'pill ' + (state === 'FAIL' ? 'red' : state === 'WITHIN' ? 'ok' : 'amber')}>{SCREEN_LABEL[state]}</span>;
+}
+/** Checks with the report numbering (pass `items` from numberChecks) so the UI, A4 report and A3 summary agree. */
+export function ChecksTable({checks, items}: {checks?: Check[]; items?: NumberedCheck[]}) {
+  const rows = items ?? (checks ?? []).map(check => ({no: '', check}));
+  return <table><thead><tr><th>ข้อ</th><th>รายการ</th><th>แรง / ผล</th><th>เกณฑ์คัดกรอง</th><th>Ratio</th><th>สถานะ</th></tr></thead><tbody>
+    {rows.map(({no, check: k}) => <React.Fragment key={k.id}><tr><td className="check-no">{no}</td><td><b>{k.label}</b></td><td>{fmt(k.demand, 3)} {k.unit}</td><td>{k.limit === null ? 'ยังไม่ทราบ' : `${fmt(k.limit, 3)} ${k.unit}`}</td><td>{fmt(k.utilization, 3)}</td>
+      <td><ScreenPill c={k}/></td></tr>
+      <tr className="explain"><td colSpan={6}><details><summary>สูตร · ที่มา · ข้อจำกัด</summary><div className="equation">{k.formula}</div><p>{k.substitution}</p><p>{k.note}</p><small>{k.source}</small></details></td></tr></React.Fragment>)}
   </tbody></table>;
 }
 export interface SpacingAdvice {key: string; label: string; current: number; max: number | null; unchecked: string[]}

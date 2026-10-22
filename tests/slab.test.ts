@@ -21,9 +21,12 @@ describe('slab formwork engine', () => {
     expect(jb.demand).toBeCloseTo(wj * 1000 ** 2 / 8 / r.joist.S, 9);
     const jd = r.checks.find(k => k.id === 'joist-d')!;
     expect(jd.demand).toBeCloseTo(5 * wj * 1000 ** 4 / (384 * r.joist.E * r.joist.I), 9);
-    expect(r.bearerLine).toBeCloseTo(wb, 12);
-    expect(r.checks.find(k => k.id === 'bearer-b')!.demand).toBeCloseTo(wb * 1200 ** 2 / 8 / r.bearer.S, 9);
-    expect(r.shoreLoad).toBeCloseTo(q * 1.0 * 1.2, 9);
+    // Joists continuous over 4 bearer spans (interior reaction 8/7 wL), bearers over 5 shore spans (43/38 wL).
+    expect(r.joistFactor).toBeCloseTo(8 / 7, 12);
+    expect(r.shoreFactor).toBeCloseTo(43 / 38, 12);
+    expect(r.bearerLine).toBeCloseTo(8 / 7 * wb, 12);
+    expect(r.checks.find(k => k.id === 'bearer-b')!.demand).toBeCloseTo(8 / 7 * wb * 1200 ** 2 / 8 / r.bearer.S, 9);
+    expect(r.shoreLoad).toBeCloseTo(43 / 38 * 8 / 7 * q * 1.0 * 1.2, 9);
     expect(r.checks.find(k => k.id === 'shore-p')!.status).toBe('INCOMPLETE');
     expect(r.volume).toBeCloseTo(6 * 4 * 0.15, 9);
   });

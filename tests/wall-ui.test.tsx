@@ -69,7 +69,8 @@ describe('wall workspace, drawings and report', () => {
     expect(sheets).toContain('ดิน / ผนังเดิม');
     expect(sheets).toContain('แบบด้านเดียว');
     const report = renderToStaticMarkup(<WallReport r={r} project="P" code="C" caseName="W1" caseId="w1" titleBlock={tb}/>);
-    expect(report).toContain('Strongback และพุกฐาน');
+    expect(report).toContain('4.4 Strongback');
+    expect(report).toContain('5.2 พุกฐาน strongback');
     expect(report).toContain('§4.1.4d');
     expect(report.match(/class="rp-check"/g)?.length).toBe(r.checks.length);
   });

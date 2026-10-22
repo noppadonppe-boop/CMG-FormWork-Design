@@ -87,7 +87,7 @@ describe('Part 3 title block and report', () => {
   });
   it('renders a structured report with figures, step-by-step checks, BOM and advice', () => {
     const r = calculate(defaults), html = renderToStaticMarkup(<CalcReport r={r} project="P" code="C" caseName="F01" caseId="F01" titleBlock={defaultTitleBlock()}/>);
-    for (const t of ['สารบัญ', '1. ขอบเขตและเกณฑ์การออกแบบ', '3. แรงดันคอนกรีตสด', '6. ปริมาณวัสดุ', '9. เอกสารอ้างอิง', 'คำแนะนำปรับแก้', 'ไม้อัดแบบหล่อ'])
+    for (const t of ['สารบัญ', '1. ขอบเขตและเกณฑ์การออกแบบ', '3. น้ำหนักบรรทุกและแรงดันคอนกรีตสด', '4. การตรวจสอบองค์อาคาร', '5. ค้ำยัน จุดยึด และเสถียรภาพ', '7. ปริมาณวัสดุ', '4.1.1', '9. เอกสารอ้างอิง', 'คำแนะนำปรับแก้', 'ไม้อัดแบบหล่อ'])
       expect(html).toContain(t);
     expect(html.match(/class="rp-check"/g)).toHaveLength(r.checks.length);
     expect(html.match(/<figcaption>รูปที่ \d/g)!.length).toBeGreaterThanOrEqual(7);

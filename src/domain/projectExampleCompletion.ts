@@ -35,7 +35,8 @@ export function completeExamplePractical<T extends {input:Input;beam?:BeamInput;
   const input={...c.input,tieNetArea:c.input.tieNetArea||157,tieAssemblySWL:c.input.tieAssemblySWL||EXAMPLE_TIE_KN,
     cornerCapacityX:c.input.cornerCapacityX||30,cornerCapacityY:c.input.cornerCapacityY||30,
     cornerRule:c.input.cornerRule==='UNKNOWN'?'LINEAR' as const:c.input.cornerRule,
-    cornerReference:ref(c.input.cornerReference,`${EXAMPLE_BASIS}; assumed corner Cx=Cy=30kN; form_tie_machine_bridge anatomy only`)};
+    cornerReference:ref(c.input.cornerReference,`${EXAMPLE_BASIS}; assumed corner Cx=Cy=30kN; form_tie_machine_bridge anatomy only`),
+    braceReference:ref(c.input.braceReference,`${EXAMPLE_BASIS}; column brace height/SWL not designed (0 = INCOMPLETE)`)};
   const old=c.titleBlock;
   const titleBlock:TitleBlock={rev:old?.rev||'EX3',date:old?.date||'19/10/2569',designedBy:old?.designedBy||'EXAMPLE DESIGNER (สมมติ)',drawnBy:old?.drawnBy||'EXAMPLE DRAFTER (สมมติ)',
     checkedBy:old?.checkedBy||'EXAMPLE CHECKER (ยังไม่ลงนาม)',approvedBy:old?.approvedBy||'EXAMPLE APPROVER (ยังไม่ลงนาม)',

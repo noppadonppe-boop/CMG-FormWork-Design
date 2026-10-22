@@ -1,6 +1,7 @@
 import {useMemo} from 'react';
 import {AlertTriangle, ChevronRight} from 'lucide-react';
 import {wallAdvice, type WallInput, type WallResult} from '../domain/wall';
+import {numberChecks, wallCheckGroups} from '../domain/reportOutline';
 import {Defs} from '../drawing/primitives';
 import {WallSectionView} from '../drawing/wallViews';
 import {AdviceTable, ChecksTable, MaterialFields, MemberPicker, Num as NumG, PlywoodFields, PressureFields, fmt as f, type FormCtx} from './FormParts';
@@ -26,11 +27,11 @@ export function WallPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab}
       <section className="card"><h3>ขั้นตอนของแบบผนัง</h3><div className="steps">{[
         ['01', 'มิติผนัง', x.confirmed ? 'ยืนยันแล้ว' : 'กรอกความยาว ความหนา ความสูงเท และยืนยัน', 'geometry'],
         ['02', 'Design Criteria', 'แรงดันคอนกรีต (ρgh / ACI) และไม้อัด APA', 'criteria'],
-        ['03', 'จัดวางและหน้าตัด', 'คร่าว คานคู่ Tie ค้ำยันเอียง', 'layout'],
+        ['03', 'จัดวางและหน้าตัด', x.system === 'SINGLE_SIDED' ? 'คร่าว คานคู่ strongback พุกฐาน ค้ำยันเอียง' : 'คร่าว คานคู่ Tie ค้ำยันเอียง', 'layout'],
         ['04', 'รายการคำนวณ', r ? `${r.checks.filter(k => k.status === 'FAIL').length} รายการเกินเกณฑ์` : 'ยังคำนวณไม่ได้', 'results'],
         ['05', 'แบบ A3 และรายงาน', 'WF-01 ถึง WF-03 และรายการคำนวณ A4', 'drawings'],
       ].map(([no, a, b, t]) => <div key={no} onClick={() => onTab(t)} style={{cursor: 'pointer'}}><span>{no}</span><section><b>{a}</b><p>{b}</p></section></div>)}</div>
-        <div className="warning"><AlertTriangle size={18}/><p>ผลคัดกรองเบื้องต้น ไม่ใช่การอนุมัติก่อสร้าง · ต้องกรอก SWL ชุด Tie และค้ำยันจากผู้ผลิต · {single ? 'แบบด้านเดียว: ตรวจพุกฐานและการโก่งเดาะค้ำยันเพิ่ม' : 'แบบสองด้านพร้อม Tie'}</p></div></section></div>
+        <div className="warning"><AlertTriangle size={18}/><p>ผลคัดกรองเบื้องต้น ไม่ใช่การอนุมัติก่อสร้าง · {single ? 'ต้องกรอก SWL พุกฐานและค้ำยันเอียงจากผู้ผลิต · แบบด้านเดียว: ตรวจพุกฐานและการโก่งเดาะค้ำยันเพิ่ม' : 'ต้องกรอก SWL ชุด Tie และค้ำยันจากผู้ผลิต · แบบสองด้านพร้อม Tie'}</p></div></section></div>
   </>;
   if (tab === 'geometry') return <div className="grid two"><section className="card"><h3>มิติผนัง</h3><p className="muted">ทุกมิติเป็น mm · แก้มิติหรือระบบแบบแล้วต้องยืนยันใหม่</p>
     <label className="field"><span>ระบบแบบหล่อ</span><select aria-label="ระบบแบบหล่อผนัง" disabled={!canEdit} value={x.system} onChange={e => edit({system: e.target.value as WallInput['system']})}>
@@ -56,7 +57,7 @@ export function WallPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab}
       <div className="grid two"><MemberPicker<WallInput> {...p} k="studSectionId" role="stud" title="คร่าว (แนวตั้ง)" stockIds={stockIds}/><MemberPicker<WallInput> {...p} k="walerSectionId" role="waler" title="คานคู่ (2 ตัวต่อระดับ)" stockIds={stockIds} pair/></div>
       <div className="form-grid four"><Num {...p} k="studSpacing" label="ระยะคร่าวสูงสุด"/><Num {...p} k="walerSpacing" label="ระยะคานคู่สูงสุด (แนวตั้ง)"/>
         {!single && <><Num {...p} k="tieSpacing" label="ระยะ Tie สูงสุด"/>
-        <Num {...p} k="tieDiameter" label="Tie Ø"/><Num {...p} k="tieFy" label="Fy เหล็ก Tie" unit="MPa" help="SD40 = 390 MPa (มอก. 24)"/><Num {...p} k="tieOmega" label="Ω ตัวเหล็ก Tie" unit="—"/>
+        <Num {...p} k="tieDiameter" label="Tie Ø"/><Num {...p} k="tieFy" label="Fy เหล็ก Tie" unit="MPa" help="SD40 = 390 MPa (มอก. 24)"/><Num {...p} k="tieOmega" label="Ω ตัวเหล็ก Tie" unit="—"/><Num {...p} k="tieFu" label="Fu เหล็ก Tie" unit="MPa" help="SD40 = 560 MPa (มอก. 24) · ACI Table 4.4 SF 2.0"/>
         <Num {...p} k="tieSWL" label="SWL ชุด Tie" unit="kN" help="จากผู้ผลิต (SF ≥ 2.0 ตาม ACI Table 4.4) · 0 = ยังไม่ทราบ"/></>}</div>
       {single && <div className="grid two"><MemberPicker<WallInput> {...p} k="strongbackSectionId" role="waler" title="Strongback (แนวตั้ง ที่ทุกสถานีค้ำยัน)" stockIds={stockIds} pair={x.strongbackCount > 1}/>
         <div className="form-grid"><label className="field"><span>Strongback ต่อสถานี</span><select aria-label="จำนวน strongback" disabled={!canEdit} value={x.strongbackCount} onChange={e => edit({strongbackCount: Number(e.target.value) as 1 | 2})}><option value={1}>1 ตัว</option><option value={2}>2 ตัว (คู่)</option></select></label>
@@ -64,7 +65,7 @@ export function WallPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab}
       {r && (single ? <p className="muted">strongback: แรงที่ค้ำยัน {f(r.strongbackBrace)} kN · ที่ฐาน {f(r.strongbackBase)} kN · พุกรับแรงยก {f(r.anchorUplift)} kN ต่อสถานี</p>
         : <p className="muted">แรง Tie {f(r.tieForce)} kN/ตัว · ตัวเหล็กรับได้ {f(r.tieBody)} kN · คร่าวช่วง {f(x.height / (r.levels.length - 1), 0)} mm · คานคู่ช่วง {f(x.length / (r.ties.length - 1), 0)} mm</p>)}</section>
     <section className="card"><h3>{single ? 'ค้ำยันเอียง (รับแรงดันคอนกรีต + ACI §4.2.3)' : 'ค้ำยันเอียง (ACI §4.2.3)'}</h3>
-      <div className="form-grid four"><Num {...p} k="braceSpacing" label={single ? 'ระยะ strongback / ค้ำยัน' : 'ระยะค้ำยันตามยาวผนัง'}/><Num {...p} k="braceHeight" label="ความสูงจุดยึดค้ำยัน"/><Num {...p} k="braceAngle" label="มุมค้ำยันจากแนวนอน" unit="°" help="20–75°"/>
+      <div className="form-grid four"><Num {...p} k="windPressure" label="แรงลมออกแบบ" unit="kPa" help="ตามพื้นที่/มาตรฐานท้องถิ่น ไม่น้อยกว่า 0.72 kPa (ACI §4.2.3.1)"/><Num {...p} k="braceSpacing" label={single ? 'ระยะ strongback / ค้ำยัน' : 'ระยะค้ำยันตามยาวผนัง'}/><Num {...p} k="braceHeight" label="ความสูงจุดยึดค้ำยัน"/><Num {...p} k="braceAngle" label="มุมค้ำยันจากแนวนอน" unit="°" help="20–75°"/>
         <Num {...p} k="braceSWL" label="SWL ค้ำยัน" unit="kN" help="จากผู้ผลิต · 0 = ยังไม่ทราบ"/>
         <label className="field"><span>รุ่น/เอกสารค้ำยัน</span><input aria-label="รุ่นค้ำยันเอียง" maxLength={300} disabled={!canEdit} value={x.braceReference} onChange={e => edit({braceReference: e.target.value})}/></label></div>
       {r && <p className="muted">โมเมนต์พลิก {f(r.braceMoment, 3)} kN·m/m ({r.braceGoverning}) · แรงค้ำยัน {f(r.braceForce)} kN/ตัว</p>}</section>
@@ -73,5 +74,5 @@ export function WallPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab}
   return <>{err}{r && <>
     <div className="metrics"><div><small>PRESSURE</small><strong>{f(r.pressureModel.pmax, 1)}<em>kPa</em></strong></div>{single ? <div><small>ANCHOR UPLIFT</small><strong>{f(r.anchorUplift)}<em>kN</em></strong></div> : <div><small>TIE FORCE</small><strong>{f(r.tieForce)}<em>kN</em></strong></div>}
       <div><small>BRACE FORCE</small><strong>{f(r.braceForce)}<em>kN</em></strong></div><div><small>SYSTEM STATUS</small><strong className="amber">{r.status}</strong></div></div>
-    <section className="card"><h3>ตรวจเบื้องต้น / ตรวจวิธีที่ยังขาด</h3><ChecksTable checks={r.checks}/><h3>ก่อนออกเอกสารใช้งานจริง</h3><ul className="blockers">{r.blockers.map(b => <li key={b}>{b}</li>)}</ul></section></>}</>;
+    <section className="card"><h3>ตรวจเบื้องต้น / ตรวจวิธีที่ยังขาด</h3><ChecksTable items={numberChecks(wallCheckGroups(!!r.strongback), r.checks).ordered}/><h3>ก่อนออกเอกสารใช้งานจริง</h3><ul className="blockers">{r.blockers.map(b => <li key={b}>{b}</li>)}</ul></section></>}</>;
 }

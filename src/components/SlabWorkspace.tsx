@@ -1,6 +1,7 @@
 import {useMemo} from 'react';
 import {AlertTriangle, ChevronRight} from 'lucide-react';
 import {slabAdvice, type SlabInput, type SlabResult} from '../domain/slab';
+import {numberChecks, slabCheckGroups} from '../domain/reportOutline';
 import {Defs} from '../drawing/primitives';
 import {SlabPlanView} from '../drawing/slabViews';
 import {AdviceTable, ChecksTable, MaterialFields, MemberPicker, Num as NumG, PlywoodFields, VerticalLoadFields, fmt as f, type FormCtx} from './FormParts';
@@ -62,5 +63,5 @@ export function SlabPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab}
   return <>{err}{r && <>
     <div className="metrics"><div><small>DESIGN LOAD q</small><strong>{f(r.loads.q)}<em>kPa</em></strong></div><div><small>SHORES</small><strong>{r.shoreCount}<em>ต้น</em></strong></div>
       <div><small>SHORE LOAD</small><strong>{f(r.shoreLoad)}<em>kN</em></strong></div><div><small>SYSTEM STATUS</small><strong className="amber">{r.status}</strong></div></div>
-    <section className="card"><h3>ตรวจเบื้องต้น / ตรวจวิธีที่ยังขาด</h3><ChecksTable checks={r.checks}/><h3>ก่อนออกเอกสารใช้งานจริง</h3><ul className="blockers">{r.blockers.map(b => <li key={b}>{b}</li>)}</ul></section></>}</>;
+    <section className="card"><h3>ตรวจเบื้องต้น / ตรวจวิธีที่ยังขาด</h3><ChecksTable items={numberChecks(slabCheckGroups(), r.checks).ordered}/><h3>ก่อนออกเอกสารใช้งานจริง</h3><ul className="blockers">{r.blockers.map(b => <li key={b}>{b}</li>)}</ul></section></>}</>;
 }

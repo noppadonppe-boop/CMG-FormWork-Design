@@ -3,6 +3,7 @@ import {tieRoutes,type TieRoute} from './tieRoutes.js';
 import {CC_VALUES,lateralPressure,type PressureMethod,type PressureModel} from './pressure.js';
 import {FACE_GRAINS,PLYWOOD_GRADES,PLYWOOD_SPANS,plywoodDesign,type FaceGrain,type PlywoodDesign,type PlywoodGrade,type PlywoodProperties,type PlywoodSpans} from './plywoodGrades.js';
 import {WALER_TYPE,catalogueProperties,isTimber,sectionById,timberGrade} from './sectionStock.js';
+import {timberFc90} from './members.js';
 import {analyzeColumnYoke,columnDefaults,type ColumnAnalysis,type ColumnModel,type CornerRule} from './columnYoke.js';
 export {columnDefaults} from './columnYoke.js';
 export {pointBeam,sectionProperties} from './mechanics.js';
@@ -36,6 +37,9 @@ export interface Input {
   columnModel:ColumnModel;yokeOmegaT:number;cornerCapacityX:number;cornerCapacityY:number;cornerRule:CornerRule;cornerReference:string;
   /** Column only: true = through ties across the column at tieSpacing (with the yoke corners); false = external yoke only, no ties (default; older data). */
   columnTies:boolean;
+  /** Design wind pressure on the forms (kPa, site/local code; ACI §4.2.3.1 minimum 0.72). Column bracing: push-pull braces per direction at braceHeight (mm, 0 = not set),
+   * braceAngle (deg from horizontal), safe working load per brace (kN, 0 = unknown). Missing in older data → 0.72 kPa / not set. */
+  windPressure:number;braceHeight:number;braceAngle:number;bracesPerDirection:number;braceSWL:number;braceReference:string;
 }
 const APA_SOURCE='APA Concrete Forming Design/Construction Guide V345 (2012) Table 12–13 · ต้องยืนยันว่าแผ่นที่ใช้มีคุณสมบัติเทียบเท่า';
 export interface Check {id:string;label:string;demand:number|null;limit:number|null;unit:string;
@@ -63,13 +67,15 @@ export const phase2Defaults={steelE:200000,steelOmegaB:1.67,steelOmegaShear:1.67
   tieGrade:'SD40' as const,tieFy:390,tieFu:560,tieOmegaYield:1.67,tieOmegaRupture:2,
   tieNetArea:0,tieAssemblySWL:0};
 export const extensionDefaults={...phase2Defaults,...columnDefaults};
+/** Bracing inputs added later; older inputs read 'not set' (bracing checks stay INCOMPLETE, every other result unchanged). */
+export const bracingDefaults={windPressure:0.72,braceHeight:0,braceAngle:60,bracesPerDirection:1,braceSWL:0,braceReference:''};
 /** Pressure inputs added later; HYDROSTATIC keeps every earlier result unchanged. Defaults are typical Thai site values, to be confirmed per pour. */
 export const pressureDefaults={pressureMethod:'HYDROSTATIC' as PressureMethod,pourRate:2,concreteTemp:30,slump:100,vibrationDepth:1,chemistryCc:1.2};
 /** New cases use APA Plyform Class I; inputs saved before the grade existed keep their own plywoodE / plywoodFb (CUSTOM). */
 export const plywoodDefaults={plywoodGrade:'PLYFORM_I' as PlywoodGrade,plywoodSpans:'AUTO' as PlywoodSpans,plywoodFaceGrain:'ACROSS' as FaceGrain};
 export const defaults:Input={kind:'FOOTING',shape:'RECTANGLE',width:3000,length:4000,armX:1500,armY:2000,height:2500,
   gamma:24,confirmed:false,plywood:20,studSpacing:300,walerSpacing:600,tieSpacing:600,tieDiameter:16,
-  rhsB:50,rhsH:100,rhsT:3.2,plywoodE:4800,plywoodFb:5.3,steelFy:245,deflectionRatio:360,...extensionDefaults,walerSectionId:'',studSectionId:'',studTimberGrade:'TIMBER-BOOK-SOFT',...pressureDefaults,...plywoodDefaults,columnTies:false};
+  rhsB:50,rhsH:100,rhsT:3.2,plywoodE:4800,plywoodFb:5.3,steelFy:245,deflectionRatio:360,...extensionDefaults,walerSectionId:'',studSectionId:'',studTimberGrade:'TIMBER-BOOK-SOFT',...pressureDefaults,...plywoodDefaults,columnTies:false,...bracingDefaults};
 /** Older drafts gain explicit conservative defaults and lose confirmation; partial schemas reject. */
 export function upgradeInput(v:unknown,minimumVersion:1|2=1):Input {
   if(!v||typeof v!=='object')throw Error('ข้อมูลไม่ถูกต้อง');
@@ -83,18 +89,22 @@ export function validateInput(v:unknown):Input {
   // walerSectionId was added later: older inputs without it mean 'no catalogue section'.
   // Catalogue fields were added later: older inputs without them mean 'no catalogue section' and the conservative timber class.
   const r0=v as Record<string,unknown>,q:Record<string,unknown>={...r0,walerSectionId:r0.walerSectionId??'',studSectionId:r0.studSectionId??'',studTimberGrade:r0.studTimberGrade??'TIMBER-BOOK-SOFT',
-    ...Object.fromEntries(Object.entries(pressureDefaults).map(([k,d])=>[k,r0[k]??d])),plywoodGrade:r0.plywoodGrade??'CUSTOM',plywoodSpans:r0.plywoodSpans??'SINGLE',plywoodFaceGrain:r0.plywoodFaceGrain??'PARALLEL',columnTies:r0.columnTies??false};
+    ...Object.fromEntries(Object.entries(pressureDefaults).map(([k,d])=>[k,r0[k]??d])),plywoodGrade:r0.plywoodGrade??'CUSTOM',plywoodSpans:r0.plywoodSpans??'SINGLE',plywoodFaceGrain:r0.plywoodFaceGrain??'PARALLEL',columnTies:r0.columnTies??false,
+    ...Object.fromEntries(Object.entries(bracingDefaults).map(([k,d])=>[k,r0[k]??d]))};
   const keys=Object.keys(defaults) as (keyof Input)[];
   if(Object.keys(q).some(k=>!keys.includes(k as keyof Input)))throw Error('มีช่องข้อมูลที่ไม่รองรับ');
   if(!['FOOTING','COLUMN'].includes(String(q.kind))||!['RECTANGLE','L'].includes(String(q.shape))||typeof q.confirmed!=='boolean'||typeof q.columnTies!=='boolean')throw Error('ชนิดหรือสถานะรูปทรงไม่ถูกต้อง');
   if(!['RHS','C','L','CHS'].includes(String(q.walerType))||!['SD40','SR24','CUSTOM'].includes(String(q.tieGrade)))throw Error('ชนิดคานหรือเกรด Tie ไม่ถูกต้อง');
   if(!['DEMAND_ONLY','PINNED_RING'].includes(String(q.columnModel))||!['UNKNOWN','LINEAR'].includes(String(q.cornerRule))||typeof q.cornerReference!=='string'||q.cornerReference.length>300)throw Error('ข้อมูลโมเดลหรือแหล่งอ้างอิงชุดรัดไม่ถูกต้อง');
-  for(const k of keys.filter(k=>!['kind','shape','confirmed','walerType','tieGrade','tieNetArea','tieAssemblySWL','columnModel','cornerRule','cornerReference','cornerCapacityX','cornerCapacityY','walerSectionId','studSectionId','studTimberGrade','pressureMethod','plywoodGrade','plywoodSpans','plywoodFaceGrain','columnTies'].includes(k))) {
+  for(const k of keys.filter(k=>!['kind','shape','confirmed','walerType','tieGrade','tieNetArea','tieAssemblySWL','columnModel','cornerRule','cornerReference','cornerCapacityX','cornerCapacityY','walerSectionId','studSectionId','studTimberGrade','pressureMethod','plywoodGrade','plywoodSpans','plywoodFaceGrain','columnTies','braceHeight','braceSWL','braceReference'].includes(k))) {
     if(typeof q[k]!=='number'||!Number.isFinite(q[k])||Number(q[k])<=0)throw Error('ค่าต้องเป็นจำนวนบวก: '+k);
   }
-  for(const k of ['tieNetArea','tieAssemblySWL','cornerCapacityX','cornerCapacityY'])if(typeof q[k]!=='number'||!Number.isFinite(q[k])||Number(q[k])<0)throw Error('ค่าต้องไม่ติดลบ: '+k);
+  for(const k of ['tieNetArea','tieAssemblySWL','cornerCapacityX','cornerCapacityY','braceHeight','braceSWL'])if(typeof q[k]!=='number'||!Number.isFinite(q[k])||Number(q[k])<0)throw Error('ค่าต้องไม่ติดลบ: '+k);
   const x=q as unknown as Input;
   if(x.width>30000||x.length>30000||x.height>30000||x.gamma>40||x.plywood>100||x.tieDiameter>100||x.rhsB>1000||x.rhsH>1000)throw Error('ขนาดอยู่นอกขอบเขตต้นแบบ');
+  if(typeof x.braceReference!=='string'||x.braceReference.length>300)throw Error('แหล่งอ้างอิงค้ำยันไม่ถูกต้อง');
+  if(x.windPressure<0.72||x.windPressure>10)throw Error('แรงลมออกแบบต้องไม่น้อยกว่า 0.72 kPa (ACI §4.2.3.1) และไม่เกิน 10 kPa');
+  if(x.braceHeight>x.height||x.braceAngle<20||x.braceAngle>75||![1,2,3,4].includes(x.bracesPerDirection)||x.braceSWL>10000)throw Error('ค้ำยัน: ระดับยึดต้องไม่สูงกว่าแบบ มุม 20–75° และ 1–4 ตัวต่อทิศ');
   if(x.shape==='L'&&(x.armX>=x.width||x.armY>=x.length))throw Error('ความกว้างแขนรูป L ต้องน้อยกว่าขนาดรวม');
   if(x.rhsT*2>=Math.min(x.rhsB,x.rhsH))throw Error('ความหนาเหล็กกล่องไม่ถูกต้อง');
   if(x.studSpacing>Math.max(x.width,x.length)||x.walerSpacing>x.height||x.tieSpacing>Math.max(x.width,x.length))throw Error('ระยะสมาชิกมากกว่าขนาดรูปทรง');
@@ -211,6 +221,14 @@ export function calculate(raw:unknown):Result {
     add('stud-v','คร่าวเหล็ก: เฉือนเฉลี่ยก่อนคราก',stud.reaction/steel.shearArea,x.steelFy/(Math.sqrt(3)*x.steelOmegaShear),'MPa','τavg = V/Av; yield screen = Fy/(√3 Ωv)','V='+stud.reaction.toFixed(3)+' N; Av='+steel.shearArea.toFixed(3)+' mm²','Elastic average-shear screen; ไม่ใช่การตรวจ shear buckling หรือ combined stress');
     add('stud-d','คร่าวเหล็ก: การโก่ง',stud.deflection,waler.verticalSpan/x.deflectionRatio,'mm','δ = 5wL⁴/(384EI)','Lจริง='+waler.verticalSpan.toFixed(3)+' mm; E='+x.steelE+' MPa','Simple span + uniform maximum pressure screening เท่านั้น');
   }
+  const walerWidth=catalogue?catalogue.B:x.walerB,studWidth=studCat?studCat.B:x.rhsB,fc90=timber?timberFc90(grade):null;
+  if(fc90!==null){
+    // Interior stud on the twin waler: reaction w·L of the stud spans either side, shared by the two waler members.
+    const R=pressureMPa*x.studSpacing*waler.verticalSpan,area=studWidth*walerWidth*2;
+    add('bear-stud','แรงกดที่จุดสัมผัส: คร่าวไม้บนคานคู่',R/area,fc90,'MPa','fc⊥ = R / (b₁ b₂ n) ≤ Fc⊥ (ไม้)',
+      'R = p × s × Lจริง = '+(R/1000).toFixed(3)+' kN; พื้นที่สัมผัส = '+studWidth.toFixed(0)+' × '+walerWidth.toFixed(0)+' × 2 = '+area.toFixed(0)+' mm²; Fc⊥ = '+fc90.toFixed(2)+' MPa ('+grade.raw_ksc.Fc90_base_MPa+' ksc)',
+      'ไม้รับแรงกดตั้งฉากเสี้ยน ไม่รวมผลขอบไม้หรือแผ่นรอง ต้องยืนยันชนิดไม้และความชื้น','หนังสือ Design Form Work ตาราง 3.4 (อ้าง ว.ส.ท.) · '+grade.label);
+  }
   const wn='โมเดลแยกช่วงรองรับสองปลาย ไม่ใช่คานต่อเนื่อง; ไม่ตรวจ buckling, torsion, local bearing และจุดต่อ';
   add('waler-b','คานคู่: ดัดของตัวที่รับแรงมาก',waler.stress,x.steelFy/x.steelOmegaB,'MPa','Pj = pmax bj hv; RA = ΣPj(L−aj)/L; M(x) = RA x − ΣPj⟨x−aj⟩; σ = α Mmax/S',
     'α='+x.pairShare+'; S='+waler.section.S.toFixed(3)+' mm³; '+waler.bending.faceId+' ช่วง '+waler.bending.index+'; Mตัวที่รับมาก='+waler.bending.moment.toFixed(3)+' N·mm',wn);
@@ -258,15 +276,37 @@ export function calculate(raw:unknown):Result {
       'โมเดล='+column.model+'; α='+x.pairShare+'; A='+waler.section.area.toFixed(3)+' mm²; Ωt='+x.yokeOmegaT+'; ด้านควบคุม='+(column.governingMember||'ยังไม่เลือกโมเดลวงปิด'),
       'Elastic first-order yield screen เท่านั้น; วงสี่ด้านแบบ pin มีโหมดกลไก ต้องตรวจ restraint/stability จริง ไม่ใช่โมเดลก่อสร้างที่รับรอง');
   }
+  if(x.kind==='FOOTING'){
+    // Each face's twin waler ends on a CORNER support; its reaction acts along that face's normal (X or Y).
+    const corner=(axis:'x'|'y')=>Math.max(0,...waler.faces.filter(wf=>Math.abs(faces.find(fc=>fc.id===wf.faceId)!.normal[axis])>0.5).flatMap(wf=>wf.supports.filter(su=>su.role==='CORNER').map(su=>su.force)))/1000;
+    for(const [axis,cap] of [['x',x.cornerCapacityX],['y',x.cornerCapacityY]] as const)
+      add('corner-'+axis,'มุมแบบฐานราก: แรงที่จุดต่อมุมแกน '+axis.toUpperCase(),corner(axis),cap||null,'kN','R มุม = ปฏิกิริยาปลายคานคู่ (ทั้งคู่) ≤ กำลังจุดต่อมุม',
+        'R มุมสูงสุดแกน '+axis.toUpperCase()+' = '+corner(axis).toFixed(3)+' kN; กำลัง = '+(cap?cap+' kN':'ยังไม่ทราบ'),'ชุดยึดมุมต้องรับแรงจากคานคู่ทั้งสองตัวที่ปลายด้าน และส่งต่อให้ด้านตั้งฉาก',
+        cap?'ค่าผู้ใช้/ผู้ผลิต: '+(x.cornerReference||'ไม่ระบุแหล่งอ้างอิง'):'สมดุลแรง · ต้องใช้กำลังจุดต่อจากผู้ผลิตหรือการทดสอบ');
+  }
+  if(x.kind==='COLUMN'){
+    // ACI §4.2.3.1: wind (≥ 0.72 kPa) on the projected form width over the full height, pinned base, push-pull braces at braceHeight.
+    const formDepth=x.plywood+(studCat?studCat.H:x.rhsH)+(catalogue?catalogue.H:x.walerH),H=x.height/1000,cos=Math.cos(x.braceAngle*Math.PI/180);
+    for(const [axis,width] of [['x',x.length],['y',x.width]] as const){
+      const B=width+2*formDepth,M=x.windPressure*B/1000*H*H/2,P=x.braceHeight>0?M/(x.braceHeight/1000)/(x.bracesPerDirection*cos):null;
+      add('brace-'+axis,'ค้ำยันเสา: แรงตามแนวแกน (ลมแนว '+axis.toUpperCase()+')',P,x.braceSWL>0?x.braceSWL:null,'kN','M = w B H²/2; P = M / (hb n cos θ) ≤ SWL',
+        'w = '+x.windPressure.toFixed(2)+' kPa; B = '+width.toFixed(0)+' + 2 × '+formDepth.toFixed(0)+' = '+B.toFixed(0)+' mm; H = '+H.toFixed(2)+' m → M = '+M.toFixed(3)+' kN·m'+
+          (P===null?'; ยังไม่กรอกระดับยึดค้ำยัน hb':'; hb = '+(x.braceHeight/1000).toFixed(2)+' m; n = '+x.bracesPerDirection+'; θ = '+x.braceAngle+'° → P = '+P.toFixed(3)+' kN')+(x.braceSWL>0?'; SWL = '+x.braceSWL+' kN':'; ยังไม่มี SWL ค้ำยัน'),
+        'ฐานแบบเป็นจุดหมุน ค้ำยันรับทั้งแรงดึงและแรงอัด (push-pull) · ACI §4.2.3.3 (1.5 kN/m) ใช้กับผนังจึงไม่นำมาใช้กับเสา · ไม่ตรวจพุกตีนค้ำยัน',
+        x.braceSWL>0?'ค่าผู้ผลิต: '+(x.braceReference||'ไม่ระบุแหล่งอ้างอิง'):'ACI PRC-347-14(21) §4.2.3.1 (ลมไม่น้อยกว่า 0.72 kPa)');
+    }
+  }
   const blockers=[
     ...(!x.confirmed?['ยังไม่ได้ยืนยันรูปทรงและมิติ']:[]),
     'ค่าวัสดุเป็นค่าอ้างอิงเบื้องต้นจากมาตรฐาน/แคตตาล็อก ต้องยืนยันกับใบรับรองผลิตภัณฑ์จริงก่อนใช้งาน',
     'คานคู่ใช้โมเดลแยกช่วง Simple span; ต้องยืนยันรอยต่อ/การปลดโมเมนต์ ไม่รองรับการอ้างเป็นคานต่อเนื่อง',
-    'ยังไม่ตรวจการแบ่งแรงคานคู่ จุดต่อมุม แรงกดเฉพาะที่ และ local/global buckling',
+    x.kind==='COLUMN'?'ยังไม่ตรวจการแบ่งแรงคานคู่ แรงกดเฉพาะที่ และ local/global buckling (จุดต่อมุมชุดรัดตรวจในข้อ 4.4 เทียบกำลังที่ผู้ใช้กรอก)':'ยังไม่ตรวจการแบ่งแรงคานคู่ จุดต่อมุม แรงกดเฉพาะที่ และ local/global buckling',
     'จุดรองรับปลายแต่ละด้านเป็น CORNER ไม่ใช่ Tie; ต้องออกแบบระบบมุมและระยะเยื้องจากขอบจริง',
     'ยังไม่กำหนดความยาวตัด Tie rod และระยะเยื้องระดับ Tie สองทิศทางเพื่อป้องกันชนกัน',
-    'ยังไม่ตรวจค้ำยัน 34 มม. Anchor ฐานรอง และแรงลม',
-    'ยังไม่ตรวจ thread stripping, นอต, แผ่นรอง และ rolling shear',
+    ...(x.kind==='COLUMN'?[...(x.braceHeight>0?[]:['กรอกระดับยึด มุม และจำนวนค้ำยันเสาต่อทิศ เพื่อคำนวณแรงค้ำยัน']),...(x.braceSWL>0?[]:['ต้องกรอก SWL ค้ำยันเสาที่ความยาวใช้งาน (ข้อมูลผู้ผลิต)']),'ตรวจพุกตีนค้ำยันและฐานรองแบบเสา']:['ยังไม่ออกแบบค้ำยัน/ไม้กันตีนแบบฐานราก แรงยก และการยึดฐาน']),
+    ...(fc90===null?['ตรวจแรงกดเฉพาะที่ของคร่าวเหล็กบนคานคู่เหล็ก (local yielding/web crippling ตาม AISC 360 หรือข้อมูลผู้ผลิต)']:[]),
+    ...(x.kind==='FOOTING'&&(!x.cornerCapacityX||!x.cornerCapacityY)?['ยังไม่ทราบกำลังจุดต่อมุมแบบฐานรากแกน X/Y (ชุดยึดมุมจากผู้ผลิต)']:[]),
+    'ยังไม่ตรวจ thread stripping, นอต และแผ่นรอง'+(x.plywoodGrade==='CUSTOM'?' · ไม้อัด CUSTOM ยังไม่ตรวจ rolling shear':''),
     ...(tie&&x.tieNetArea===0?['ยังไม่ได้กำหนด Ae ของหน้าตัดสุทธิ/เกลียว']:[]),
     ...(tie&&x.tieAssemblySWL===0?['ยังไม่ได้กำหนด certified SWL ของชุด Tie rod']:[]),
     ...(unequalTies?['แรงที่สองปลาย Tie ไม่เท่ากัน (ด้านตรงข้ามยาวไม่เท่ากัน) ใช้ค่ามากเป็นแรงออกแบบ ต้องตรวจสมดุลและการเลื่อนของคานคู่']:[]),
@@ -285,7 +325,7 @@ export function calculate(raw:unknown):Result {
     ]:[]),
     ...(x.shape==='L'?[usesTies(x)?'รูป L: Tie คำนวณเป็นเส้นตรงระหว่างด้านตรงข้ามแยกตามช่วง มุมเว้าและจุดต่อคานคู่ยังต้องออกแบบรายละเอียด':'มุมเว้าและระบบ Yoke ของรูป L ต้องมีวิธีคำนวณจุดต่อที่ตรวจสอบแล้ว']:[])
   ];
-  return {engineVersion:'0.3.0-screening',input:x,points,faces,area:g.area/1e6,perimeter:g.perimeter/1000,
+  return {engineVersion:'0.4.0-screening',input:x,points,faces,area:g.area/1e6,perimeter:g.perimeter/1000,
     volume:g.area/1e6*x.height/1000,formArea:g.perimeter*x.height/1e6,pressure:p,forceScalar:faces.reduce((s,f)=>s+f.force,0),
     checks,status:checks.some(c=>c.status==='FAIL')?'FAIL':'INCOMPLETE',blockers,tieLength,waler,tie,column,tieRoutes:routing?.routes??[],pressureModel,plywood:ply,plywoodDesign:plyDesign,
     tieElongation:tie===null?null:tie.force*1000*tie.length/(x.steelE*tie.grossArea)};

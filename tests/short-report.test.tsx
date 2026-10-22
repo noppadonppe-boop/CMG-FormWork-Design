@@ -35,7 +35,10 @@ describe('short report: governing member selection', () => {
     expect(by('ค้ำยัน').governing!.limit).toBeNull();
     // explicit textbook steps reproduce the engine values (otherwise the generic formula text is used)
     expect(by('คร่าว').rows.map(r => r.expr)).toContain('1.717 mm');
-    expect(by('คานรับ').rows.map(r => r.expr)).toContain('1.456 kN·m');
+    // Book example 6.1 gives 1.456 kN·m with simply supported joists; joists continuous over the bearers raise the interior bearer line by kj.
+    const ss = slab.input.lx / (slab.shores.length - 1);
+    expect(slab.bearerLine * ss ** 2 / 8 / 1e6 / slab.joistFactor).toBeCloseTo(1.456, 3);
+    expect(by('คานรับ').rows.map(r => r.expr)).toContain(`${(slab.bearerLine * ss ** 2 / 8 / 1e6).toFixed(3)} kN·m`);
     expect(by('คร่าว').maxSpacing).toBe('575 mm');
   });
 

@@ -30,7 +30,10 @@ export const FIELD_DOC:Record<keyof Input,string>={
   pourRate:"Rate of placement R, m/h (ACI)",concreteTemp:"Concrete temperature at placement T, deg C (ACI, 5-45)",slump:"Slump after all admixtures, mm (>175 mm or SCC -> hydrostatic)",
   vibrationDepth:"Internal vibration depth, m (>1.2 m -> hydrostatic)",chemistryCc:"ACI chemistry coefficient Cc: 1.0 (type I/II/III, no retarder), 1.2, 1.4 or 1.5 (slag/fly ash and/or retarders)",
   studTimberGrade:"Timber class for timber studs: TIMBER-BOOK-VERY_SOFT | TIMBER-BOOK-SOFT | TIMBER-BOOK-MEDIUM | TIMBER-BOOK-HARD | TIMBER-BOOK-VERY_HARD (textbook table 3.4 allowable values)",
-  columnTies:'Column only: true = through ties across the column at tieSpacing (with corner yokes), false = external yoke only (default)'};
+  columnTies:'Column only: true = through ties across the column at tieSpacing (with corner yokes), false = external yoke only (default)',
+  windPressure:'Design wind pressure on the forms in kPa (site/local code), at least 0.72 per ACI 4.2.3.1',braceHeight:'Column push-pull brace attachment height above the base in mm (0 = not set)',
+  braceAngle:'Column brace angle from horizontal in degrees (20-75)',bracesPerDirection:'Column braces per wind direction (1-4)',braceSWL:'Column brace safe working load per brace in kN from the manufacturer (0 = unknown)',
+  braceReference:'Column brace product / document reference'};
 const GEOMETRY:(keyof Input)[]=['kind','shape','width','length','armX','armY','height'];
 const GRADES={SD40:{tieFy:390,tieFu:560},SR24:{tieFy:235,tieFu:385}};
 

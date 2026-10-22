@@ -7,7 +7,8 @@ import {LW, Table, Txt} from '../drawing/primitives';
 import {NoteBlock} from '../drawing/views';
 import {BeamElevationView, BeamPlanView, BeamSectionView} from '../drawing/beamViews';
 import {A3Set, RevisionTable} from './DrawingSet';
-import {BeamDiagram, CheckCard, Fig, PressureDiagram, RatioBar} from './CalcReport';
+import {BeamDiagram, CheckSections, Fig, PressureDiagram, ReportReferences, SummaryTable} from './CalcReport';
+import {REPORT_SECTIONS, SCREEN_LEGEND, beamCheckGroups, numberChecks, summaryRows} from '../domain/reportOutline';
 
 const n = (v: number | null, d = 2) => v === null ? '—' : v.toLocaleString('en-US', {minimumFractionDigits: d, maximumFractionDigits: d});
 const sp = (r: BeamResult, list: number[]) => r.input.length / (list.length - 1);
@@ -74,9 +75,9 @@ export function BeamDrawingSet({r, project, code, caseName, titleBlock, canEdit,
         ['Tie', x.tieRows ? `${x.tieRows} แถว Ø${x.tieDiameter} @ ${n(sp(r, r.ties), 0)}` : 'ไม่มี'], ['สถานะระบบ', `${r.status} · ${r.engineVersion}`],
       ]}/>
       <Table x={146} y={100} title="สรุปผลตรวจคัดกรอง (CHECK SUMMARY)" rh={5} s={1.9} cols={[{t: 'รายการ', w: 78}, {t: 'ผล', w: 28, a: 'end'}, {t: 'เกณฑ์', w: 28, a: 'end'}, {t: 'Ratio', w: 15, a: 'end'}, {t: 'สถานะ', w: 22, a: 'middle'}]}
-        rows={r.checks.map(c => [c.label, `${n(c.demand)} ${c.unit}`, c.limit === null ? 'ยังไม่ทราบ' : `${n(c.limit)} ${c.unit}`, n(c.utilization), c.status])}/>
+        rows={summaryRows(numberChecks(beamCheckGroups(), r.checks).ordered, n)}/>
       <NoteBlock x={322} y={100} w={85} title="รายการที่ยังขาด" items={r.blockers} s={1.8}/>
-      <Txt x={23} y={244} s={2} fill="#444">INCOMPLETE = ไม่เกินเกณฑ์คัดกรองแต่ยังขาดการตรวจหรือข้อมูลรับรอง · FAIL = เกินเกณฑ์</Txt>
+      <Txt x={23} y={244} s={2} fill="#444">{SCREEN_LEGEND}</Txt>
     </>},
   ];
   return <A3Set sheets={sheets} project={project} code={code} caseName={caseName} elementLabel="แบบหล่อคาน" confirmed={x.confirmed} titleBlock={titleBlock} canEdit={canEdit} onTitleBlockChange={onTitleBlockChange} revisionBinding={revisionBinding}/>;
@@ -84,7 +85,7 @@ export function BeamDrawingSet({r, project, code, caseName, titleBlock, canEdit,
 
 /** Cover page, signatures and contents shared by the soffit-system reports. */
 export function ReportCover({title, subtitle, project, code, element, docNo, size, status, fails, sheets, tb, sections, figure, revisionBinding}: {title: string; subtitle: string; project: string; code: string;
-  element: string; docNo: string; size: string; status: string; fails: number; sheets: string; tb: TitleBlock; sections: string[]; figure: ReactElement; revisionBinding?: DesignRevisionBinding}) {
+  element: string; docNo: string; size: string; status: string; fails: number; sheets: string; tb: TitleBlock; sections: readonly string[]; figure: ReactElement; revisionBinding?: DesignRevisionBinding}) {
   return <>
     <section className="rp-page rp-cover">
       <div className="rp-brand"><span className="brand-square">CMG</span><div><b>CMG ENGINEERING & CONSTRUCTION</b><small>FORMWORK DESIGN DEPARTMENT</small></div></div>
@@ -107,14 +108,12 @@ export function ReportCover({title, subtitle, project, code, element, docNo, siz
   </>;
 }
 
-const SECTIONS = ['ขอบเขตและเกณฑ์การออกแบบ', 'รูปทรงและการจัดวางแบบหล่อ', 'น้ำหนักบรรทุกแนวดิ่ง', 'แรงดันคอนกรีตสดด้านข้าง', 'การตรวจสอบแบบท้องคาน', 'การตรวจสอบแบบข้างคาน',
-  'สรุปผลและคำแนะนำ', 'ปริมาณวัสดุ', 'ข้อจำกัดและรายการที่ยังขาด', 'เอกสารอ้างอิง'];
+const SECTIONS = REPORT_SECTIONS;
 
 export function BeamReport({r, project, code, caseName, caseId, titleBlock: tb, revisionBinding}: {r: BeamResult; project: string; code: string; caseName: string; caseId: string; titleBlock: TitleBlock; revisionBinding?: DesignRevisionBinding}) {
   const x = r.input, pm = r.pressureModel, advice = useMemo(() => beamAdvice(x), [x]), fails = r.checks.filter(c => c.status === 'FAIL');
   const docNo = `CAL-${code || 'CMG'}-${caseId.replace(/[^\w]/g, '').slice(0, 6).toUpperCase()}`, sj = sp(r, r.joists), ss = sp(r, r.shores), st = sp(r, r.studs);
-  const group = (no: string, title: string, prefixes: string[], fig?: ReactElement) => <div className="rp-group" key={no}><h3>{no} {title}</h3>{fig}
-    {r.checks.filter(c => prefixes.some(p => c.id.startsWith(p))).map((c, i) => <CheckCard key={c.id} c={c} no={`${no}.${i + 1}`}/>)}</div>;
+  const numbered = numberChecks(beamCheckGroups(), r.checks);
   return <article className="calc-report">
     <ReportCover title="รายการคำนวณออกแบบแบบหล่อคาน" subtitle="BEAM FORMWORK DESIGN CALCULATION" project={project} code={code} element={`${caseName} · แบบหล่อคาน`} docNo={docNo}
       size={`b ${x.b} × h ${x.h} mm · ยาว ${x.length} mm`} status={r.status} fails={fails.length} sheets="BF-01 ถึง BF-03 (A3)" tb={tb} sections={SECTIONS} revisionBinding={revisionBinding}
@@ -142,46 +141,42 @@ export function BeamReport({r, project, code, caseName, caseId, titleBlock: tb, 
       <p>คร่าวท้อง {r.joists.length} ตัว @ {n(sj, 0)} mm · ค้ำยัน {r.shores.length} แนว × 2 ต้น @ {n(ss, 0)} mm ระยะตามขวาง {x.shoreWidth} mm · คร่าวข้าง {r.studs.length} ตัว/ด้าน @ {n(st, 0)} mm · ความสูงแบบข้าง {r.sideHeights[0]}/{r.sideHeights[1]} mm · ความยาวค้ำยันใช้งาน ≈ {n(r.shoreLength, 0)} mm (ระยะเท่ากันไม่เกินค่าที่กำหนด)</p></section>
 
     <section className="rp-sec"><h2>3. {SECTIONS[2]}</h2>
+      <h3>3.1 น้ำหนักบรรทุกแนวดิ่ง (แบบท้องคาน)</h3>
       <div className="rp-check rp-derive"><ol className="rp-steps">{r.loads.steps.map((t, i) => <li key={i}><div className="equation">{t}</div></li>)}</ol>
-        <p className="rp-note">อ้างอิง {ACI_LOADS_REFERENCE} · แรงด้านข้างสำหรับค้ำยัน H = max(1.5 kN/m, 2% DL) = {n(r.lateralPerM, 3)} kN/m</p></div></section>
-
-    <section className="rp-sec"><h2>4. {SECTIONS[3]}</h2>
+        <p className="rp-note">อ้างอิง {ACI_LOADS_REFERENCE} · แรงด้านข้างสำหรับค้ำยัน H = max(1.5 kN/m, 2% DL) = {n(r.lateralPerM, 3)} kN/m (ตรวจในข้อ 5.1)</p></div>
+      <h3>3.2 แรงดันคอนกรีตสดด้านข้าง (แบบข้างคาน)</h3>
       <p>{pm.method === 'ACI347' ? <>ตาม {ACI_REFERENCE} (คานจัดเป็น {pm.element === 'WALL' ? '"ผนัง" เพราะมีด้านในแปลนยาวเกิน 2 m' : '"เสา" เพราะไม่มีด้านในแปลนเกิน 2 m'})</> : <>ใช้แรงดันแบบของเหลว p = ρgh ตลอดความลึกคาน h = {x.h} mm</>}</p>
       <div className="rp-check rp-derive"><ol className="rp-steps">{pm.steps.map((t, i) => <li key={i}><div className="equation">{t}</div></li>)}</ol><p className="rp-note">{pm.reason}</p></div>
       <Fig no={3} w={175} h={100} caption="การกระจายแรงดันคอนกรีตสดบนแบบข้างคาน"><PressureDiagram m={pm}/></Fig></section>
 
+    <section className="rp-sec"><h2>4. {SECTIONS[3]}</h2>
+      <CheckSections groups={numbered.groups} section="4" figs={{
+        '4.1': <Fig no={4} w={150} h={68} caption={`ไม้อัดแถบ 1 m พาดระหว่างคร่าวท้อง @ ${n(sj, 0)} mm (${r.soffitPlywood.spans === 1 ? 'ช่วงเดี่ยว' : `ต่อเนื่อง ${r.soffitPlywood.spans} ช่วง ตาม APA V345`}) · รับได้ ${n(r.soffitPlywood.allowablePressure, 1)} kPa`}><BeamDiagram L={sj} w={r.loads.beam} title="ไม้อัดท้องคาน แถบ 1 m"/></Fig>,
+        '4.2': <Fig no={5} w={150} h={58} caption={`คร่าวท้องพาดระหว่างแนวคานรับ รับแถบคาน${x.slabLeft + x.slabRight > 0 ? 'และแถบพื้น' : ''}เป็นแรงแผ่เป็นช่วง @ ${n(sj, 0)} mm`}><JoistPatchDiagram r={r}/></Fig>,
+        '4.3': <Fig no={6} w={150} h={68} caption={`คานรับพาดระหว่างค้ำยัน @ ${n(ss, 0)} mm รับแรงจากคร่าวท้องเฉลี่ยเป็นแรงแผ่`}><BeamDiagram L={ss} w={r.bearerLine} title={`คานรับ ${r.bearer.name}`}/></Fig>,
+        '4.5': <Fig no={7} w={150} h={68} caption={`ไม้อัดแถบ 1 m พาดระหว่างคร่าวข้าง @ ${n(st, 0)} mm (${r.sidePlywood.spans === 1 ? 'ช่วงเดี่ยว' : `ต่อเนื่อง ${r.sidePlywood.spans} ช่วง ตาม APA V345`}) · รับได้ ${n(r.sidePlywood.allowablePressure, 1)} kPa`}><BeamDiagram L={st} w={pm.pmax} unit='kPa' title='ไม้อัดแบบข้าง แถบ 1 m'/></Fig>,
+        '4.6': <Fig no={8} w={150} h={68} caption={`คร่าวข้างช่วง ${n(r.studSpan, 0)} mm · ปลายล่างไม้กันตีน ปลายบนจุดยึดบน${x.tieRows ? ' · จุดกลางคือแถว Tie' : ''}`}><BeamDiagram L={r.studSpan} w={pm.pmax / 1000 * st} title={`คร่าวข้าง ${r.stud.name}`}/></Fig>,
+        ...(x.tieRows > 0 ? {'4.7': <Fig no={9} w={150} h={68} caption={`คานคู่พาดระหว่าง Tie @ ${n(sp(r, r.ties), 0)} mm รับแรงดัน × ช่วงคร่าว ${n(r.studSpan, 0)} mm`}><BeamDiagram L={sp(r, r.ties)} w={pm.pmax / 1000 * r.studSpan} title={`คานคู่ 2×${r.waler.name}`}/></Fig>} : {}),
+      }}/></section>
+
     <section className="rp-sec"><h2>5. {SECTIONS[4]}</h2>
-      {group('5.1', 'ไม้อัดท้องคาน', ['sof-'], <Fig no={4} w={150} h={68} caption={`ไม้อัดแถบ 1 m พาดระหว่างคร่าวท้อง @ ${n(sj, 0)} mm (${r.soffitPlywood.spans === 1 ? 'ช่วงเดี่ยว' : `ต่อเนื่อง ${r.soffitPlywood.spans} ช่วง ตาม APA V345`}) · รับได้ ${n(r.soffitPlywood.allowablePressure, 1)} kPa`}><BeamDiagram L={sj} w={r.loads.beam} title="ไม้อัดท้องคาน แถบ 1 m"/></Fig>)}
-      {group('5.2', 'คร่าวท้องคาน (ตามขวาง)', ['joist-'], <Fig no={5} w={150} h={58} caption={`คร่าวท้องพาดระหว่างแนวคานรับ รับแถบคาน${x.slabLeft + x.slabRight > 0 ? 'และแถบพื้น' : ''}เป็นแรงแผ่เป็นช่วง @ ${n(sj, 0)} mm`}><JoistPatchDiagram r={r}/></Fig>)}
-      {group('5.3', 'คานรับท้อง (ตามยาว)', ['bearer-'], <Fig no={6} w={150} h={68} caption={`คานรับพาดระหว่างค้ำยัน @ ${n(ss, 0)} mm รับแรงจากคร่าวท้องเฉลี่ยเป็นแรงแผ่`}><BeamDiagram L={ss} w={r.bearerLine} title={`คานรับ ${r.bearer.name}`}/></Fig>)}
-      {group('5.4', 'ค้ำยันและแรงด้านข้าง', ['shore-', 'lateral'])}</section>
+      <p>แรงด้านข้างของแบบท้องคานตาม ACI §4.2.3.2 ต้องส่งเข้าค้ำยันทแยง/ledger และแรงดันบนแบบข้างส่งเข้าไม้กันตีน (ล่าง) และจุดยึดบน กำลังของชิ้นส่วนเหล่านี้มาจากการออกแบบหรือเอกสารผู้ผลิตที่ผู้ใช้กรอก (0 = ยังไม่ออกแบบ → INCOMPLETE)</p>
+      <CheckSections groups={numbered.groups} section="5"/></section>
 
     <section className="rp-sec"><h2>6. {SECTIONS[5]}</h2>
-      {group('6.1', 'ไม้อัดแบบข้าง', ['side-'], <Fig no={7} w={150} h={68} caption={`ไม้อัดแถบ 1 m พาดระหว่างคร่าวข้าง @ ${n(st, 0)} mm (${r.sidePlywood.spans === 1 ? 'ช่วงเดี่ยว' : `ต่อเนื่อง ${r.sidePlywood.spans} ช่วง ตาม APA V345`}) · รับได้ ${n(r.sidePlywood.allowablePressure, 1)} kPa`}><BeamDiagram L={st} w={pm.pmax} unit='kPa' title='ไม้อัดแบบข้าง แถบ 1 m'/></Fig>)}
-      {group('6.2', 'คร่าวแบบข้าง (แนวตั้ง) และจุดยึดล่าง/บน', ['stud-', 'kicker', 'top'], <Fig no={8} w={150} h={68} caption={`คร่าวข้างช่วง ${n(r.studSpan, 0)} mm · ปลายล่างไม้กันตีน ปลายบนจุดยึดบน${x.tieRows ? ' · จุดกลางคือแถว Tie' : ''}`}><BeamDiagram L={r.studSpan} w={pm.pmax / 1000 * st} title={`คร่าวข้าง ${r.stud.name}`}/></Fig>)}
-      {x.tieRows > 0 && group('6.3', 'คานคู่และ Tie ทะลุคาน', ['waler-', 'tie-'], <Fig no={9} w={150} h={68} caption={`คานคู่พาดระหว่าง Tie @ ${n(sp(r, r.ties), 0)} mm รับแรงดัน × ช่วงคร่าว ${n(r.studSpan, 0)} mm`}><BeamDiagram L={sp(r, r.ties)} w={pm.pmax / 1000 * r.studSpan} title={`คานคู่ 2×${r.waler.name}`}/></Fig>)}</section>
-
-    <section className="rp-sec"><h2>7. {SECTIONS[6]}</h2>
-      <table className="rp-tab"><thead><tr><th>รายการ</th><th>ค่าที่เกิด</th><th>เกณฑ์</th><th>อัตราส่วน</th><th/><th>สถานะ</th></tr></thead>
-        <tbody>{r.checks.map(c => <tr key={c.id}><td>{c.label}</td><td>{n(c.demand)} {c.unit}</td><td>{c.limit === null ? 'ยังไม่ทราบ' : `${n(c.limit)} ${c.unit}`}</td><td>{n(c.utilization, 3)}</td><td><RatioBar ratio={c.utilization}/></td><td>{c.status}</td></tr>)}</tbody></table>
+      <SummaryTable items={numbered.ordered}/>
       <p><b>สรุป:</b> {fails.length ? `มี ${fails.length} รายการเกินเกณฑ์คัดกรอง ต้องปรับแก้ก่อนใช้งาน` : 'ไม่มีรายการเกินเกณฑ์คัดกรอง'} · สถานะรวม {r.status} (ยังไม่ใช่การอนุมัติก่อสร้าง)</p>
       <h3>ระยะสูงสุดที่ไม่เกินเกณฑ์ (คำนวณซ้ำ ไม่เปลี่ยนหน้าตัด)</h3>
       <ul>{advice.map(a => <li key={a.key}>{a.label}: ใช้อยู่ {a.current} mm → สูงสุด {a.max === null ? 'ไม่มีระยะที่ผ่าน ต้องเปลี่ยนหน้าตัด' : a.max + ' mm'}{a.unchecked.length ? ` (ยังไม่รวม ${a.unchecked.join(', ')} เพราะไม่มีค่ากำลัง)` : ''}</li>)}</ul></section>
 
-    <section className="rp-sec"><h2>8. {SECTIONS[7]}</h2>
+    <section className="rp-sec"><h2>7. {SECTIONS[6]}</h2>
       <table className="rp-tab"><thead><tr><th>#</th><th>รายการ</th><th>ขนาด / สเปก</th><th>จำนวน</th><th>หน่วย</th><th>หมายเหตุ</th></tr></thead>
         <tbody>{r.quantities.map((q, i) => <tr key={i}><td>{i + 1}</td><td>{q.item}</td><td>{q.spec}</td><td>{q.qty}</td><td>{q.unit}</td><td>{q.note}</td></tr>)}</tbody></table>
       <p>ปริมาตรคอนกรีตคาน (รวมส่วนพื้นเหนือคาน) {n(r.volume, 3)} m³</p></section>
 
-    <section className="rp-sec"><h2>9. {SECTIONS[8]}</h2><ol>{[...r.blockers, ...beamNotes(r).slice(7)].map((b, i) => <li key={i}>{b}</li>)}</ol></section>
+    <section className="rp-sec"><h2>8. {SECTIONS[7]}</h2><ol>{[...r.blockers, ...beamNotes(r).slice(7)].map((b, i) => <li key={i}>{b}</li>)}</ol></section>
 
-    <section className="rp-sec"><h2>10. {SECTIONS[9]}</h2><ol>
-      <li>ACI PRC-347-14(21) Guide to Formwork for Concrete — §4.2.1 น้ำหนักแนวดิ่ง, §4.2.2 แรงดันด้านข้าง, §4.2.3 แรงด้านข้าง, Table 4.4 ส่วนปลอดภัยอุปกรณ์</li>
-      <li>APA Concrete Forming Design/Construction Guide V345 (2012) — ไม้อัดคานต่อเนื่อง ตาราง 12–13</li>
-      <li>มอก. 107-2566 / มอก. 1227-2558 / มอก. 1228 — ตารางหน้าตัดเหล็ก (แคตตาล็อกผู้ผลิต)</li>
-      <li>หนังสือ Design Form Work ตาราง 3.4 (อ้าง ว.ส.ท.) — หน่วยแรงที่ยอมให้ของไม้</li>
-      <li>AISC 360 (ASD) — ตัวหารกำลัง Ωb, Ωv สำหรับการคัดกรองหน่วยแรง</li>
-    </ol>
+    <section className="rp-sec"><h2>9. {SECTIONS[8]}</h2><ReportReferences/>
       <div className="signature"><span>ออกแบบ: {tb.designedBy || '__________________'}</span><span>ตรวจ: {tb.checkedBy || '__________________'}</span><span>อนุมัติ: {tb.approvedBy || '__________________'}</span></div>
       <footer>{docNo} · Rev {tb.rev} · CMG · DRAFT / NOT FOR CONSTRUCTION</footer></section>
   </article>;

@@ -1,6 +1,8 @@
+import {SCREEN_LEGEND, legacyCheckGroups, numberChecks, summaryRows} from '../domain/reportOutline';
+import {PLYWOOD_GRADE_LABEL} from '../domain/plywoodGrades';
 import {useEffect, useMemo, useRef, useState, type ReactElement} from 'react';
 import {Download, Printer} from 'lucide-react';
-import type {Result} from '../domain';
+import {usesTies, type Result} from '../domain';
 import {buildFormworkLayout, type FormworkLayout} from '../domain/formworkLayout';
 import {buildScene, type Scene} from '../domain/scene';
 import {DRAW_AREA, LW, Sheet, Table, Txt, type TitleInfo} from '../drawing/primitives';
@@ -22,7 +24,7 @@ export function generalNotes(L: FormworkLayout, r: Result) {
       : `แรงดันคอนกรีตสดแบบของเหลว p = ρgh = ${n2(L.pressure, 1)} kPa สมมติเทจากด้านบน ไม่รวมแรงกระแทกหรือการปั๊มจากด้านล่าง`,
     `คุณสมบัติวัสดุเป็นค่าอ้างอิงเบื้องต้น (ไม้อัด: ${r.plywood.grade === 'CUSTOM' ? 'ค่าผู้ใช้กำหนด' : 'APA V345'} · เหล็ก Fy ${r.input.steelFy} MPa) ต้องยืนยันด้วยใบรับรองวัสดุจริงก่อนใช้งาน`,
     'ระยะคร่าว คานคู่ และ Tie แบ่งเท่ากันไม่เกินค่าที่กำหนด ตำแหน่งจริงต้องหลบเหล็กเสริมและงานระบบ',
-    'ความยาว Tie rod ในตารางยังไม่รวมเกลียว นอต และแผ่นรอง ต้องใช้ชุดที่มี SWL รับรองจากผู้ผลิต',
+    ...(usesTies(r.input) ? ['ความยาว Tie rod ในตารางยังไม่รวมเกลียว นอต และแผ่นรอง ต้องใช้ชุดที่มี SWL รับรองจากผู้ผลิต'] : ['ชุดรัดเสาต้องใช้อุปกรณ์มุมที่มีกำลังรับรองจากผู้ผลิต และขันแน่นตามระดับคานคู่ที่กำหนด']),
     'ค้ำยัน การยึดฐาน และเสถียรภาพโดยรวมยังไม่ได้ออกแบบในแบบชุดนี้',
     'ตรวจแนว ดิ่ง ระดับ และความแน่นของแบบหล่อทุกครั้งก่อนเทคอนกรีต',
     ...L.warnings,
@@ -63,15 +65,15 @@ const SHEETS: {code: string; title: string; draw: (c: Ctx) => ReactElement}[] = 
         ['องค์อาคาร / รูปทรง', `${x.kind === 'COLUMN' ? 'เสา' : 'ฐานราก'} / ${x.shape === 'L' ? 'รูป L' : 'สี่เหลี่ยม'}${x.kind === 'COLUMN' ? (x.columnTies ? ' · Tie ทะลุเสา + วงรัดมุม' : ' · วงรัดภายนอก ไม่ใช้ Tie') : ''}`],
         ['ขนาด กว้าง × ยาว × สูง', `${x.width} × ${x.length} × ${x.height} mm`],
         ['น้ำหนักคอนกรีต γ', `${x.gamma} kN/m³`], ['แรงดันสูงสุด pmax', `${n2(r.pressure, 1)} kPa`],
-        ['ไม้อัด t / E / Fb', `${x.plywood} mm / ${x.plywoodE} / ${x.plywoodFb} MPa`], ['เหล็ก Fy / E', `${x.steelFy} / ${x.steelE} MPa`],
+        ['ไม้อัด t / E / Fb (ที่ใช้คำนวณ)', `${x.plywood} mm / ${n2(r.plywood.E, 0)} / ${n2(r.plywood.Fb)} MPa · ${PLYWOOD_GRADE_LABEL[r.plywood.grade]}`], ['เหล็ก Fy / E', `${x.steelFy} / ${x.steelE} MPa`],
         ['Ωb / Ωv / เกณฑ์โก่ง', `${x.steelOmegaB} / ${x.steelOmegaShear} / L/${x.deflectionRatio}`],
         ['ระยะคร่าว / คานคู่ / Tie (สูงสุด)', `${x.studSpacing} / ${x.walerSpacing} / ${x.tieSpacing} mm`],
         ['ยืนยันมิติจากต้นฉบับ', x.confirmed ? 'ยืนยันแล้ว' : 'ยังไม่ยืนยัน'], ['สถานะระบบ', `${r.status} · ${r.engineVersion}`],
       ]}/>
       <Table x={146} y={100} title="สรุปผลตรวจคัดกรอง (CHECK SUMMARY)" rh={5.4} s={2} cols={[{t: 'รายการ', w: 82}, {t: 'ผล', w: 30, a: 'end'}, {t: 'เกณฑ์', w: 30, a: 'end'}, {t: 'Ratio', w: 16, a: 'end'}, {t: 'สถานะ', w: 24, a: 'middle'}]}
-        rows={r.checks.map(c => [c.label, `${n2(c.demand)} ${c.unit}`, c.limit === null ? 'ยังไม่ทราบ' : `${n2(c.limit)} ${c.unit}`, n2(c.utilization), c.status])}/>
-      <NoteBlock x={334} y={100} w={73} title="รายการที่ยังขาด" items={r.blockers.slice(0, 9)} s={1.8}/>
-      <Txt x={146} y={100 + 6 + (r.checks.length + 1) * 5.4 + 5} s={2} fill="#444">INCOMPLETE = ไม่เกินเกณฑ์คัดกรองแต่ยังขาดการตรวจหรือข้อมูลรับรอง · FAIL = เกินเกณฑ์</Txt>
+        rows={summaryRows(numberChecks(legacyCheckGroups(x.kind, !!x.columnTies), r.checks).ordered, v => n2(v))}/>
+      <NoteBlock x={334} y={100} w={73} title="รายการที่ยังขาด" items={r.blockers.length > 9 ? [...r.blockers.slice(0, 8), `และอีก ${r.blockers.length - 8} รายการ ดูรายการคำนวณ A4 ข้อ 8`] : r.blockers} s={1.8}/>
+      <Txt x={146} y={100 + 6 + (r.checks.length + 1) * 5.4 + 5} s={2} fill="#444">{SCREEN_LEGEND}</Txt>
     </>;
   }},
 ];

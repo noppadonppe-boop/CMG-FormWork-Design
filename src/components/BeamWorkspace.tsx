@@ -1,6 +1,7 @@
 import {useMemo} from 'react';
 import {AlertTriangle, ChevronRight} from 'lucide-react';
 import {beamAdvice, type BeamInput, type BeamResult} from '../domain/beam';
+import {beamCheckGroups, numberChecks} from '../domain/reportOutline';
 import {Defs} from '../drawing/primitives';
 import {BeamSectionView} from '../drawing/beamViews';
 import {AdviceTable, ChecksTable, MaterialFields, MemberPicker, Num as NumG, PlywoodFields, PressureFields, VerticalLoadFields, fmt as f, type FormCtx} from './FormParts';
@@ -73,7 +74,7 @@ export function BeamPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab}
       <div className="form-grid four"><Num {...p} k="studSpacing" label="ระยะคร่าวข้างสูงสุด"/>
         <label className="field"><span>แถว Tie ทะลุคาน</span><select aria-label="แถว Tie" disabled={!canEdit} value={x.tieRows} onChange={e => edit({tieRows: Number(e.target.value)})}>{[0, 1, 2, 3].map(v => <option key={v} value={v}>{v === 0 ? 'ไม่มี (คานตื้น)' : v + ' แถว'}</option>)}</select></label>
         {x.tieRows > 0 && <><Num {...p} k="tieSpacing" label="ระยะ Tie ตามยาวสูงสุด"/><Num {...p} k="tieDiameter" label="Tie Ø"/><Num {...p} k="tieSWL" label="SWL ชุด Tie" unit="kN" help="จากผู้ผลิต (SF ≥ 2.0 ตาม ACI Table 4.4)"/>
-          <Num {...p} k="tieFy" label="Fy เหล็ก Tie" unit="MPa" help="มอก. 24 SD40 = 390"/><Num {...p} k="tieOmega" label="Ω ตัวเหล็ก Tie"/></>}</div>
+          <Num {...p} k="tieFy" label="Fy เหล็ก Tie" unit="MPa" help="มอก. 24 SD40 = 390"/><Num {...p} k="tieOmega" label="Ω ตัวเหล็ก Tie"/><Num {...p} k="tieFu" label="Fu เหล็ก Tie" unit="MPa" help="SD40 = 560 MPa · ACI Table 4.4 SF 2.0"/></>}</div>
       <div className="form-grid four"><Num {...p} k="kickerCapacity" label="กำลังไม้กันตีน (ล่าง)" unit="kN/m" help="รวมตะปู/สกรู · 0 = ยังไม่ออกแบบ"/>
         <Num {...p} k="topRestraintCapacity" label="กำลังจุดยึดบนแบบข้าง" unit="kN/m" help="แบบพื้น ค้ำยัน หรือเหล็กรัดบน · 0 = ยังไม่ออกแบบ"/>
         <label className="field"><span>เอกสารจุดยึด/ค้ำยันทแยง</span><input aria-label="เอกสารจุดยึดแบบ" maxLength={300} disabled={!canEdit} value={x.restraintReference} onChange={e => edit({restraintReference: e.target.value})}/></label></div>
@@ -86,5 +87,5 @@ export function BeamPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab}
     <section className="card"><h3>ที่มาของแรง</h3><ol className="muted">{r.loads.steps.map(s => <li key={s}>{s}</li>)}
       <li>แรงดันข้าง pmax = {f(r.pressureModel.pmax, 1)} kPa · {r.pressureModel.reason}</li>
       <li>ค้ำยัน: คานรับต่อเนื่อง {r.shores.length - 1} ช่วง k = {f(r.shoreFactor, 3)} → {f(r.shoreLoad)} kN/ต้น · แบบข้าง: ไม้กันตีน/จุดยึดบน {f(r.kickerForcePerM)} kN/m ต่อด้าน</li></ol></section>
-    <section className="card"><h3>ตรวจเบื้องต้น / ตรวจวิธีที่ยังขาด</h3><ChecksTable checks={r.checks}/><h3>ก่อนออกเอกสารใช้งานจริง</h3><ul className="blockers">{r.blockers.map(b => <li key={b}>{b}</li>)}</ul></section></>}</>;
+    <section className="card"><h3>ตรวจเบื้องต้น / ตรวจวิธีที่ยังขาด</h3><ChecksTable items={numberChecks(beamCheckGroups(), r.checks).ordered}/><h3>ก่อนออกเอกสารใช้งานจริง</h3><ul className="blockers">{r.blockers.map(b => <li key={b}>{b}</li>)}</ul></section></>}</>;
 }
