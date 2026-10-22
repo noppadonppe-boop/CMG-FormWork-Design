@@ -43,6 +43,18 @@ it('keeps Design Cases on the project kit: off-kit badge, apply, exception and t
   await act(async () => {button('บันทึกเป็นข้อยกเว้น').click();}); await settle();
   expect(badge().textContent).toContain('ข้อยกเว้น');
 
+  // Simple mode (default with a kit): criteria/layout pages hide the kit-owned plywood and sections and show the kit summary.
+  await act(async () => {button('Design Criteria', document.querySelector('aside')!).click();}); await settle();
+  expect(document.querySelector('.kit-summary')!.textContent).toContain('วัสดุตามชุดมาตรฐาน K1');
+  expect(document.querySelector('input[aria-label="ความหนาไม้อัด"]')).toBeNull();
+  await act(async () => {button('จัดวางเบื้องต้น', document.querySelector('aside')!).click();}); await settle();
+  expect(document.querySelector('select[aria-label="ขนาดคร่าว (แนวตั้ง)"]')).toBeNull();
+  expect(document.querySelector('input[aria-label="ระยะคร่าวสูงสุด"]')).not.toBeNull();
+  await act(async () => {button('โหมดง่าย', document.querySelector('header')!).click();}); await settle();
+  expect(document.querySelector('.kit-summary')).toBeNull();
+  expect(document.querySelector('select[aria-label="ขนาดคร่าว (แนวตั้ง)"]')).not.toBeNull();
+  expect(localStorage.getItem('cmg-ui-mode')).toBe('advanced');
+
   // The kit page lists both cases; applying to all leaves the exception alone.
   await act(async () => {button('ชุดมาตรฐานโครงการ', document.querySelector('aside')!).click();}); await settle();
   const page = document.querySelector('.kit-cases')!;

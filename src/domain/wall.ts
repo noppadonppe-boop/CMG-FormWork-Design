@@ -100,7 +100,9 @@ export function proppedOverhang(w: number, L: number, a: number, E: number, I: n
   return {R0, Ra, Mmax: Math.max(Mspan, Msupport), V, span, tip, c};
 }
 
-export interface WallQuantity {item: string; spec: string; qty: number; unit: string; note: string}
+export interface WallQuantity {item: string; spec: string; qty: number; unit: string; note: string;
+  /** Linear members: catalogue designation and cut length per piece (mm), for the project order list. */
+  section?: string; length?: number}
 export interface WallResult {
   engineVersion: string; input: WallInput; status: Status; checks: Check[]; blockers: string[]; pressureModel: PressureModel; plywood: PlywoodDesign;
   stud: MemberMaterial; waler: MemberMaterial; strongback: MemberMaterial | null;
@@ -181,9 +183,9 @@ export function calculateWall(raw: unknown): WallResult {
   const braceLength = x.braceHeight / Math.sin(rad), side = single ? 'ด้านเดียว' : 'สองด้าน';
   const quantities: WallQuantity[] = [
     {item: `ไม้อัด (${side})`, spec: `${x.plywood} mm · ${x.plywoodGrade}`, qty: Math.ceil(formArea / sheet * 1.05), unit: 'แผ่น', note: `${fx(formArea)} m² + เผื่อตัด 5%`},
-    {item: 'คร่าว (แนวตั้ง)', spec: stud.name, qty: faces * studs.length, unit: 'ท่อน', note: `ยาว ${fx(x.height, 0)} mm @ ${fx(st, 0)} mm ${side}`},
-    {item: 'คานคู่ (แนวนอน)', spec: waler.name + ' (คู่)', qty: faces * 2 * levels.length, unit: 'เส้น', note: `ยาว ${fx(x.length, 0)} mm · ${levels.length} ระดับ × ${faces} ด้าน`},
-    ...(single ? [{item: 'Strongback (แนวตั้ง)', spec: strongback!.name + (x.strongbackCount > 1 ? ' (คู่)' : ''), qty: braces.length * x.strongbackCount, unit: 'ท่อน', note: `ยาว ${fx(x.height, 0)} mm ที่ทุกสถานีค้ำยัน`},
+    {item: 'คร่าว (แนวตั้ง)', spec: stud.name, qty: faces * studs.length, unit: 'ท่อน', section: stud.name, length: x.height, note: `ยาว ${fx(x.height, 0)} mm @ ${fx(st, 0)} mm ${side}`},
+    {item: 'คานคู่ (แนวนอน)', spec: waler.name + ' (คู่)', qty: faces * 2 * levels.length, unit: 'เส้น', section: waler.name, length: x.length, note: `ยาว ${fx(x.length, 0)} mm · ${levels.length} ระดับ × ${faces} ด้าน`},
+    ...(single ? [{item: 'Strongback (แนวตั้ง)', spec: strongback!.name + (x.strongbackCount > 1 ? ' (คู่)' : ''), qty: braces.length * x.strongbackCount, unit: 'ท่อน', section: strongback!.name, length: x.height, note: `ยาว ${fx(x.height, 0)} mm ที่ทุกสถานีค้ำยัน`},
       {item: 'พุกฐานแบบ', spec: 'ระบุรุ่นจากผู้ผลิต', qty: braces.length, unit: 'ชุด', note: 'ที่ฐาน strongback ทุกสถานี'}]
       : [{item: 'Tie ทะลุผนัง + ปลอก + นัต/แผ่นรอง', spec: `Ø${x.tieDiameter} mm`, qty: levels.length * ties.length, unit: 'ชุด', note: `ยาว ≈ ${fx(tieLength, 0)} mm @ ${fx(stt, 0)} mm`}]),
     {item: 'ค้ำยันเอียง (push-pull) + พุก', spec: x.braceReference || 'ระบุรุ่นจากผู้ผลิต', qty: braces.length, unit: 'ตัว', note: `ยาว ≈ ${fx(braceLength, 0)} mm @ ${fx(sb, 0)} mm ด้านเดียว`},

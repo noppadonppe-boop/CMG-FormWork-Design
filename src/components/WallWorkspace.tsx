@@ -1,4 +1,4 @@
-import {useMemo} from 'react';
+import {useMemo, type ReactNode} from 'react';
 import {AlertTriangle, ChevronRight} from 'lucide-react';
 import {wallAdvice, type WallInput, type WallResult} from '../domain/wall';
 import {numberChecks, wallCheckGroups} from '../domain/reportOutline';
@@ -13,10 +13,10 @@ function Figure({r}: {r: WallResult}) {
   return <svg viewBox="0 0 190 130" className="beam-figure" role="img" aria-label="รูปตัดแบบหล่อผนัง"><Defs/><rect width="190" height="130" fill="#fff"/><WallSectionView r={r} box={{x: 0, y: 0, w: 190, h: 130}} titled={false}/></svg>;
 }
 
-export function WallPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab, spacingStep}: {spacingStep?: number; tab: WallTab; x: WallInput; r: WallResult | null; error: string | null; canEdit: boolean; stockIds?: string[];
+export function WallPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab, spacingStep, hide, kitCard}: {spacingStep?: number; hide?: ReadonlySet<string>; kitCard?: ReactNode; tab: WallTab; x: WallInput; r: WallResult | null; error: string | null; canEdit: boolean; stockIds?: string[];
   onChange: (next: WallInput) => void; onTab: (tab: string) => void}) {
   const edit = (changes: Partial<WallInput>) => onChange({...x, ...changes, ...(Object.keys(changes).some(k => GEOMETRY.includes(k as keyof WallInput)) ? {confirmed: false} : {})});
-  const p = {x, edit, canEdit}, single = x.system === 'SINGLE_SIDED';
+  const p = {x, edit, canEdit, hide}, single = x.system === 'SINGLE_SIDED';
   const advice = useMemo(() => {try {return r ? wallAdvice(x, spacingStep ?? 25) : [];} catch {return [];}}, [x, r, spacingStep]);
   const err = error && <div className="warning"><AlertTriangle size={17}/>{error}</div>;
   if (tab === 'overview') return <>
@@ -41,7 +41,7 @@ export function WallPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab,
     <label className="confirm"><input type="checkbox" checked={x.confirmed} disabled={!!error || !canEdit} onChange={e => edit({confirmed: e.target.checked})}/>ตรวจมิติ หน่วย และตำแหน่งผนังจากแบบต้นฉบับแล้ว</label>
     <button className="btn" onClick={() => onTab('criteria')}>ไป Design Criteria <ChevronRight size={16}/></button></section>
     <section className="card">{r ? <Figure r={r}/> : <p>ตรวจมิติให้ถูกต้องก่อนแสดงรูปตัด</p>}</section></div>;
-  if (tab === 'criteria') return <><div className="notice"><AlertTriangle size={17}/>ค่าเริ่มต้นเป็นค่าอ้างอิงเบื้องต้นจากมาตรฐานและแคตตาล็อก (แก้ไขได้ทุกช่อง) ต้องยืนยันกับผลิตภัณฑ์ ใบรับรองวัสดุ และวิธีเทจริง</div>
+  if (tab === 'criteria') return <>{kitCard}<div className="notice"><AlertTriangle size={17}/>ค่าเริ่มต้นเป็นค่าอ้างอิงเบื้องต้นจากมาตรฐานและแคตตาล็อก (แก้ไขได้ทุกช่อง) ต้องยืนยันกับผลิตภัณฑ์ ใบรับรองวัสดุ และวิธีเทจริง</div>
     <div className="grid two"><section className="card"><h3>แรงดันคอนกรีตสด / การโก่ง</h3>
       <div className="form-grid"><Num {...p} k="gamma" label="น้ำหนักคอนกรีต" unit="kN/m³"/><Num {...p} k="deflectionRatio" label="เกณฑ์การโก่ง L/n" unit="n" help="L/360 ผิวโชว์ · L/270 งานทั่วไป"/></div>
       <PressureFields<WallInput> {...p} depthLabel="เต็มความสูงเท"/>
@@ -51,7 +51,7 @@ export function WallPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab,
         {r && <p className="muted">{r.plywood.spanReason} · รับได้ {f(r.plywood.allowablePressure, 1)} kPa (ต้องการ {f(r.pressureModel.pmax, 1)} kPa)</p>}
         <h3>เหล็กและไม้</h3>
         <MaterialFields<WallInput> {...p}/></section></div></>;
-  if (tab === 'layout') return <>
+  if (tab === 'layout') return <>{kitCard}
     {err}
     <section className="card"><h3>{single ? 'แบบผนังด้านเดียว: ไม้อัด → คร่าวแนวตั้ง → คานคู่แนวนอน → strongback → ค้ำยันเอียง + พุกฐาน' : 'แบบผนัง: ไม้อัด → คร่าวแนวตั้ง → คานคู่แนวนอน → Tie ทะลุผนัง'}</h3>
       <div className="grid two"><MemberPicker<WallInput> {...p} k="studSectionId" role="stud" title="คร่าว (แนวตั้ง)" stockIds={stockIds}/><MemberPicker<WallInput> {...p} k="walerSectionId" role="waler" title="คานคู่ (2 ตัวต่อระดับ)" stockIds={stockIds} pair/></div>
@@ -67,7 +67,7 @@ export function WallPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab,
     <section className="card"><h3>{single ? 'ค้ำยันเอียง (รับแรงดันคอนกรีต + ACI §4.2.3)' : 'ค้ำยันเอียง (ACI §4.2.3)'}</h3>
       <div className="form-grid four"><Num {...p} k="windPressure" label="แรงลมออกแบบ" unit="kPa" help="ตามพื้นที่/มาตรฐานท้องถิ่น ไม่น้อยกว่า 0.72 kPa (ACI §4.2.3.1)"/><Num {...p} k="braceSpacing" label={single ? 'ระยะ strongback / ค้ำยัน' : 'ระยะค้ำยันตามยาวผนัง'}/><Num {...p} k="braceHeight" label="ความสูงจุดยึดค้ำยัน"/><Num {...p} k="braceAngle" label="มุมค้ำยันจากแนวนอน" unit="°" help="20–75°"/>
         <Num {...p} k="braceSWL" label="SWL ค้ำยัน" unit="kN" help="จากผู้ผลิต · 0 = ยังไม่ทราบ"/>
-        <label className="field"><span>รุ่น/เอกสารค้ำยัน</span><input aria-label="รุ่นค้ำยันเอียง" maxLength={300} disabled={!canEdit} value={x.braceReference} onChange={e => edit({braceReference: e.target.value})}/></label></div>
+        {!hide?.has('braceReference') && <label className="field"><span>รุ่น/เอกสารค้ำยัน</span><input aria-label="รุ่นค้ำยันเอียง" maxLength={300} disabled={!canEdit} value={x.braceReference} onChange={e => edit({braceReference: e.target.value})}/></label>}</div>
       {r && <p className="muted">โมเมนต์พลิก {f(r.braceMoment, 3)} kN·m/m ({r.braceGoverning}) · แรงค้ำยัน {f(r.braceForce)} kN/ตัว</p>}</section>
     <AdviceTable<WallInput> advice={advice} edit={edit} canEdit={canEdit} kitStep={spacingStep}/>
     <button className="btn" onClick={() => onTab('results')}>ดูรายการคำนวณ <ChevronRight size={16}/></button></>;

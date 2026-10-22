@@ -133,7 +133,9 @@ export function beamLoads(x: BeamInput): BeamLoads {
   return {concrete, formDead: x.formDead, liveUsed, liveMin, totalMin, beam, slab, steps};
 }
 
-export interface BeamQuantity {item: string; spec: string; qty: number; unit: string; note: string}
+export interface BeamQuantity {item: string; spec: string; qty: number; unit: string; note: string;
+  /** Linear members: catalogue designation and cut length per piece (mm), for the project order list. */
+  section?: string; length?: number}
 export interface BeamResult {
   engineVersion: string; input: BeamInput; status: Status; checks: Check[]; blockers: string[];
   loads: BeamLoads; pressureModel: PressureModel; soffitPlywood: PlywoodDesign; sidePlywood: PlywoodDesign;
@@ -251,12 +253,12 @@ export function calculateBeam(raw: unknown): BeamResult {
   const quantities: BeamQuantity[] = [
     {item: 'ไม้อัดท้องคาน', spec: `${x.plywood} mm · ${x.plywoodGrade}`, qty: Math.ceil(soffitArea / sheet * 1.1), unit: 'แผ่น', note: `${fx(soffitArea)} m² + เผื่อตัด 10%`},
     {item: 'ไม้อัดแบบข้าง', spec: `${x.plywood} mm · ${x.plywoodGrade}`, qty: Math.ceil(sideArea / sheet * 1.1), unit: 'แผ่น', note: `${fx(sideArea)} m² (สองด้าน) + เผื่อตัด 10%`},
-    {item: 'คร่าวท้องคาน', spec: joist.name, qty: joists.length, unit: 'ท่อน', note: `ยาว ${fx(L + 2 * bearer.section.B, 0)} mm @ ${fx(sj, 0)} mm`},
-    {item: 'คานรับท้อง', spec: bearer.name + (x.bearerCount > 1 ? ' (คู่)' : ''), qty: 2 * x.bearerCount, unit: 'เส้น', note: `ยาว ${fx(x.length, 0)} mm (ต่อทาบเหนือหัวค้ำ)`},
+    {item: 'คร่าวท้องคาน', spec: joist.name, qty: joists.length, unit: 'ท่อน', section: joist.name, length: L + 2 * bearer.section.B, note: `ยาว ${fx(L + 2 * bearer.section.B, 0)} mm @ ${fx(sj, 0)} mm`},
+    {item: 'คานรับท้อง', spec: bearer.name + (x.bearerCount > 1 ? ' (คู่)' : ''), qty: 2 * x.bearerCount, unit: 'เส้น', section: bearer.name, length: x.length, note: `ยาว ${fx(x.length, 0)} mm (ต่อทาบเหนือหัวค้ำ)`},
     {item: 'ค้ำยัน + U-head + แผ่นฐาน', spec: x.shoreReference || 'ระบุรุ่นจากผู้ผลิต', qty: 2 * shores.length, unit: 'ต้น', note: `ยาวใช้งาน ${fx(shoreLength, 0)} mm @ ${fx(ss, 0)} mm`},
-    {item: 'คร่าวแบบข้าง', spec: stud.name, qty: 2 * studs.length, unit: 'ท่อน', note: `ยาว ${fx(studH(0), 0)}/${fx(studH(1), 0)} mm @ ${fx(st, 0)} mm`},
+    {item: 'คร่าวแบบข้าง', spec: stud.name, qty: 2 * studs.length, unit: 'ท่อน', section: stud.name, length: Math.max(studH(0), studH(1)), note: `ยาว ${fx(studH(0), 0)}/${fx(studH(1), 0)} mm @ ${fx(st, 0)} mm`},
     ...(x.tieRows > 0 ? [
-      {item: 'คานคู่แบบข้าง', spec: waler.name + ' (คู่)', qty: 2 * 2 * x.tieRows, unit: 'เส้น', note: `ยาว ${fx(x.length, 0)} mm, ${x.tieRows} แถว/ด้าน`},
+      {item: 'คานคู่แบบข้าง', spec: waler.name + ' (คู่)', qty: 2 * 2 * x.tieRows, unit: 'เส้น', section: waler.name, length: x.length, note: `ยาว ${fx(x.length, 0)} mm, ${x.tieRows} แถว/ด้าน`},
       {item: 'Tie ทะลุคาน + ปลอก + นัต/แผ่นรอง', spec: `Ø${x.tieDiameter} mm`, qty: x.tieRows * ties.length, unit: 'ชุด', note: `ยาว ≈ ${fx(x.b + 2 * (x.plywood + stud.section.H + waler.section.H + 60), 0)} mm`},
     ] : []),
   ];

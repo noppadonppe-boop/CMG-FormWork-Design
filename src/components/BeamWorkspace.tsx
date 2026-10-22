@@ -1,4 +1,4 @@
-import {useMemo} from 'react';
+import {useMemo, type ReactNode} from 'react';
 import {AlertTriangle, ChevronRight} from 'lucide-react';
 import {beamAdvice, type BeamInput, type BeamResult} from '../domain/beam';
 import {beamCheckGroups, numberChecks} from '../domain/reportOutline';
@@ -14,10 +14,10 @@ function Figure({r}: {r: BeamResult}) {
   return <svg viewBox="0 0 190 130" className="beam-figure" role="img" aria-label="รูปตัดแบบหล่อคาน"><Defs/><rect width="190" height="130" fill="#fff"/><BeamSectionView r={r} box={{x: 0, y: 0, w: 190, h: 130}} titled={false}/></svg>;
 }
 
-export function BeamPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab, spacingStep}: {spacingStep?: number; tab: BeamTab; x: BeamInput; r: BeamResult | null; error: string | null; canEdit: boolean; stockIds?: string[];
+export function BeamPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab, spacingStep, hide, kitCard}: {spacingStep?: number; hide?: ReadonlySet<string>; kitCard?: ReactNode; tab: BeamTab; x: BeamInput; r: BeamResult | null; error: string | null; canEdit: boolean; stockIds?: string[];
   onChange: (next: BeamInput) => void; onTab: (tab: string) => void}) {
   const edit: Edit = changes => onChange({...x, ...changes, ...(Object.keys(changes).some(k => GEOMETRY.includes(k as keyof BeamInput)) ? {confirmed: false} : {})});
-  const p = {x, edit, canEdit};
+  const p = {x, edit, canEdit, hide};
   const advice = useMemo(() => {try {return r ? beamAdvice(x, spacingStep ?? 25) : [];} catch {return [];}}, [x, r, spacingStep]);
   const err = error && <div className="warning"><AlertTriangle size={17}/>{error}</div>;
   if (tab === 'overview') return <>
@@ -47,7 +47,7 @@ export function BeamPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab,
     <label className="confirm"><input type="checkbox" checked={x.confirmed} disabled={!!error || !canEdit} onChange={e => edit({confirmed: e.target.checked})}/>ตรวจมิติ หน่วย และตำแหน่งคานจากแบบต้นฉบับแล้ว</label>
     <button className="btn" onClick={() => onTab('criteria')}>ไป Design Criteria <ChevronRight size={16}/></button></section>
     <section className="card">{r ? <Figure r={r}/> : <p>ตรวจมิติให้ถูกต้องก่อนแสดงรูปตัด</p>}</section></div>;
-  if (tab === 'criteria') return <><div className="notice"><AlertTriangle size={17}/>ค่าเริ่มต้นเป็นค่าอ้างอิงเบื้องต้นจากมาตรฐานและแคตตาล็อก (แก้ไขได้ทุกช่อง) ต้องยืนยันกับผลิตภัณฑ์ ใบรับรองวัสดุ และวิธีเทจริง</div>
+  if (tab === 'criteria') return <>{kitCard}<div className="notice"><AlertTriangle size={17}/>ค่าเริ่มต้นเป็นค่าอ้างอิงเบื้องต้นจากมาตรฐานและแคตตาล็อก (แก้ไขได้ทุกช่อง) ต้องยืนยันกับผลิตภัณฑ์ ใบรับรองวัสดุ และวิธีเทจริง</div>
     <div className="grid two"><section className="card"><h3>น้ำหนักบรรทุกแนวดิ่ง (ACI PRC-347-14(21) §4.2.1)</h3>
       <VerticalLoadFields<BeamInput> {...p}/>
       {r && <ul className="muted">{r.loads.steps.map(s => <li key={s}>{s}</li>)}</ul>}
@@ -59,14 +59,14 @@ export function BeamPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab,
         {r && <p className="muted">ท้องคาน: {r.soffitPlywood.spanReason} · รับได้ {f(r.soffitPlywood.allowablePressure, 1)} kPa (ต้องการ {f(r.loads.beam, 1)}) · แบบข้าง: รับได้ {f(r.sidePlywood.allowablePressure, 1)} kPa (ต้องการ {f(r.pressureModel.pmax, 1)})</p>}
         <h3>เหล็กและไม้</h3>
         <MaterialFields<BeamInput> {...p}/></section></div></>;
-  if (tab === 'layout') return <>
+  if (tab === 'layout') return <>{kitCard}
     {err}
     <section className="card"><h3>แบบท้องคาน: ไม้อัด → คร่าวท้อง (ตามขวาง) → คานรับ (ตามยาว) → ค้ำยัน</h3>
       <div className="grid two"><MemberPicker {...p} k="joistSectionId" role="stud" title="คร่าวท้องคาน" stockIds={stockIds}/><MemberPicker {...p} k="bearerSectionId" role="waler" title="คานรับท้อง" stockIds={stockIds} pair={x.bearerCount > 1}/></div>
       <div className="form-grid four"><Num {...p} k="joistSpacing" label="ระยะคร่าวท้องสูงสุด"/><Num {...p} k="shoreSpacing" label="ระยะค้ำยันตามยาวสูงสุด"/><Num {...p} k="shoreWidth" label="ระยะค้ำยันตามขวาง" help="ระยะระหว่างแนวคานรับสองแนว"/>
         <label className="field"><span>คานรับต่อแนว</span><select aria-label="จำนวนคานรับต่อแนว" disabled={!canEdit} value={x.bearerCount} onChange={e => edit({bearerCount: Number(e.target.value) as 1 | 2})}><option value={1}>1 ตัว</option><option value={2}>2 ตัว (คู่)</option></select></label>
         <Num {...p} k="shoreSWL" label="SWL ค้ำยันที่ความยาวใช้งาน" unit="kN" help="จากผู้ผลิต · 0 = ยังไม่ทราบ"/>
-        <label className="field"><span>รุ่น/เอกสารค้ำยัน</span><input aria-label="รุ่นค้ำยัน" maxLength={300} disabled={!canEdit} value={x.shoreReference} onChange={e => edit({shoreReference: e.target.value})}/></label>
+        {!hide?.has('shoreReference') && <label className="field"><span>รุ่น/เอกสารค้ำยัน</span><input aria-label="รุ่นค้ำยัน" maxLength={300} disabled={!canEdit} value={x.shoreReference} onChange={e => edit({shoreReference: e.target.value})}/></label>}
         <Num {...p} k="lateralCapacity" label="กำลังค้ำยันทแยง/ledger" unit="kN/m" help="จากการออกแบบค้ำยัน · 0 = ยังไม่ออกแบบ"/></div>
       {r && <p className="muted">ค้ำยันรับ {f(r.shoreLoad)} kN/ต้น (k = {f(r.shoreFactor, 3)} คานรับต่อเนื่อง) · ความยาวใช้งาน ≈ {f(r.shoreLength, 0)} mm · แรงด้านข้างที่ต้องค้ำ {f(r.lateralPerM)} kN/m</p>}</section>
     <section className="card"><h3>แบบข้างคาน: ไม้อัด → คร่าวแนวตั้ง → (คานคู่ + Tie) / ไม้กันตีน</h3>

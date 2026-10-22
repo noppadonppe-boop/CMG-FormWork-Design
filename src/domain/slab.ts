@@ -74,7 +74,9 @@ export function slabLoads(x: SlabInput): SlabLoads {
     `q = max(${fx(concrete)} + ${fx(x.formDead)} + ${fx(liveUsed)}, ${fx(totalMin)}) = ${fx(q)} kPa (รวม D+L ไม่น้อยกว่า ${totalMin} kPa)`]};
 }
 
-export interface SlabQuantity {item: string; spec: string; qty: number; unit: string; note: string}
+export interface SlabQuantity {item: string; spec: string; qty: number; unit: string; note: string;
+  /** Linear members: catalogue designation and cut length per piece (mm), for the project order list. */
+  section?: string; length?: number}
 export interface SlabResult {
   engineVersion: string; input: SlabInput; status: Status; checks: Check[]; blockers: string[]; loads: SlabLoads; plywood: PlywoodDesign;
   joist: MemberMaterial; bearer: MemberMaterial;
@@ -126,8 +128,8 @@ export function calculateSlab(raw: unknown): SlabResult {
   const area = x.lx * x.ly / 1e6;
   const quantities: SlabQuantity[] = [
     {item: 'ไม้อัดท้องพื้น', spec: `${x.plywood} mm · ${x.plywoodGrade}`, qty: Math.ceil(area / (1.22 * 2.44) * 1.05), unit: 'แผ่น', note: `${fx(area)} m² + เผื่อตัด 5%`},
-    {item: 'คร่าว (Joist)', spec: joist.name, qty: joists.length, unit: 'ท่อน', note: `ยาว ${fx(x.ly, 0)} mm @ ${fx(sj, 0)} mm (ต่อทาบเหนือคานรับ)`},
-    {item: 'คานรับ (Bearer)', spec: bearer.name + (x.bearerCount > 1 ? ' (คู่)' : ''), qty: bearers.length * x.bearerCount, unit: 'เส้น', note: `ยาว ${fx(x.lx, 0)} mm @ ${fx(sb, 0)} mm (ต่อทาบเหนือหัวค้ำ)`},
+    {item: 'คร่าว (Joist)', spec: joist.name, qty: joists.length, unit: 'ท่อน', section: joist.name, length: x.ly, note: `ยาว ${fx(x.ly, 0)} mm @ ${fx(sj, 0)} mm (ต่อทาบเหนือคานรับ)`},
+    {item: 'คานรับ (Bearer)', spec: bearer.name + (x.bearerCount > 1 ? ' (คู่)' : ''), qty: bearers.length * x.bearerCount, unit: 'เส้น', section: bearer.name, length: x.lx, note: `ยาว ${fx(x.lx, 0)} mm @ ${fx(sb, 0)} mm (ต่อทาบเหนือหัวค้ำ)`},
     {item: 'ค้ำยัน + U-head + แผ่นฐาน', spec: x.shoreReference || 'ระบุรุ่นจากผู้ผลิต', qty: shoreCount, unit: 'ต้น', note: `ยาวใช้งาน ${fx(shoreLength, 0)} mm · ${shores.length} × ${bearers.length} ต้น @ ${fx(ss, 0)} × ${fx(sb, 0)} mm`},
   ];
   return {engineVersion: SLAB_ENGINE_VERSION, input: x, status: checks.some(k => k.status === 'FAIL') ? 'FAIL' : 'INCOMPLETE', checks, blockers, loads, plywood, joist, bearer,

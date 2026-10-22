@@ -10,15 +10,18 @@ import {Props, STUD_FAMILIES, WALER_FAMILIES} from './SectionPicker';
 
 export const fmt = (v: number | null, d = 2) => v === null ? '—' : v.toLocaleString('en-US', {minimumFractionDigits: d, maximumFractionDigits: d});
 type Edit<T> = (changes: Partial<T>) => void;
-export interface FormCtx<T> {x: T; edit: Edit<T>; canEdit: boolean}
+/** `hide`: keys owned by the project kit, not shown in simple mode. */
+export interface FormCtx<T> {x: T; edit: Edit<T>; canEdit: boolean; hide?: ReadonlySet<string>}
 
-export function Num<T>({x, k, label, unit = 'mm', help, edit, canEdit}: FormCtx<T> & {k: keyof T & string; label: string; unit?: string; help?: string}) {
+export function Num<T>({x, k, label, unit = 'mm', help, edit, canEdit, hide}: FormCtx<T> & {k: keyof T & string; label: string; unit?: string; help?: string}) {
+  if (hide?.has(k)) return null;
   return <label className="field"><span>{label}<small>{unit}</small></span>
     <input type="number" min="0" step="any" aria-label={label} disabled={!canEdit} value={String(x[k])} onChange={e => edit({[k]: Number(e.target.value)} as Partial<T>)}/>
     {help && <small className="help">{help}</small>}</label>;
 }
 /** Two-step section choice (family → size) for one member, limited to the project stock. */
-export function MemberPicker<T>({x, k, role, title, edit, canEdit, stockIds, pair}: FormCtx<T> & {k: keyof T & string; role: StockRole; title: string; stockIds?: string[]; pair?: boolean}) {
+export function MemberPicker<T>({x, k, role, title, edit, canEdit, stockIds, pair, hide}: FormCtx<T> & {k: keyof T & string; role: StockRole; title: string; stockIds?: string[]; pair?: boolean}) {
+  if (hide?.has(k)) return null;
   const id = String(x[k]), s = sectionById(id), families = role === 'stud' ? STUD_FAMILIES : WALER_FAMILIES, stock = stockFor(stockIds).filter(v => v.roles.includes(role));
   const materialInput = x as unknown as {timberGrade?: string; steelE?: number};
   const pick = (family: StockFamily) => {
@@ -77,6 +80,7 @@ export function PressureFields<T extends {pressureMethod: PressureMethod; chemis
       <label className="field"><span>ค่า Cc (ชนิดปูน/สารผสม)</span><select aria-label="ค่า Cc" disabled={!canEdit} value={x.chemistryCc} onChange={e => edit({chemistryCc: Number(e.target.value)} as Partial<T>)}>{CC_VALUES.map(c => <option key={c} value={c}>{c}</option>)}</select></label></div>}</>;
 }
 export function PlywoodFields<T extends PlywoodSettings>(p: FormCtx<T>) {
+  if (p.hide?.has('plywood')) return null;
   const {x, edit, canEdit} = p;
   return <div className="form-grid"><Num<T> {...p} k={'plywood' as keyof T & string} label="ความหนาไม้อัด"/>
     <label className="field"><span>ชนิดไม้อัด</span><select aria-label="ชนิดไม้อัด" disabled={!canEdit} value={x.plywoodGrade} onChange={e => edit({plywoodGrade: e.target.value} as Partial<T>)}>{PLYWOOD_GRADES.map(g => <option key={g} value={g}>{PLYWOOD_GRADE_LABEL[g]}</option>)}</select></label>
@@ -85,6 +89,7 @@ export function PlywoodFields<T extends PlywoodSettings>(p: FormCtx<T>) {
     {x.plywoodGrade === 'CUSTOM' && <><Num<T> {...p} k={'plywoodE' as keyof T & string} label="E ไม้อัด (หน้าตัดเต็ม)" unit="MPa"/><Num<T> {...p} k={'plywoodFb' as keyof T & string} label="Fb ไม้อัด (หน้าตัดเต็ม)" unit="MPa"/></>}</div>;
 }
 export function MaterialFields<T extends MaterialSettings>(p: FormCtx<T>) {
+  if (p.hide?.has('timberGrade')) return null;
   const standardE = [200000, 210000];
   return <div className="form-grid"><Num<T> {...p} k={'steelFy' as keyof T & string} label="Fy เหล็ก" unit="MPa" help="STKR400 / SS400 = 245 MPa"/>
     <label className="field"><span>มาตรฐาน E เหล็ก</span><select aria-label="มาตรฐาน E เหล็ก" disabled={!p.canEdit} value={standardE.includes(p.x.steelE) ? String(p.x.steelE) : 'CUSTOM'} onChange={e => {if (e.target.value !== 'CUSTOM') p.edit({steelE: Number(e.target.value)} as Partial<T>);}}><option value="200000">200 GPa · reference model</option><option value="210000">210 GPa · SCI/Eurocode reference model</option><option value="CUSTOM">กำหนดเอง (กรอกด้านล่าง)</option></select></label>

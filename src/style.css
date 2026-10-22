@@ -142,3 +142,4 @@ aside nav .nav-group-label{display:block;margin:14px 12px 6px;font-size:10px;let
 .kit-badge.on{background:var(--success-bg);color:var(--success-text);border-color:var(--success-border)}.kit-badge.exception{background:var(--accent-soft);color:var(--accent-text)}
 .kit-badge.off{margin-top:-10px}.kit-badge .source-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}.kit-badge input{min-width:260px;padding:8px 10px;border:1px solid var(--border);border-radius:5px;background:var(--surface-sunken);color:var(--text)}
 .kit-panel h4{margin:18px 0 8px}.kit-members{margin-top:10px}
+.kit-summary p{margin:6px 0}.ui-mode{font-size:11px;padding:7px 12px}.order-list h4{margin:18px 0 8px}

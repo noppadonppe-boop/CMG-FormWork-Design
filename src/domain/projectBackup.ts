@@ -10,7 +10,8 @@ import {canonical} from './workflowV07/common.js';
 import {parseTitleBlock,type TitleBlock} from './titleBlock.js';
 import {exampleEvidenceWorksheets} from './projectExampleEvidence.js';
 import {parseKit,type ProjectKit} from './projectKit.js';
-export interface BackupProject{id:string;name:string;code:string;cases:{id:string;name:string;input:Input;workflowElementType?:ElementType;workflowV07?:StoredWorkflowDraft;beam?:BeamInput;slab?:SlabInput;wall?:WallInput;titleBlock?:TitleBlock;kitException?:string}[];kit?:ProjectKit}
+import {parseOrder,type CaseOrder} from './projectBom.js';
+export interface BackupProject{id:string;name:string;code:string;cases:{id:string;name:string;input:Input;workflowElementType?:ElementType;workflowV07?:StoredWorkflowDraft;beam?:BeamInput;slab?:SlabInput;wall?:WallInput;titleBlock?:TitleBlock;kitException?:string;order?:CaseOrder}[];kit?:ProjectKit}
 const ELEMENTS:readonly string[]=['FOOTING','COLUMN','WALL','BEAM','SLAB'];
 export function parseProjectBackup(text:string,makeId:()=>string=()=>crypto.randomUUID()):BackupProject{
   // A populated ten-case walkthrough includes per-case v0.7 drafts (up to 900 kB
@@ -40,6 +41,6 @@ export function parseProjectBackup(text:string,makeId:()=>string=()=>crypto.rand
       if(model.loadCases)model={...model,loadCases:stampLoadCases(model,model.loadCases)};
       workflowV07=createStoredWorkflowDraft(model,input);
     }
-    return {id,name:item.name,input,...(element!==undefined?{workflowElementType:element as ElementType}:{}),...(workflowV07?{workflowV07}:{}),...(beam?{beam}:{}),...(slab?{slab}:{}),...(wall?{wall}:{}),...(titleBlock?{titleBlock}:{}),...('kitException' in item&&typeof item.kitException==='string'&&item.kitException.trim()?{kitException:item.kitException.slice(0,300)}:{})};
+    return {id,name:item.name,input,...(element!==undefined?{workflowElementType:element as ElementType}:{}),...(workflowV07?{workflowV07}:{}),...(beam?{beam}:{}),...(slab?{slab}:{}),...(wall?{wall}:{}),...(titleBlock?{titleBlock}:{}),...('order' in item&&parseOrder(item.order)?{order:parseOrder(item.order)!}:{}),...('kitException' in item&&typeof item.kitException==='string'&&item.kitException.trim()?{kitException:item.kitException.slice(0,300)}:{})};
   })};
 }

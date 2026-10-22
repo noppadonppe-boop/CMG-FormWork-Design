@@ -165,3 +165,12 @@ export function applyKitToCase<T extends KitCase>(z: T, kit: ProjectKit): {value
     return {value: {...rest, input: applyKit(kind, z.input, kit)} as T, error: null};
   } catch (e) {return {value: z, error: (e as Error).message};}
 }
+
+/** Input keys the kit owns for one element type (hidden in simple mode). */
+export const kitFieldKeys = (kind: ElementType): string[] => kitFields(kind, kitDefaults).map(([key]) => key);
+/** One-line summary of the kit for pages and reports. */
+export function kitSummary(k: ProjectKit): string {
+  const s = (id: string) => sectionById(id)?.designation ?? id;
+  return [`ไม้อัด ${k.plywood} mm ${k.plywoodGrade === 'CUSTOM' ? 'CUSTOM' : k.plywoodGrade.replace('_', ' ')}`, `คร่าว ${s(k.studSectionId)}`, `คานคู่ 2×${s(k.walerSectionId)}`, `คานรับ ${s(k.bearerSectionId)}`,
+    `Tie Ø${k.tieDiameter}${k.tieSWL ? ` SWL ${k.tieSWL} kN` : ''}`, `ค้ำยัน SWL ${k.shoreSWL || '—'} kN`, `ขั้นระยะ ${k.spacingStep} mm`].join(' · ');
+}

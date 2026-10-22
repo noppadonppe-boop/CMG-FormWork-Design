@@ -2,7 +2,7 @@ import {useEffect, useState} from 'react';
 import {AlertTriangle, CheckCircle2, Package} from 'lucide-react';
 import {GRAIN_LABEL, PLYWOOD_GRADE_LABEL, PLYWOOD_GRADES} from '../domain/plywoodGrades';
 import {TIMBER_GRADES} from '../domain/sectionStock';
-import {KIT_STEPS, kitDefaults, validateKit, type KitStatus, type ProjectKit} from '../domain/projectKit';
+import {KIT_STEPS, kitDefaults, kitSummary, validateKit, type KitStatus, type ProjectKit} from '../domain/projectKit';
 import {MemberPicker, Num} from './FormParts';
 
 export interface KitCaseRow {id: string; name: string; type: string; status: KitStatus}
@@ -72,4 +72,11 @@ export function KitBadge({status, canEdit, onApply, onReason, onOpenKit}: {statu
     {canEdit && <div className="source-actions"><button className="btn" onClick={onApply}>ใช้ค่าชุดมาตรฐาน</button>
       <input aria-label="เหตุผลที่ใช้นอกชุดมาตรฐาน" placeholder="เหตุผลที่ต้องใช้นอกชุด" maxLength={300} value={reason} onChange={e => setReason(e.target.value)}/>
       <button className="btn secondary" disabled={!reason.trim()} onClick={() => {onReason(reason.trim()); setReason('');}}>บันทึกเป็นข้อยกเว้น</button></div>}</div></div>;
+}
+
+/** Simple mode: the kit supplies plywood, sections, hardware and criteria, so the page only asks for geometry and spacings. */
+export function KitSummaryCard({kit, onOpenKit, onAdvanced}: {kit: ProjectKit; onOpenKit: () => void; onAdvanced: () => void}) {
+  return <section className="card kit-summary"><h3><Package size={18}/> วัสดุตามชุดมาตรฐาน {kit.revision}</h3><p>{kitSummary(kit)}</p>
+    <p className="muted">โหมดง่าย: ไม้อัด หน้าตัด อุปกรณ์ และเกณฑ์ออกแบบมาจากชุดมาตรฐาน หน้านี้กรอกเฉพาะระยะและค่าที่เป็นของแต่ละ Design Case</p>
+    <div className="source-actions"><button className="btn secondary" onClick={onOpenKit}>เปิดชุดมาตรฐาน</button><button className="btn secondary" onClick={onAdvanced}>สลับเป็นโหมดละเอียด</button></div></section>;
 }
