@@ -1,4 +1,5 @@
 import type {ReactNode} from 'react';
+import {useTrChildren} from '../i18n/reportLang';
 
 /** A3 landscape sheet in millimetres. All drawing primitives work in sheet mm. */
 export const SHEET = {w: 420, h: 297, left: 20, top: 10, right: 410, bottom: 287, titleTop: 250};
@@ -14,8 +15,9 @@ export const fitScale = (modelW: number, modelH: number, w: number, h: number) =
   SCALES.find(s => modelW / s <= w && modelH / s <= h) ?? SCALES[SCALES.length - 1];
 export const mm = (v: number) => Math.round(v).toLocaleString('en-US');
 
+/** Drawing text; inside an English short report (`ReportLangContext`) plain text is translated. */
 export function Txt({x, y, s = 2.5, a = 'start', b = false, rot = 0, fill = '#111', children}: {x: number; y: number; s?: number; a?: 'start' | 'middle' | 'end'; b?: boolean; rot?: number; fill?: string; children: ReactNode}) {
-  return <text x={x} y={y} fontSize={s} textAnchor={a} fontWeight={b ? 700 : 400} fill={fill} fontFamily={FONT} transform={rot ? `rotate(${rot} ${x} ${y})` : undefined}>{children}</text>;
+  return <text x={x} y={y} fontSize={s} textAnchor={a} fontWeight={b ? 700 : 400} fill={fill} fontFamily={FONT} transform={rot ? `rotate(${rot} ${x} ${y})` : undefined}>{useTrChildren(children)}</text>;
 }
 export function Defs() {
   return <defs>

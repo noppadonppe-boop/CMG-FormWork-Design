@@ -9,6 +9,8 @@ import {calculateWall, wallDefaults} from '../src/domain/wall';
 import {beamShortModel, governingCheck, legacyShortModel, rowsFromCheck, slabShortModel, verdict, wallShortModel} from '../src/domain/shortReport';
 import {defaultTitleBlock} from '../src/domain/titleBlock';
 import {BeamShortReport, LegacyShortReport, SlabShortReport, WallShortReport} from '../src/components/ShortReport';
+import {toEnglish} from '../src/i18n/reportLang';
+import {QA_CASES} from './qa-cases';
 
 beforeAll(() => {if (!globalThis.crypto) Object.assign(globalThis, {crypto: webcrypto});});
 const chk = (id: string, demand: number | null, limit: number | null): Check => ({id, label: 'X: ' + id, demand, limit, unit: 'MPa', utilization: demand !== null && limit !== null ? demand / limit : null,
@@ -74,5 +76,31 @@ describe('short report: A4 rendering for all five systems', () => {
     expect(html).toContain(`แบบหล่อ${name === 'ผนังด้านเดียว' ? 'ผนังด้านเดียว' : name}`);
     for (const t of ['Design Criteria', 'การเลือกองค์อาคารควบคุม', 'ควบคุมโดย', 'สรุปผล', 'DRAFT / NOT FOR CONSTRUCTION']) expect(html).toContain(t);
     expect(html).not.toMatch(/NaN|Infinity|undefined|>PASS</);
+  });
+});
+
+describe('short report: Thai / English', () => {
+  const base = {project: 'P', code: 'C', caseName: 'C01', caseId: 'case-1', titleBlock: {...defaultTitleBlock(''), date: '2026-10-22'}};
+  const el = (kind: string, input: Record<string, unknown>, lang: 'th' | 'en') => {
+    const c = {...base, lang};
+    return kind === 'slab' ? React.createElement(SlabShortReport, {...c, r: calculateSlab({...slabDefaults, ...input})})
+      : kind === 'beam' ? React.createElement(BeamShortReport, {...c, r: calculateBeam({...beamDefaults, ...input})})
+      : kind === 'wall' ? React.createElement(WallShortReport, {...c, r: calculateWall({...wallDefaults, ...input})})
+      : React.createElement(LegacyShortReport, {...c, r: calculate({...defaults, ...input})});
+  };
+  it.each(QA_CASES)('%s %j: English has no Thai left, Thai stays Thai, numbers are identical', (kind, input) => {
+    const en = renderToStaticMarkup(el(kind, input, 'en')), th = renderToStaticMarkup(el(kind, input, 'th'));
+    const thai = [...en.matchAll(/>([^<]*[฀-๿][^<]*)</g)].map(m => m[1]);
+    expect(thai).toEqual([]);
+    expect(en).toContain('Governing Members');
+    expect(en).not.toMatch(/NaN|Infinity|undefined|>PASS</);
+    expect(th).toContain('การเลือกองค์อาคารควบคุม');
+    const nums = (s: string) => [...s.replace(/<[^>]+>/g, ' ').matchAll(/\d[\d,]*\.\d{3}/g)].map(m => m[0]).sort();
+    expect(nums(en)).toEqual(nums(th));
+  });
+  it('translation keeps words apart and leaves non-Thai text alone', () => {
+    expect(toEnglish('คร่าว SHS 50x50x2.3')).toBe('Stud/joist SHS 50x50x2.3');
+    expect(toEnglish('ช่วง 1,200 mm')).toBe('span 1,200 mm');
+    expect(toEnglish('fb = M / S')).toBe('fb = M / S');
   });
 });

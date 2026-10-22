@@ -1,5 +1,5 @@
 import {Fragment, useMemo, type ReactNode} from 'react';
-import type {Result} from '../domain';
+import type {Check, Result} from '../domain';
 import {buildFormworkLayout} from '../domain/formworkLayout';
 import {adviseLayout} from '../domain/optimize';
 import {slabAdvice, type SlabResult} from '../domain/slab';
@@ -13,6 +13,7 @@ import {SlabPlanView, SlabSectionView} from '../drawing/slabViews';
 import {BeamElevationView, BeamSectionView, type Mapper} from '../drawing/beamViews';
 import {WallElevationView, WallSectionView} from '../drawing/wallViews';
 import {BeamDiagram, Fig, PressureDiagram} from './CalcReport';
+import {ReportLangContext, translate, translateDeep, type ReportLang} from '../i18n/reportLang';
 
 const n = (v: number | null, d = 2) => v === null ? '—' : v.toLocaleString('en-US', {minimumFractionDigits: d, maximumFractionDigits: d});
 const ratio = (v: number | null) => v === null ? '—' : n(v, 3);
@@ -24,9 +25,9 @@ export const TAG_COLOR: Record<string, string> = {1: '#d9822b', 2: '#2f9e64', 3:
 /** Bare drawing (sheet mm) for a figure whose caption the report writes itself. */
 const Svg = ({w, h, children}: {w: number; h: number; children: ReactNode}) => <svg className="sr-svg" viewBox={`0 0 ${w} ${h}`} role="img"><Defs/>{children}</svg>;
 
-function Verdict({m}: {m: ShortMember}) {
+function Verdict({m, t}: {m: ShortMember; t: (s: string) => string}) {
   const v = verdict(m.governing);
-  return <span className={'sr-st ' + v.toLowerCase()}>{VERDICT_LABEL[v]}</span>;
+  return <span className={'sr-st ' + v.toLowerCase()}>{t(VERDICT_LABEL[v])}</span>;
 }
 function Eq({rows}: {rows: EqRow[]}) {
   const labels = rows.some(r => r.label);
@@ -42,88 +43,92 @@ function Mark({P, x0, y0, x1, y1, tag}: {P: Mapper; x0: number; y0: number; x1: 
 }
 
 interface Props {model: ShortModel; project: string; code: string; caseName: string; caseId: string; titleBlock: TitleBlock; revisionBinding?: DesignRevisionBinding;
-  section: ReactNode; sectionCaption: string; plan: ReactNode; planCaption: string}
+  section: ReactNode; sectionCaption: string; plan: ReactNode; planCaption: string; lang?: ReportLang}
 
-/** A4 short calculation (textbook layout): design criteria → loads → governing members → derivation of each governing check → summary. */
-export function ShortReport({model: M, project, code, caseName, caseId, titleBlock: tb, revisionBinding, section, sectionCaption, plan, planCaption}: Props) {
+/** A4 short calculation (textbook layout): design criteria → loads → governing members → derivation of each governing check → summary.
+ * `lang` = 'en' translates the model, the engine texts and the figure labels (`ReportLangContext`). */
+export function ShortReport({model, project, code, caseName, caseId, titleBlock: tb, revisionBinding, section, sectionCaption, plan, planCaption, lang = 'th'}: Props) {
+  const tr = useMemo(() => ({lang, stud: model.stud}), [lang, model.stud]), M = useMemo(() => translateDeep(model, tr), [model, tr]), t = (s: string) => translate(tr, s);
   const docNo = `CAL-${code || 'CMG'}-${caseId.replace(/[^\w]/g, '').slice(0, 6).toUpperCase()}-S`;
   const detailed = M.members.filter(m => m.governing), tagged = M.members.filter(m => m.tag);
+  const isGov = (m: ShortMember, c: Check) => c.id === m.governing?.id;
+  const value = (c: Check) => c.utilization === null ? (c.demand === null ? '—' : `${n(c.demand)} ${c.unit}`) : ratio(c.utilization);
   let fig = 2;
-  const head = <div className="sr-head"><div><b>CMG FORMWORK</b><span>รายการคำนวณแบบย่อ</span></div>
-    <div><span>โครงการ: <b>{project}</b>{code ? ` (${code})` : ''}</span><span>องค์อาคาร: <b>{caseName}</b></span></div>
-    <div><span>เอกสาร: <b>{docNo}</b> Rev {tb.rev}</span><span>วันที่ {tb.date}</span></div></div>;
-  return <article className="short-report">
+  const head = <div className="sr-head"><div><b>CMG FORMWORK</b><span>{t('รายการคำนวณแบบย่อ')}</span></div>
+    <div><span>{t('โครงการ')}: <b>{project}</b>{code ? ` (${code})` : ''}</span><span>{t('องค์อาคาร')}: <b>{caseName}</b></span></div>
+    <div><span>{t('เอกสาร')}: <b>{docNo}</b> Rev {tb.rev}</span><span>{t('วันที่')} {tb.date}</span></div></div>;
+  return <ReportLangContext.Provider value={tr}><article className="short-report" lang={lang}>
     <section className="sr-page">
       {head}
       <div className="sr-title"><h1>{M.title}</h1><p>{M.subtitle} · {M.chain}</p></div>
       <table className="sr-info"><tbody>
         {[0, 2].map(i => <tr key={i}>{M.info.slice(i, i + 2).map(([k, v]) => <Fragment key={k}><th>{k}</th><td>{v}</td></Fragment>)}</tr>)}
-        <tr><th>วิธีออกแบบ</th><td>หน่วยแรงที่ยอมให้ (ASD) · คัดกรอง</td><th>สถานะ</th><td><span className={'sr-st ' + (M.status === 'FAIL' ? 'fail' : 'incomplete')}>{M.status}</span></td></tr>
+        <tr><th>{t('วิธีออกแบบ')}</th><td>{t('หน่วยแรงที่ยอมให้ (ASD) · คัดกรอง')}</td><th>{t('สถานะ')}</th><td><span className={'sr-st ' + (M.status === 'FAIL' ? 'fail' : 'incomplete')}>{M.status}</span></td></tr>
         {revisionBinding && <tr><th>Design Revision</th><td>{revisionBinding.designRevision}</td><th>Review</th><td>{revisionBinding.reviewState}</td></tr>}
       </tbody></table>
-      <h2>1. เกณฑ์การออกแบบ (Design Criteria)</h2>
-      <h3>1.1 มาตรฐานและเอกสารอ้างอิง</h3>
+      <h2>1. {t('เกณฑ์การออกแบบ (Design Criteria)')}</h2>
+      <h3>1.1 {t('มาตรฐานและเอกสารอ้างอิง')}</h3>
       <ol className="sr-refs">{M.standards.map(s => <li key={s}>{s}</li>)}</ol>
       <div className="sr-cols">
-        <div><h3>1.2 น้ำหนักและเกณฑ์</h3>
-          <table className="sr-tb"><thead><tr><th>รายการ</th><th>ค่า</th><th>ที่มา</th></tr></thead>
+        <div><h3>1.2 {t('น้ำหนักและเกณฑ์')}</h3>
+          <table className="sr-tb"><thead><tr><th>{t('รายการ')}</th><th>{t('ค่า')}</th><th>{t('ที่มา')}</th></tr></thead>
             <tbody>{M.criteria.map(([a, b, c]) => <tr key={a}><td>{a}</td><td>{b}</td><td>{c}</td></tr>)}</tbody></table></div>
-        <div><h3>1.3 วัสดุและค่าที่ยอมให้</h3>
-          <table className="sr-tb"><thead><tr><th>องค์อาคาร</th><th>E (MPa)</th><th>Fb (MPa)</th><th>Fv (MPa)</th></tr></thead>
+        <div><h3>1.3 {t('วัสดุและค่าที่ยอมให้')}</h3>
+          <table className="sr-tb"><thead><tr><th>{t('องค์อาคาร')}</th><th>E (MPa)</th><th>Fb (MPa)</th><th>Fv (MPa)</th></tr></thead>
             <tbody>{M.materials.map(r => <tr key={r[0]}>{r.map((c, i) => <td key={i}>{c}</td>)}</tr>)}</tbody></table>
           <p className="sr-note">{M.materialNote}</p></div>
       </div>
-      <figure className="sr-fig"><figcaption>รูปที่ 1 {sectionCaption}</figcaption>{section}</figure>
+      <figure className="sr-fig"><figcaption>{t('รูปที่')} 1 {t(sectionCaption)}</figcaption>{section}</figure>
     </section>
 
     <section className="sr-page">
       <h2>2. {M.loadTitle}</h2>
       <div className={M.pressure ? 'sr-loads' : ''}><Eq rows={M.loadRows}/>
-        {M.pressure && <Fig w={175} h={100} caption={`รูปที่ ${fig++} แรงดันคอนกรีตสด (ใช้ pmax คงที่ตรวจสมาชิก)`}><PressureDiagram m={M.pressure}/></Fig>}</div>
-      <h2>3. การเลือกองค์อาคารควบคุม (Governing Members)</h2>
-      <p>ตรวจทุกองค์อาคารด้วยแรงดัด แรงเฉือน การโก่งตัว และแรงตามแนวแกน แล้วเลือก <b>รายการที่มีอัตราส่วน (ค่าที่เกิด / ค่าที่ยอมให้) สูงสุด</b> ของแต่ละองค์อาคารเป็นตัวควบคุม ตำแหน่งวิกฤตคือสมาชิกภายในที่รับพื้นที่รับแรงเต็ม (ตัวริมรับประมาณครึ่งหนึ่ง)</p>
-      <table className="sr-tb sr-gov"><thead><tr><th>#</th><th>องค์อาคาร</th><th>ตำแหน่งวิกฤต</th><th>ที่มาของแรง</th><th>อัตราส่วน ค่าที่เกิด / ยอมให้</th><th>ควบคุมโดย</th></tr></thead>
+        {M.pressure && <Fig w={175} h={100} caption={`${t('รูปที่')} ${fig++} ${t('แรงดันคอนกรีตสด (ใช้ pmax คงที่ตรวจสมาชิก)')}`}><PressureDiagram m={M.pressure}/></Fig>}</div>
+      <h2>3. {t('การเลือกองค์อาคารควบคุม (Governing Members)')}</h2>
+      <p>{t('ตรวจทุกองค์อาคารด้วยแรงดัด แรงเฉือน การโก่งตัว และแรงตามแนวแกน แล้วเลือกรายการที่มีอัตราส่วน (ค่าที่เกิด / ค่าที่ยอมให้) สูงสุดของแต่ละองค์อาคารเป็นตัวควบคุม ตำแหน่งวิกฤตคือสมาชิกภายในที่รับพื้นที่รับแรงเต็ม (ตัวริมรับประมาณครึ่งหนึ่ง)')}</p>
+      <table className="sr-tb sr-gov"><thead><tr><th>#</th><th>{t('องค์อาคาร')}</th><th>{t('ตำแหน่งวิกฤต')}</th><th>{t('ที่มาของแรง')}</th><th>{t('อัตราส่วน ค่าที่เกิด / ยอมให้')}</th><th>{t('ควบคุมโดย')}</th></tr></thead>
         <tbody>{M.members.map(m => <tr key={m.name}>
           <td className="c">{m.tag ? <span className="sr-tag" style={{background: TAG_COLOR[m.tag]}}>{m.tag}</span> : '—'}</td>
           <td><b>{m.name}</b><br/><small>{m.use}</small></td><td>{m.where}</td><td>{m.from}</td>
-          <td>{m.checks.map((c, i) => <span key={c.id} className={c === m.governing && c.utilization !== null ? 'sr-gv' : ''}>{i ? ' · ' : ''}{checkKind(c)} {c.utilization === null ? (c.demand === null ? '—' : `${n(c.demand)} ${c.unit}`) : ratio(c.utilization)}</span>)}</td>
-          <td><b>{m.governing ? (m.governing.utilization === null ? checkKind(m.governing) + ' (ยังไม่มีค่ายอมให้)' : checkKind(m.governing)) : '—'}</b></td></tr>)}</tbody></table>
-      <p className="sr-note">ตัวเข้ม = รายการควบคุมที่แสดงรายการคำนวณในข้อ 4 · รายการอื่นแสดงเฉพาะอัตราส่วน (รายการคำนวณฉบับเต็มมีทุกรายการ)</p>
-      <figure className="sr-fig"><figcaption>รูปที่ {fig++} {planCaption}</figcaption>
+          <td>{m.checks.map((c, i) => <span key={c.id} className={isGov(m, c) && c.utilization !== null ? 'sr-gv' : ''}>{i ? ' · ' : ''}{checkKind(c)} {value(c)}</span>)}</td>
+          <td><b>{m.governing ? checkKind(m.governing) + (m.governing.utilization === null ? ' ' + t('(ยังไม่มีค่ายอมให้)') : '') : '—'}</b></td></tr>)}</tbody></table>
+      <p className="sr-note">{t('ตัวเข้ม = รายการควบคุมที่แสดงรายการคำนวณในข้อ 4 · รายการอื่นแสดงเฉพาะอัตราส่วน (รายการคำนวณฉบับเต็มมีทุกรายการ)')}</p>
+      <figure className="sr-fig"><figcaption>{t('รูปที่')} {fig++} {t(planCaption)}</figcaption>
         <div className="sr-plan">{plan}
           {tagged.length > 0 && <ul className="sr-legend">{tagged.map(m => <li key={m.tag}><span className="sr-tag" style={{background: TAG_COLOR[m.tag]}}>{m.tag}</span> {m.name}: {m.where} · {m.from}</li>)}</ul>}</div></figure>
     </section>
 
     <section className="sr-sec">
-      <h2>4. รายการคำนวณองค์อาคารควบคุม</h2>
-      {detailed.map((m, i) => {const g = m.governing!, others = m.checks.filter(c => c !== g), v = verdict(g); return <div key={m.name} className="sr-calc">
-        <h3>4.{i + 1} {m.name}{m.tag ? ` (${m.tag})` : ''} — ควบคุมโดย{checkKind(g)}</h3>
+      <h2>4. {t('รายการคำนวณองค์อาคารควบคุม')}</h2>
+      {detailed.map((m, i) => {const g = m.governing!, others = m.checks.filter(c => !isGov(m, c)), v = verdict(g); return <div key={m.name} className="sr-calc">
+        <h3>4.{i + 1} {m.name}{m.tag ? ` (${m.tag})` : ''} — {t('ควบคุมโดย')}{lang === 'en' ? ' ' : ''}{checkKind(g)}</h3>
         <div className={m.diagram ? 'sr-calc-body' : ''}>
-          <div><p className="sr-giv">กำหนดให้ {m.given}</p>
+          <div><p className="sr-giv">{t('กำหนดให้')} {m.given}</p>
             <Eq rows={m.rows}/>
             <div className={'sr-conclude ' + v.toLowerCase()}>{g.limit === null || g.demand === null
-              ? <>{checkKind(g)} {g.demand === null ? '' : `= ${n(g.demand)} ${g.unit}`} · ต้องใช้ค่ารับรองจากผู้ผลิต (ค่าที่ยอมให้ ≥ ค่าที่เกิด) → <Verdict m={m}/></>
-              : <>{checkKind(g)} = {n(g.demand, 3)} {g.unit} {g.demand > g.limit ? '>' : '≤'} {n(g.limit, 3)} {g.unit} · อัตราส่วน <b>{ratio(g.utilization)}</b> → <Verdict m={m}/></>}</div>
-            {others.length > 0 && <p className="sr-also">รายการรอง: {others.map(c => `${checkKind(c)} ${c.utilization === null ? (c.demand === null ? '—' : `${n(c.demand)} ${c.unit}`) : ratio(c.utilization)}`).join(' · ')}{m.maxSpacing ? ` · ระยะสูงสุดที่ไม่เกินเกณฑ์ ${m.maxSpacing}` : ''}</p>}
-            <p className="sr-src">ที่มา: {g.source}</p></div>
-          {m.diagram && <Fig w={150} h={68} caption={`รูปที่ ${fig++} ${m.diagram.title} ช่วง ${n(m.diagram.L, 0)} mm`}><BeamDiagram L={m.diagram.L} w={m.diagram.w} title={m.diagram.title} unit={m.diagram.unit}/></Fig>}
+              ? <>{checkKind(g)} {g.demand === null ? '' : `= ${n(g.demand)} ${g.unit}`} · {t('ต้องใช้ค่ารับรองจากผู้ผลิต (ค่าที่ยอมให้ ≥ ค่าที่เกิด)')} → <Verdict m={m} t={t}/></>
+              : <>{checkKind(g)} = {n(g.demand, 3)} {g.unit} {g.demand > g.limit ? '>' : '≤'} {n(g.limit, 3)} {g.unit} · {t('อัตราส่วน')} <b>{ratio(g.utilization)}</b> → <Verdict m={m} t={t}/></>}</div>
+            {others.length > 0 && <p className="sr-also">{t('รายการรอง')}: {others.map(c => `${checkKind(c)} ${value(c)}`).join(' · ')}{m.maxSpacing ? ` · ${t('ระยะสูงสุดที่ไม่เกินเกณฑ์')} ${m.maxSpacing}` : ''}</p>}
+            <p className="sr-src">{t('ที่มา')}: {g.source}</p></div>
+          {m.diagram && <Fig w={150} h={68} caption={`${t('รูปที่')} ${fig++} ${m.diagram.title} ${t('ช่วง')} ${n(m.diagram.L, 0)} mm`}><BeamDiagram L={m.diagram.L} w={m.diagram.w} title={m.diagram.title} unit={m.diagram.unit}/></Fig>}
         </div></div>;})}
     </section>
 
     <section className="sr-sec">
-      <h2>5. สรุปผล</h2>
-      <table className="sr-tb"><thead><tr><th>องค์อาคาร</th><th>ที่ใช้</th><th>ควบคุมโดย</th><th>อัตราส่วน</th><th>ระยะสูงสุดที่ไม่เกินเกณฑ์</th><th>ผล</th></tr></thead>
+      <h2>5. {t('สรุปผล')}</h2>
+      <table className="sr-tb"><thead><tr><th>{t('องค์อาคาร')}</th><th>{t('ที่ใช้')}</th><th>{t('ควบคุมโดย')}</th><th>{t('อัตราส่วน')}</th><th>{t('ระยะสูงสุดที่ไม่เกินเกณฑ์')}</th><th>{t('ผล')}</th></tr></thead>
         <tbody>{M.members.map(m => <tr key={m.name}><td>{m.name}</td><td>{m.use}</td><td>{m.governing ? checkKind(m.governing) : '—'}</td><td className="c">{ratio(m.governing?.utilization ?? null)}</td>
-          <td>{m.maxSpacing ?? '—'}</td><td><Verdict m={m}/></td></tr>)}</tbody></table>
-      <p className="sr-note">* ยังไม่รวมรายการที่ไม่มีค่ากำลัง (SWL) · สถานะรวม <b>{M.status}</b>: ผลคัดกรองเท่านั้น ไม่ใช่การอนุมัติก่อสร้าง ต้องให้วิศวกรตรวจและลงนามก่อนใช้งาน · {M.engineVersion}</p>
-      <h2>6. รายการที่ต้องดำเนินการก่อนใช้งาน</h2>
+          <td>{m.maxSpacing ?? '—'}</td><td><Verdict m={m} t={t}/></td></tr>)}</tbody></table>
+      <p className="sr-note">{t('* ยังไม่รวมรายการที่ไม่มีค่ากำลัง (SWL) · สถานะรวม')} <b>{M.status}</b>: {t('ผลคัดกรองเท่านั้น ไม่ใช่การอนุมัติก่อสร้าง ต้องให้วิศวกรตรวจและลงนามก่อนใช้งาน')} · {M.engineVersion}</p>
+      <h2>6. {t('รายการที่ต้องดำเนินการก่อนใช้งาน')}</h2>
       <ol className="sr-refs">{M.blockers.map((b, i) => <li key={i}>{b}</li>)}</ol>
       <table className="sr-sign"><tbody><tr>
-        {[['ผู้คำนวณ', tb.designedBy], ['ผู้ตรวจสอบ', tb.checkedBy], ['ผู้อนุมัติ (วิศวกร)', tb.approvedBy]].map(([k, v]) => <td key={k}>{k}<br/><br/>({v || '..............................'})<br/>วันที่ ........</td>)}
+        {[['ผู้คำนวณ', tb.designedBy], ['ผู้ตรวจสอบ', tb.checkedBy], ['ผู้อนุมัติ (วิศวกร)', tb.approvedBy]].map(([k, v]) => <td key={k}>{t(k)}<br/><br/>({v || '..............................'})<br/>{t('วันที่')} ........</td>)}
       </tr></tbody></table>
-      <footer className="sr-foot">{docNo} · Rev {tb.rev} · CMG · DRAFT / NOT FOR CONSTRUCTION · รูปแบบตามหนังสือ Design Form Work</footer>
+      <footer className="sr-foot">{docNo} · Rev {tb.rev} · CMG · DRAFT / NOT FOR CONSTRUCTION · {t('รูปแบบตามหนังสือ Design Form Work')}</footer>
     </section>
-  </article>;
+  </article></ReportLangContext.Provider>;
 }
 
 type Common = Omit<Props, 'model' | 'section' | 'sectionCaption' | 'plan' | 'planCaption'>;
@@ -186,5 +191,12 @@ export type ReportVariant = 'full' | 'short';
 export function ReportVariantSwitch({value, onChange}: {value: ReportVariant; onChange: (v: ReportVariant) => void}) {
   return <div className="report-variant" role="group" aria-label="รูปแบบรายการคำนวณ">
     {([['full', 'ฉบับเต็ม'], ['short', 'แบบย่อ']] as const).map(([k, t]) => <button key={k} type="button" aria-pressed={value === k} onClick={() => onChange(k)}>{t}</button>)}
+  </div>;
+}
+
+/** Thai / English for the short report. */
+export function ReportLangSwitch({value, onChange}: {value: ReportLang; onChange: (v: ReportLang) => void}) {
+  return <div className="report-variant" role="group" aria-label="ภาษารายการคำนวณ / Report language">
+    {([['th', 'ไทย'], ['en', 'English']] as const).map(([k, label]) => <button key={k} type="button" aria-pressed={value === k} onClick={() => onChange(k)}>{label}</button>)}
   </div>;
 }

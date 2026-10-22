@@ -25,6 +25,8 @@ export interface ShortMember {
   maxSpacing?: string;
 }
 export interface ShortModel {
+  /** English term for "คร่าว" in this system: joists under a soffit, studs on side forms. */
+  stud: "Joist" | "Stud" | "Stud/joist";
   title: string; subtitle: string; chain: string; info: [string, string][]; standards: string[];
   criteria: [string, string, string][]; materials: [string, string, string, string][]; materialNote: string;
   loadTitle: string; loadRows: EqRow[]; pressure: PressureModel | null;
@@ -131,7 +133,7 @@ export function slabShortModel(r: SlabResult, advice: Advice = []): ShortModel {
     member(r.checks, {prefix: 'lateral', tag: '', name: 'แรงด้านข้าง', use: 'ค้ำทแยง / ledger', where: 'ขอบพื้นแต่ละด้าน', from: 'max(1.5 kN/m, 2% DL)', given: 'ACI §4.2.3.2 แรงด้านข้างที่ต้องค้ำที่ขอบพื้น'}),
   ]);
   return {
-    title: 'รายการคำนวณแบบหล่อพื้น (แบบย่อ)', subtitle: 'SLAB FORMWORK — SHORT DESIGN CALCULATION', chain: 'ไม้อัด → คร่าว → คานรับ → ค้ำยัน',
+    stud: 'Joist', title: 'รายการคำนวณแบบหล่อพื้น (แบบย่อ)', subtitle: 'SLAB FORMWORK — SHORT DESIGN CALCULATION', chain: 'ไม้อัด → คร่าว → คานรับ → ค้ำยัน',
     info: [['ขนาดช่วงพื้น', `${n(x.lx / 1000)} × ${n(x.ly / 1000)} m`], ['ความหนาพื้น', `${x.t} mm`], ['สูงใต้ท้องพื้น', `${n(x.soffitHeight / 1000)} m`], ['แบบอ้างอิง', 'SF-01 ถึง SF-03']],
     standards: [STD_ACI, STD_APA, STD_STEEL, STD_BOOK('บทที่ 6 (ตัวอย่างที่ 6.1)')],
     criteria: [['หน่วยน้ำหนักคอนกรีต γ', `${n(x.gamma, 1)} kN/m³`, 'สมมติฐานโครงการ'], ['น้ำหนักแบบหล่อ', `${n(x.formDead)} kPa`, 'ผู้ใช้กำหนด'],
@@ -155,7 +157,7 @@ export function beamShortModel(r: BeamResult, advice: Advice = []): ShortModel {
       from: `w = Rmax / sj = ${n(r.bearerLine, 3)} kN/m`, given: `คานรับพาดระหว่างค้ำยัน L = ${n(ss, 0)} mm · w = แรงปฏิกิริยาคร่าวสูงสุด / ระยะคร่าว = ${n(r.joistReaction / 1000, 3)} / ${n(sj / 1000)} = ${n(r.bearerLine, 3)} kN/m`,
       uniform: {w: r.bearerLine, L: ss, m: r.bearer, count: x.bearerCount, deflectionRatio: x.deflectionRatio}, diagram: {L: ss, w: r.bearerLine, title: `คานรับ ${r.bearer.name}`}, maxSpacing: a('shoreSpacing')}),
     member(r.checks, {prefix: 'shore-', tag: '3', name: 'ค้ำยัน', use: `@ ${n(ss, 0)} mm สองแนว`, where: 'ต้นใต้คานรับด้านที่รับแรงมาก',
-      from: `P = w × ss`, given: `แรงจากคานรับช่วงเดี่ยว · ความยาวใช้งาน ≈ ${n(r.shoreLength, 0)} mm`, maxSpacing: a('shoreSpacing')}),
+      from: `P = k × w × ss`, given: `คานรับต่อเนื่อง k = ${n(r.shoreFactor, 3)} · ความยาวใช้งาน ≈ ${n(r.shoreLength, 0)} mm`, maxSpacing: a('shoreSpacing')}),
     member(r.checks, {...plywoodMember('side-', 'ไม้อัดแบบข้าง', x.plywood, r.sidePlywood, p, st, 'pmax', 'คร่าวแบบข้าง'), maxSpacing: a('studSpacing') && `คร่าว ≤ ${a('studSpacing')}`}),
     member(r.checks, {prefix: 'stud-', tag: '4', name: `คร่าวแบบข้าง ${r.stud.name}`, use: `@ ${n(st, 0)} mm`, where: 'ช่วงคร่าวระหว่างจุดยึด (ล่าง/แถว Tie/บน)',
       from: `w = pmax × ${n(st / 1000)} m = ${n(ws, 3)} kN/m`, given: `คร่าวแนวตั้งช่วง L = ${n(r.studSpan, 0)} mm · w = pmax × s = ${n(p)} × ${n(st / 1000)} = ${n(ws, 3)} kN/m`,
@@ -164,10 +166,10 @@ export function beamShortModel(r: BeamResult, advice: Advice = []): ShortModel {
       from: `w = pmax × ${n(r.studSpan / 1000)} m = ${n(ww, 3)} kN/m`, given: `คานคู่พาดระหว่าง Tie L = ${n(stt, 0)} mm แบ่งแรงสองตัว · w = pmax × L_stud = ${n(p)} × ${n(r.studSpan / 1000)} = ${n(ww, 3)} kN/m`,
       uniform: {w: ww, L: stt, m: r.waler, count: 2, deflectionRatio: x.deflectionRatio}, diagram: {L: stt, w: ww, title: `คานคู่ 2×${r.waler.name}`}, maxSpacing: a('tieSpacing')}),
     member(r.checks, {prefix: 'tie-', tag: '6', name: `Tie Ø${x.tieDiameter}`, use: `@ ${n(stt, 0)} mm`, where: 'Tie ภายใน', from: 'T = pmax × L_stud × s_tie', given: 'Tie รับแรงจากคานคู่สองด้านของช่วง'}),
-    member(r.checks, {prefix: ['lateral', 'kicker'], tag: '', name: 'แรงด้านข้าง / จุดยึดล่าง', use: 'ค้ำทแยง, ไม้กันตีน', where: 'ตลอดแนวคาน', from: 'ACI §4.2.3.2 · R = pmax L / 2', given: 'แรงที่ต้องออกแบบอุปกรณ์ยึด (ยังไม่มีวิธีตรวจใน engine)'}),
+    member(r.checks, {prefix: ['lateral', 'kicker', 'top'], tag: '', name: 'แรงด้านข้าง / จุดยึดล่างและบน', use: 'ค้ำทแยง, ไม้กันตีน, จุดยึดบน', where: 'ตลอดแนวคาน', from: 'ACI §4.2.3.2 · R = pmax L / 2', given: 'แรงที่ต้องออกแบบอุปกรณ์ยึด (ยังไม่มีวิธีตรวจใน engine)'}),
   ]);
   return {
-    title: 'รายการคำนวณแบบหล่อคาน (แบบย่อ)', subtitle: 'BEAM FORMWORK — SHORT DESIGN CALCULATION', chain: 'ท้องคาน: ไม้อัด → คร่าว → คานรับ → ค้ำยัน · แบบข้าง: ไม้อัด → คร่าว → คานคู่ → Tie',
+    stud: 'Stud/joist', title: 'รายการคำนวณแบบหล่อคาน (แบบย่อ)', subtitle: 'BEAM FORMWORK — SHORT DESIGN CALCULATION', chain: 'ท้องคาน: ไม้อัด → คร่าว → คานรับ → ค้ำยัน · แบบข้าง: ไม้อัด → คร่าว → คานคู่ → Tie',
     info: [['ขนาดคาน b × h', `${x.b} × ${x.h} mm`], ['ความยาว', `${n(x.length / 1000)} m`], ['สูงใต้ท้องคาน', `${n(x.soffitHeight / 1000)} m`], ['แบบอ้างอิง', 'BF-01 ถึง BF-03']],
     standards: [STD_ACI, STD_APA, STD_STEEL, STD_BOOK('บทที่ 7 (แบบหล่อคาน)')],
     criteria: [['หน่วยน้ำหนักคอนกรีต γ', `${n(x.gamma, 1)} kN/m³`, 'สมมติฐานโครงการ'], ['น้ำหนักแบบหล่อ / น้ำหนักจร', `${n(x.formDead)} / ${n(r.loads.liveUsed)} kPa`, `ACI §4.2.1 ≥ ${r.loads.liveMin}`],
@@ -200,7 +202,7 @@ export function wallShortModel(r: WallResult, advice: Advice = []): ShortModel {
       from: single ? 'แรงดันคอนกรีต + ACI §4.2.3' : `ACI §4.2.3: ${r.braceGoverning}`, given: `ค้ำยันยึดที่ระดับ hb = ${n(x.braceHeight, 0)} mm มุม ${x.braceAngle}° · M = ${n(r.braceMoment, 3)} kN·m/m`, maxSpacing: a('braceSpacing')}),
   ]);
   return {
-    title: `รายการคำนวณแบบหล่อผนัง${single ? 'ด้านเดียว' : ''} (แบบย่อ)`, subtitle: 'WALL FORMWORK — SHORT DESIGN CALCULATION',
+    stud: 'Stud', title: `รายการคำนวณแบบหล่อผนัง${single ? 'ด้านเดียว' : ''} (แบบย่อ)`, subtitle: 'WALL FORMWORK — SHORT DESIGN CALCULATION',
     chain: single ? 'ไม้อัด → คร่าว → คานคู่ → strongback → ค้ำยัน / พุก' : 'ไม้อัด → คร่าว → คานคู่ → Tie · ค้ำยันเอียง',
     info: [['ผนัง ยาว × หนา', `${n(x.length / 1000)} m × ${x.t} mm`], ['ความสูงเท', `${n(x.height / 1000)} m`], ['ระบบ', single ? 'ด้านเดียว (ไม่มี Tie)' : 'สองด้าน + Tie'], ['แบบอ้างอิง', 'WF-01 ถึง WF-03']],
     standards: [STD_ACI, STD_APA, STD_STEEL, STD_BOOK('บทที่ 8 (แบบหล่อกำแพง)')],
@@ -235,7 +237,7 @@ export function legacyShortModel(r: Result, advice: {checkId: string; text: stri
       from: 'แรงปลายคานคู่ที่มุม', given: 'แรงที่มุมจากแรงปฏิกิริยาปลายคานคู่ทั้งสองแกน'})] : []),
   ]);
   return {
-    title: `รายการคำนวณแบบหล่อ${column ? 'เสา' : 'ฐานราก'} (แบบย่อ)`, subtitle: `${column ? 'COLUMN' : 'FOOTING'} FORMWORK — SHORT DESIGN CALCULATION`,
+    stud: 'Stud', title: `รายการคำนวณแบบหล่อ${column ? 'เสา' : 'ฐานราก'} (แบบย่อ)`, subtitle: `${column ? 'COLUMN' : 'FOOTING'} FORMWORK — SHORT DESIGN CALCULATION`,
     chain: `ไม้อัด → คร่าว → คานคู่ → ${column ? (x.columnTies ? 'Tie + ชุดรัดเสา' : 'ชุดรัดเสา') : 'Tie'}`,
     info: [['ขนาด', `${x.width} × ${x.length} mm`], ['ความสูงเท', `${n(x.height / 1000)} m`], ['รูปทรง', x.shape === 'L' ? 'รูป L' : 'สี่เหลี่ยม'], ['แบบอ้างอิง', 'FW-01 ถึง FW-04']],
     standards: [STD_ACI, STD_APA, STD_STEEL, STD_BOOK(column ? 'บทที่ 9 (แบบหล่อเสา)' : 'บทที่ 2–5')],

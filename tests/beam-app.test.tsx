@@ -71,6 +71,13 @@ describe('beam workflow inside the app (offline)', () => {
     await act(async () => {button('แบบย่อ', document.querySelector('.report-tools')!).click(); await wait();});
     expect(document.body.textContent).toContain('รายการคำนวณแบบหล่อผนัง (แบบย่อ)');
     expect(document.body.textContent).toContain('การเลือกองค์อาคารควบคุม');
+    await act(async () => {button('English', document.querySelector('.report-tools')!).click(); await wait();});
+    expect(document.body.textContent).toContain('Wall formwork calculation (short)');
+    // Only user data (project / case / signer names in the header and signature blocks) may stay Thai.
+    const body = document.querySelector('.short-report')!.cloneNode(true) as HTMLElement;
+    body.querySelectorAll('.sr-head, .sr-sign').forEach(e => e.remove());
+    expect(body.textContent).not.toMatch(/[฀-๿]/);
+    await act(async () => {button('ไทย', document.querySelector('.report-tools')!).click(); await wait();});
     await act(async () => {button('พื้น', document.querySelector('.element-menu')!).click(); await wait();});
     await act(async () => {button('รายงาน PDF', document.querySelector('nav')!).click(); await wait();});
     expect(document.body.textContent).toContain('รายการคำนวณแบบหล่อพื้น (แบบย่อ)');
