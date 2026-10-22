@@ -34,6 +34,8 @@ export interface Input {
   tieGrade:'SD40'|'SR24'|'CUSTOM';tieFy:number;tieFu:number;
   tieOmegaYield:number;tieOmegaRupture:number;tieNetArea:number;tieAssemblySWL:number;
   columnModel:ColumnModel;yokeOmegaT:number;cornerCapacityX:number;cornerCapacityY:number;cornerRule:CornerRule;cornerReference:string;
+  /** Column only: true = through ties across the column at tieSpacing (with the yoke corners); false = external yoke only, no ties (default; older data). */
+  columnTies:boolean;
 }
 const APA_SOURCE='APA Concrete Forming Design/Construction Guide V345 (2012) Table 12–13 · ต้องยืนยันว่าแผ่นที่ใช้มีคุณสมบัติเทียบเท่า';
 export interface Check {id:string;label:string;demand:number|null;limit:number|null;unit:string;
@@ -67,7 +69,7 @@ export const pressureDefaults={pressureMethod:'HYDROSTATIC' as PressureMethod,po
 export const plywoodDefaults={plywoodGrade:'PLYFORM_I' as PlywoodGrade,plywoodSpans:'AUTO' as PlywoodSpans,plywoodFaceGrain:'ACROSS' as FaceGrain};
 export const defaults:Input={kind:'FOOTING',shape:'RECTANGLE',width:3000,length:4000,armX:1500,armY:2000,height:2500,
   gamma:24,confirmed:false,plywood:20,studSpacing:300,walerSpacing:600,tieSpacing:600,tieDiameter:16,
-  rhsB:50,rhsH:100,rhsT:3.2,plywoodE:4800,plywoodFb:5.3,steelFy:245,deflectionRatio:360,...extensionDefaults,walerSectionId:'',studSectionId:'',studTimberGrade:'TIMBER-BOOK-SOFT',...pressureDefaults,...plywoodDefaults};
+  rhsB:50,rhsH:100,rhsT:3.2,plywoodE:4800,plywoodFb:5.3,steelFy:245,deflectionRatio:360,...extensionDefaults,walerSectionId:'',studSectionId:'',studTimberGrade:'TIMBER-BOOK-SOFT',...pressureDefaults,...plywoodDefaults,columnTies:false};
 /** Older drafts gain explicit conservative defaults and lose confirmation; partial schemas reject. */
 export function upgradeInput(v:unknown,minimumVersion:1|2=1):Input {
   if(!v||typeof v!=='object')throw Error('ข้อมูลไม่ถูกต้อง');
@@ -81,13 +83,13 @@ export function validateInput(v:unknown):Input {
   // walerSectionId was added later: older inputs without it mean 'no catalogue section'.
   // Catalogue fields were added later: older inputs without them mean 'no catalogue section' and the conservative timber class.
   const r0=v as Record<string,unknown>,q:Record<string,unknown>={...r0,walerSectionId:r0.walerSectionId??'',studSectionId:r0.studSectionId??'',studTimberGrade:r0.studTimberGrade??'TIMBER-BOOK-SOFT',
-    ...Object.fromEntries(Object.entries(pressureDefaults).map(([k,d])=>[k,r0[k]??d])),plywoodGrade:r0.plywoodGrade??'CUSTOM',plywoodSpans:r0.plywoodSpans??'SINGLE',plywoodFaceGrain:r0.plywoodFaceGrain??'PARALLEL'};
+    ...Object.fromEntries(Object.entries(pressureDefaults).map(([k,d])=>[k,r0[k]??d])),plywoodGrade:r0.plywoodGrade??'CUSTOM',plywoodSpans:r0.plywoodSpans??'SINGLE',plywoodFaceGrain:r0.plywoodFaceGrain??'PARALLEL',columnTies:r0.columnTies??false};
   const keys=Object.keys(defaults) as (keyof Input)[];
   if(Object.keys(q).some(k=>!keys.includes(k as keyof Input)))throw Error('มีช่องข้อมูลที่ไม่รองรับ');
-  if(!['FOOTING','COLUMN'].includes(String(q.kind))||!['RECTANGLE','L'].includes(String(q.shape))||typeof q.confirmed!=='boolean')throw Error('ชนิดหรือสถานะรูปทรงไม่ถูกต้อง');
+  if(!['FOOTING','COLUMN'].includes(String(q.kind))||!['RECTANGLE','L'].includes(String(q.shape))||typeof q.confirmed!=='boolean'||typeof q.columnTies!=='boolean')throw Error('ชนิดหรือสถานะรูปทรงไม่ถูกต้อง');
   if(!['RHS','C','L','CHS'].includes(String(q.walerType))||!['SD40','SR24','CUSTOM'].includes(String(q.tieGrade)))throw Error('ชนิดคานหรือเกรด Tie ไม่ถูกต้อง');
   if(!['DEMAND_ONLY','PINNED_RING'].includes(String(q.columnModel))||!['UNKNOWN','LINEAR'].includes(String(q.cornerRule))||typeof q.cornerReference!=='string'||q.cornerReference.length>300)throw Error('ข้อมูลโมเดลหรือแหล่งอ้างอิงชุดรัดไม่ถูกต้อง');
-  for(const k of keys.filter(k=>!['kind','shape','confirmed','walerType','tieGrade','tieNetArea','tieAssemblySWL','columnModel','cornerRule','cornerReference','cornerCapacityX','cornerCapacityY','walerSectionId','studSectionId','studTimberGrade','pressureMethod','plywoodGrade','plywoodSpans','plywoodFaceGrain'].includes(k))) {
+  for(const k of keys.filter(k=>!['kind','shape','confirmed','walerType','tieGrade','tieNetArea','tieAssemblySWL','columnModel','cornerRule','cornerReference','cornerCapacityX','cornerCapacityY','walerSectionId','studSectionId','studTimberGrade','pressureMethod','plywoodGrade','plywoodSpans','plywoodFaceGrain','columnTies'].includes(k))) {
     if(typeof q[k]!=='number'||!Number.isFinite(q[k])||Number(q[k])<=0)throw Error('ค่าต้องเป็นจำนวนบวก: '+k);
   }
   for(const k of ['tieNetArea','tieAssemblySWL','cornerCapacityX','cornerCapacityY'])if(typeof q[k]!=='number'||!Number.isFinite(q[k])||Number(q[k])<0)throw Error('ค่าต้องไม่ติดลบ: '+k);
@@ -120,6 +122,8 @@ export function validateInput(v:unknown):Input {
   equalPositions(x.height,x.walerSpacing);equalPositions(Math.max(x.width,x.length),x.studSpacing);equalPositions(Math.max(x.width,x.length),x.tieSpacing);
   return Object.fromEntries(keys.map(k=>[k,x[k]])) as unknown as Input;
 }
+/** Through ties across the concrete: always for footings, optional for columns. */
+export const usesTies=(x:Pick<Input,'kind'|'columnTies'>)=>x.kind==='FOOTING'||x.columnTies===true;
 export function polygon(x:Input):Point[] {
   if(x.shape==='RECTANGLE')return [{x:0,y:0},{x:x.width,y:0},{x:x.width,y:x.length},{x:0,y:x.length}];
   return [{x:0,y:0},{x:x.width,y:0},{x:x.width,y:x.armY},{x:x.armX,y:x.armY},{x:x.armX,y:x.length},{x:0,y:x.length}];
@@ -175,7 +179,7 @@ export function segmentInside(a:Point,b:Point,ps:Point[]):boolean {
 export function calculate(raw:unknown):Result {
   const x=validateInput(raw),points=polygon(x),g=geometry(points),pressureModel=lateralPressure(x),p=pressureModel.pmax,pressureMPa=p/1000;
   const faceForcePerM=pressureModel.forcePerM;
-  const routing=x.kind==='FOOTING'?tieRoutes(points,x.tieSpacing):null;
+  const routing=usesTies(x)?tieRoutes(points,x.tieSpacing):null;
   const catalogue=x.walerSectionId?sectionById(x.walerSectionId)!:null,catalogueSection=catalogue?catalogueProperties(catalogue):undefined;
   const faces=points.map((a,i)=>{
     const b=points[(i+1)%points.length],length=Math.hypot(b.x-a.x,b.y-a.y);
@@ -266,11 +270,12 @@ export function calculate(raw:unknown):Result {
     ...(tie&&x.tieNetArea===0?['ยังไม่ได้กำหนด Ae ของหน้าตัดสุทธิ/เกลียว']:[]),
     ...(tie&&x.tieAssemblySWL===0?['ยังไม่ได้กำหนด certified SWL ของชุด Tie rod']:[]),
     ...(unequalTies?['แรงที่สองปลาย Tie ไม่เท่ากัน (ด้านตรงข้ามยาวไม่เท่ากัน) ใช้ค่ามากเป็นแรงออกแบบ ต้องตรวจสมดุลและการเลื่อนของคานคู่']:[]),
-    ...(x.kind==='FOOTING'&&!tie?['ไม่มีจุด Tie ภายในด้านตามระยะที่เลือก แรงทั้งหมดไปจุดรองรับมุม']:[]),
+    ...(usesTies(x)&&!tie?['ไม่มีจุด Tie ภายในด้านตามระยะที่เลือก แรงทั้งหมดไปจุดรองรับมุม']:[]),
     ...(timber?['คร่าวไม้ '+studName+' ใช้ค่าหน่วยแรงที่ยอมให้จากหนังสือเดิม ('+grade.label+') ต้องยืนยันชนิดไม้ ขนาดจริง และความชื้นก่อนใช้งาน']:[]),
     ...(x.walerType==='L'?['คานคู่เหล็กฉาก '+(catalogue?.designation??'')+': หน้าตัดไม่สมมาตร ใช้ S ต่ำสุดรอบแกนเรขาคณิต ยังไม่ตรวจการดัดรอบแกนหลัก การบิด และ LTB']:[]),
     ...(x.walerType==='CHS'?['คานคู่ท่อกลม '+(catalogue?.designation??'')+': ต้องออกแบบจุดรับ Tie/แผ่นรองบนผิวโค้งและการบดของผนังท่อ']:[]),
     ...(x.walerType==='C'?[catalogue?'คานคู่ '+catalogue.designation+' ใช้ค่า A/Ix/Zx gross จากแคตตาล็อก ('+catalogue.source+') ไม่ใช่ effective section: ต้องตรวจ local/distortional buckling, shear centre/torsion, LTB และการประกบหลังชนหลัง':'หน้าตัด C เป็นแบบไม่มีปีกริมสมมติ ต้องตรวจ lips, shear center, torsion และ lateral-torsional buckling']:[]),
+    ...(x.kind==='COLUMN'&&x.columnTies?['เสาใช้ Tie ทะลุเสา: ต้องเว้นช่องเหล็กเสริม ระบุปลอก/ท่อร้อย Tie และอุดรูหลังถอดแบบ · มุมชุดรัดยังรับแรงที่ปลายคานคู่']:[]),
     ...(x.kind==='COLUMN'?['ชุดรัดเสายังไม่ตรวจจุดต่อครบ เสถียรภาพในระนาบ/นอกระนาบ และผลแรงเยื้องศูนย์',
       ...(x.shape!=='RECTANGLE'?['การคำนวณมุมชุดรัดเสารองรับเฉพาะรูปสี่เหลี่ยมในรุ่นนี้']:[]),
       ...(x.columnModel==='DEMAND_ONLY'?['ยังไม่เลือกสมมติฐานการส่งแรงแกนของชุดรัดวงปิด']:['โมเดล PINNED_RING เป็นสมดุลแรงอันดับหนึ่งเท่านั้น วงสี่ pin ไม่ถือว่าเสถียรโดยอัตโนมัติ']),
@@ -278,7 +283,7 @@ export function calculate(raw:unknown):Result {
       ...(x.cornerRule==='UNKNOWN'?['ยังไม่กำหนดเกณฑ์ Interaction ของจุดต่อมุมสองแกน']:[]),
       ...(!x.cornerReference.trim()?['ยังไม่มีข้อความอ้างอิงข้อมูลชุดจุดต่อมุม']:[])
     ]:[]),
-    ...(x.shape==='L'?[x.kind==='FOOTING'?'รูป L: Tie คำนวณเป็นเส้นตรงระหว่างด้านตรงข้ามแยกตามช่วง มุมเว้าและจุดต่อคานคู่ยังต้องออกแบบรายละเอียด':'มุมเว้าและระบบ Yoke ของรูป L ต้องมีวิธีคำนวณจุดต่อที่ตรวจสอบแล้ว']:[])
+    ...(x.shape==='L'?[usesTies(x)?'รูป L: Tie คำนวณเป็นเส้นตรงระหว่างด้านตรงข้ามแยกตามช่วง มุมเว้าและจุดต่อคานคู่ยังต้องออกแบบรายละเอียด':'มุมเว้าและระบบ Yoke ของรูป L ต้องมีวิธีคำนวณจุดต่อที่ตรวจสอบแล้ว']:[])
   ];
   return {engineVersion:'0.3.0-screening',input:x,points,faces,area:g.area/1e6,perimeter:g.perimeter/1000,
     volume:g.area/1e6*x.height/1000,formArea:g.perimeter*x.height/1e6,pressure:p,forceScalar:faces.reduce((s,f)=>s+f.force,0),

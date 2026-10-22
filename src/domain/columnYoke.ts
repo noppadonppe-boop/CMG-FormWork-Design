@@ -26,16 +26,17 @@ export function analyzeColumnYoke(faces:Pick<Face,'id'|'a'|'b'|'normal'>[],waler
   const tangent=faces.map(f=>{const L=Math.hypot(f.b.x-f.a.x,f.b.y-f.a.y);return {x:(f.b.x-f.a.x)/L,y:(f.b.y-f.a.y)/L};});
   const rows=faces.map((f,i)=>{
     const prev=faces[(i+3)%4],t=tangent[i],tp=tangent[(i+3)%4],wf=waler.faces.find(q=>q.faceId===f.id);
-    if(!wf||[f.a.x,f.a.y,f.b.x,f.b.y,f.normal.x,f.normal.y].some(v=>!Number.isFinite(v))||wf.supports.length!==2||wf.supports.some(s=>s.role!=='CORNER'||!Number.isFinite(s.position))||
+    if(!wf||[f.a.x,f.a.y,f.b.x,f.b.y,f.normal.x,f.normal.y].some(v=>!Number.isFinite(v))||wf.supports.length<2||wf.supports[0].role!=='CORNER'||wf.supports.at(-1)!.role!=='CORNER'||wf.supports.slice(1,-1).some(s=>s.role!=='TIE')||wf.supports.some(s=>!Number.isFinite(s.position))||
       Math.hypot(prev.b.x-f.a.x,prev.b.y-f.a.y)>1e-6||
       !Number.isFinite(t.x)||!Number.isFinite(t.y)||Math.abs(t.x*tp.x+t.y*tp.y)>1e-8||
       Math.abs(f.normal.x-t.y)>1e-8||Math.abs(f.normal.y+t.x)>1e-8||
-      Math.abs(wf.supports[0].position)>1e-6||Math.abs(wf.supports[1].position-Math.hypot(f.b.x-f.a.x,f.b.y-f.a.y))>1e-6||
-      wf.supports.some(s=>!Number.isFinite(s.force)||s.force<0))throw Error('Column yoke requires a closed CCW rectangle with two corner supports per face');
+      Math.abs(wf.supports[0].position)>1e-6||Math.abs(wf.supports.at(-1)!.position-Math.hypot(f.b.x-f.a.x,f.b.y-f.a.y))>1e-6||
+      wf.supports.some(s=>!Number.isFinite(s.force)||s.force<0))throw Error('Column yoke requires a closed CCW rectangle with corner supports at both ends of each face (through-tie supports allowed in between)');
     return wf;
   });
   const corners=faces.map((f,i):CornerDemand=>{
-    const j=(i+3)%4,p=faces[j],current=rows[i].supports[0].force,previous=rows[j].supports[1].force;
+    // Corners carry the end reactions only; optional through ties take the interior supports.
+    const j=(i+3)%4,p=faces[j],current=rows[i].supports[0].force,previous=rows[j].supports.at(-1)!.force;
     const x=current*f.normal.x+previous*p.normal.x,y=current*f.normal.y+previous*p.normal.y;
     // Q + Ni ti - Nj tj = 0 for perpendicular pin-ended side members.
     const Ni=-(x*tangent[i].x+y*tangent[i].y),Nj=x*tangent[j].x+y*tangent[j].y;

@@ -51,7 +51,7 @@ export interface WorkflowModel {
 export function fromLegacy(raw: Input, id: string): WorkflowModel {
   const input = validateInput(raw);
   return {schemaVersion: '0.7.0', id, revisionId: 'DRAFT-1', elementType: input.kind, vertices: polygon(input), heightMm: input.height,
-    humanInputReviewed: false, sourceRef: null, designBasisRef: null, sideTopology: input.kind === 'COLUMN' ? 'COLUMN_YOKE' : input.shape === 'RECTANGLE' ? 'THROUGH_TIE' : null,
+    humanInputReviewed: false, sourceRef: null, designBasisRef: null, sideTopology: input.kind === 'COLUMN' ? (input.columnTies && input.shape === 'RECTANGLE' ? 'THROUGH_TIE' : 'COLUMN_YOKE') : input.shape === 'RECTANGLE' ? 'THROUGH_TIE' : null,
     gammaKNm3: input.gamma, slabThicknessMm: null, beamWidthMm: null, concreteStripMm: null, deadStripMm: null, liveStripMm: null,
     additionalDeadKPa: null, constructionLiveKPa: null, selections: {section: null, material: null, ringlock: null},
     checkCatalogue: null, actions: [], members: [], requiredChecks: [], representatives: [], coverage: [], ringlock: null, ringlockRating: null, soffitLayout: null, ringlockResearch: null, sideLayout: null, frameLayout: null, closureInputs: [],

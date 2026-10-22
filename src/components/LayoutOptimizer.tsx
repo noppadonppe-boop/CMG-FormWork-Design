@@ -1,7 +1,7 @@
 import {useMemo, useState} from 'react';
 import {CheckCircle2, Wand2} from 'lucide-react';
-import type {Input} from '../domain';
-import {adviseLayout, optimizeLayout} from '../domain/optimize';
+import {usesTies, type Input} from '../domain';
+import {adviseLayout, currentOption, optimizeLayout} from '../domain/optimize';
 import {FAMILY_LABEL, SECTION_STOCK, stockFor} from '../domain/sectionStock';
 
 const TARGETS = [1, 0.95, 0.9, 0.85];
@@ -16,11 +16,17 @@ export function AdviceList({input, target = 1, stockIds}: {input: Input; target?
 }
 
 /** Part 2: search plywood / spacing / tie Ø and (optionally) stocked stud/waler sections that keep every screening ratio within the target. */
-export function LayoutOptimizer({input, canApply, onApply, stockIds, canEditStock = false, onStockChange}: {input: Input; canApply: boolean; onApply: (next: Input, note: string) => void;
-  stockIds?: string[]; canEditStock?: boolean; onStockChange?: (ids: string[] | undefined) => void}) {
+export function LayoutOptimizer({input, canApply, onApply, stockIds, canEditStock = false, onStockChange, readOnly = false, onConfirm, onOpenGeometry}: {input: Input; canApply: boolean; onApply: (next: Input, note: string) => void;
+  stockIds?: string[]; canEditStock?: boolean; onStockChange?: (ids: string[] | undefined) => void;
+  /** Why apply is blocked: read-only project, or dimensions not yet confirmed (confirm here after checking them, or open the geometry page). */
+  readOnly?: boolean; onConfirm?: () => void; onOpenGeometry?: () => void}) {
+  const blocked = readOnly ? 'โครงการนี้เป็นสิทธิ์ดูอย่างเดียว จึงใช้ทางเลือกไม่ได้' : !input.confirmed ? 'ยังไม่ได้ยืนยันรูปทรงและมิติของ Design Case นี้ ปุ่ม “ใช้ทางเลือกนี้” จึงยังกดไม่ได้' : null;
+  const dims = `${usesTies(input) ? 'ฐานราก' : 'เสา'} ${input.shape === 'L' ? 'รูปตัว L ' : ''}${input.width.toLocaleString('en-US')} × ${input.length.toLocaleString('en-US')} mm · ${usesTies(input) ? 'ลึก' : 'สูง'} ${input.height.toLocaleString('en-US')} mm${input.shape === 'L' ? ` · แขน ${input.armX} / ${input.armY}` : ''}`;
   const [target, setTarget] = useState(1), [useSections, setUseSections] = useState(true);
   const stock = useMemo(() => useSections ? stockFor(stockIds) : [], [useSections, stockIds]);
   const options = useMemo(() => optimizeLayout(input, target, stock), [input, target, stock]);
+  // The user's own choice (manual fields, section picker or 3D model) is always listed with the same recalculated figures.
+  const mine = useMemo(() => {try {return currentOption(input);} catch (e) {return (e as Error).message;}}, [input]);
   const selected = new Set(stockIds ?? SECTION_STOCK.map(s => s.id));
   const toggle = (id: string) => {const next = new Set(selected); if (next.has(id)) next.delete(id); else next.add(id); onStockChange?.(SECTION_STOCK.filter(s => next.has(s.id)).map(s => s.id));};
   return <section className="card optimizer">
@@ -36,20 +42,34 @@ export function LayoutOptimizer({input, canApply, onApply, stockIds, canEditStoc
     <h4>รายการที่เกินเกณฑ์ตอนนี้และวิธีแก้</h4>
     <AdviceList input={input} target={target} stockIds={useSections ? stockIds : []}/>
     <h4>ทางเลือกที่คำนวณซ้ำแล้ว</h4>
-    {!options.length ? <div className="warning">ไม่พบทางเลือก · ลองอนุญาตให้เปลี่ยนหน้าตัด เพิ่มหน้าตัดในคลัง หรือลดเป้าอัตราส่วน</div> :
-      <div className="table-scroll"><table aria-label="ทางเลือกการจัดวาง">
+    <p className="muted optimizer-howto">วิธีใช้: แต่ละแถวคือชุดไม้อัด คร่าว คานคู่ และ Tie ที่คำนวณซ้ำครบทุกรายการแล้ว · Ratio สูงสุด ≤ เป้า (สีเขียว) = ไม่มีรายการเกินเกณฑ์ · กด “ใช้ทางเลือกนี้” เพื่อแทนค่าในหน้านี้ จากนั้นรายการคำนวณ แบบ รายงาน และโมเดล 3D จะอัปเดตตาม (ย้อนกลับได้จากประวัติการแก้ไข) · แถว “ค่าปัจจุบัน” คือค่าที่ใช้อยู่</p>
+    {blocked && <div className="warning optimizer-blocked" role="alert"><b>{blocked}</b>
+      {!readOnly && <><br/>มิติปัจจุบัน: {dims} · ตรวจกับแบบต้นฉบับแล้วกดยืนยัน
+        <div className="source-actions">{onConfirm && <button className="btn" onClick={onConfirm}>ตรวจแล้ว ยืนยันมิติ</button>}{onOpenGeometry && <button className="btn secondary" onClick={onOpenGeometry}>ไปหน้ารูปทรงและมิติ</button>}</div></>}</div>}
+    {!options.length && <div className="warning">ไม่พบทางเลือก · ลองอนุญาตให้เปลี่ยนหน้าตัด เพิ่มหน้าตัดในคลัง หรือลดเป้าอัตราส่วน</div>}
+    {<div className="table-scroll"><table aria-label="ทางเลือกการจัดวาง">
         <thead><tr><th>ทางเลือก</th><th>ไม้อัด</th><th>คร่าว</th><th>คานคู่</th><th>Tie @ / Ø</th><th>Ratio สูงสุด</th><th>เหล็ก (kg) · ชิ้น</th><th/></tr></thead>
         <tbody>{options.map(o => <tr key={o.label}>
           <td><b>{o.label}</b><small className="help">ควบคุม: {o.governing}</small></td>
           <td>{o.input.plywood} mm</td>
           <td>{o.studSection}<small className="help">@ {o.input.studSpacing}</small></td>
           <td>{o.walerSection}<small className="help">@ {o.input.walerSpacing}</small></td>
-          <td>{input.kind === 'FOOTING' ? `${o.input.tieSpacing} / Ø${o.input.tieDiameter}` : '—'}</td>
+          <td>{usesTies(input) ? `${o.input.tieSpacing} / Ø${o.input.tieDiameter}` : '—'}</td>
           <td><span className={'pill ' + (o.passes ? 'approved' : 'red')}>{fmt(o.maxRatio)}</span></td>
           <td>{o.steelKg.toLocaleString('en-US')}<small className="help">คร่าว {o.quantities.studs} · คานคู่ {o.quantities.walers} · Tie {o.quantities.ties} · ไม้อัด {o.quantities.plywoodSheets} แผ่น</small></td>
-          <td><button className="btn" disabled={!canApply || !Object.keys(o.changes).length} onClick={() => onApply(o.input, 'ปรับอัตโนมัติ · ' + o.label.replace('แนะนำ · เหล็กเบาที่สุด · ', '') + ` · ${o.studSection} / ${o.walerSection}`)}>{Object.keys(o.changes).length ? 'ใช้ทางเลือกนี้' : 'ค่าปัจจุบัน'}</button></td>
-        </tr>)}</tbody>
+          <td><button className="btn" disabled={!canApply || !Object.keys(o.changes).length} title={blocked ?? undefined} onClick={() => onApply(o.input, 'ปรับอัตโนมัติ · ' + o.label.replace('แนะนำ · เหล็กเบาที่สุด · ', '') + ` · ${o.studSection} / ${o.walerSection}`)}>{Object.keys(o.changes).length ? 'ใช้ทางเลือกนี้' : 'ค่าปัจจุบัน'}</button></td>
+        </tr>)}
+        {typeof mine === 'string' ? <tr className="optimizer-mine"><td colSpan={8}><b>ค่าที่เลือกอยู่ (โมเดล 3D / แก้ไขด้วยตนเอง)</b> · คำนวณไม่ได้: {mine}</td></tr>
+          : <tr className="optimizer-mine" aria-label="ค่าที่เลือกอยู่">
+          <td><b>ค่าที่เลือกอยู่</b><small className="help">จากโมเดล 3D / แก้ไขขนาด·ระยะด้วยตนเอง · ควบคุม: {mine.governing}</small></td>
+          <td>{mine.input.plywood} mm</td>
+          <td>{mine.studSection}<small className="help">@ {mine.input.studSpacing}</small></td>
+          <td>{mine.walerSection}<small className="help">@ {mine.input.walerSpacing}</small></td>
+          <td>{usesTies(input) ? `${mine.input.tieSpacing} / Ø${mine.input.tieDiameter}` : '—'}</td>
+          <td><span className={'pill ' + (mine.passes && mine.maxRatio <= target ? 'approved' : 'red')}>{fmt(mine.maxRatio)}</span>{mine.maxRatio > target && <small className="help">เกินเป้า {target.toFixed(2)} · เลือกแถวด้านบนหรือแก้ค่า</small>}</td>
+          <td>{mine.steelKg.toLocaleString('en-US')}<small className="help">คร่าว {mine.quantities.studs} · คานคู่ {mine.quantities.walers} · Tie {mine.quantities.ties} · ไม้อัด {mine.quantities.plywoodSheets} แผ่น</small></td>
+          <td><span className="pill optimizer-current">ใช้อยู่</span></td>
+        </tr>}</tbody>
       </table></div>}
-    {!canApply && <p className="notice">ยืนยันรูปทรงและมิติก่อน จึงเลือกทางเลือกได้</p>}
   </section>;
 }

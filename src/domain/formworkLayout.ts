@@ -94,6 +94,7 @@ export function buildFormworkLayout(r: Result): FormworkLayout {
     ...(x.shape === 'L' ? [throughTies ? 'มุมเว้ารูป L: Tie เป็นเส้นตรงแยกตามช่วง ยังไม่ได้ออกแบบรายละเอียดมุมและจุดต่อคานคู่' : 'มุมเว้ารูป L: ยังไม่ได้ออกแบบรายละเอียดมุม'] : []),
     ...(r.tieRoutes.some(t => t.axis === 'X') && r.tieRoutes.some(t => t.axis === 'Y') ? ['Tie แนว X และ Y อยู่ระดับเดียวกัน ต้องกำหนดระยะเยื้องระดับจริงก่อนติดตั้ง'] : []),
     ...(x.kind === 'COLUMN' ? ['ชุดรัดเสา: จุดต่อมุมและเสถียรภาพยังไม่ได้ตรวจ'] : []),
+    ...(x.kind === 'COLUMN' && throughTies ? ['เสาใช้ Tie ทะลุเสา: เว้นช่องเหล็กเสริม ใส่ปลอก/ท่อร้อย Tie และอุดรูหลังถอดแบบ'] : []),
   ];
   return {kind: x.kind, shape: x.shape, points: r.points, width: x.width, length: x.length, height: H, armX: x.armX, armY: x.armY,
     plywood: {t: x.plywood, sheetW: sheet.w, sheetH: sheet.h}, stud, waler, tie: throughTies ? {d: x.tieDiameter, label: `Ø${x.tieDiameter} ${x.tieGrade}`} : null,

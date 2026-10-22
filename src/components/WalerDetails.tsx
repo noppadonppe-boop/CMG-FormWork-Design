@@ -24,7 +24,7 @@ export function WalerDetails({r,report=false}:{r:Result;report?:boolean}){
   return <section className={report?'waler-report':'card waler-details'}>
     <h3>เส้นทางแรงของคานคู่ / Tie rod</h3>
     <p className="muted">แรงดันเต็มความสูง pmax → คร่าว → แรงจุดเข้าสู่คานคู่ → จุด Tie ภายใน / จุดรองรับมุม แยกกัน โมเดลคานเป็นช่วงอิสระรองรับสองปลาย</p>
-    <div className="load-chain"><span>Plywood (胶合板)</span><span>RHS stud (方管竖楞)</span><span>Twin waler (双背楞)</span><span>{r.input.kind==='COLUMN'?'Corner / yoke (柱箍角部)':'Tie rod (对拉螺杆)'}</span></div>
+    <div className="load-chain"><span>Plywood (胶合板)</span><span>RHS stud (方管竖楞)</span><span>Twin waler (双背楞)</span><span>{r.input.kind==='COLUMN'?(r.input.columnTies?'Tie rod + corner yoke (对拉螺杆 + 柱箍)':'Corner / yoke (柱箍角部)'):'Tie rod (对拉螺杆)'}</span></div>
     <div className="form-grid"><div><b>การแบ่งแรงคานคู่</b><p>ตัวที่รับมาก α = {w.share} ({f(w.share*100,0)}%)<br/>ตัวอีกด้าน 1 − α = {f(1-w.share,2)}<br/>ไม่ใช้การรวม I ของคานสองตัวเป็นหน้าตัดเดียว</p></div><div><b>หน้าตัดคานหนึ่งตัว · มุมคมสมมติ</b><p>{r.input.walerType} {r.input.walerB} × {r.input.walerH} × {r.input.walerT} mm<br/>I = {f(w.section.I,0)} mm⁴ · S = {f(w.section.S,0)} mm³<br/>Av = {f(w.section.shearArea)} mm²</p></div></div>
     {!report&&<div className="face-buttons" aria-label="เลือกด้านคาน">{w.faces.map(q=><button key={q.faceId} className={face.faceId===q.faceId?'btn':'btn secondary'} onClick={()=>setSelected(q.faceId)}>{q.faceId}</button>)}</div>}
     <BayDiagram r={r} bay={report?w.bending:bay}/>

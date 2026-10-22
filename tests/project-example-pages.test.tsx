@@ -41,8 +41,8 @@ it('fills the geometry and layout pages of every Project Example case, including
   document.body.innerHTML='<div id="root"></div>';
   await act(async()=>{await import('../src/main');});
   const select=()=>document.querySelector('.case-selector select') as HTMLSelectElement;
-  expect(document.querySelector('.sidebar-bottom small')?.textContent).toBe('v1.0 · Engineering screening');
-  expect(document.querySelector('.app-footer')?.textContent).toContain('v1.0 · Engineering screening');
+  expect(document.querySelector('.sidebar-bottom small')?.textContent).toBe('v1.1 · Engineering screening');
+  expect(document.querySelector('.app-footer')?.textContent).toContain('v1.1 · Engineering screening');
   // Main work in design order, then the reference group.
   const menu=[...document.querySelectorAll('aside nav button, aside nav .nav-group-label')].map(e=>e.textContent?.trim());
   expect(menu).toEqual(['งานหลัก (ทำตามลำดับ)','ภาพรวม','รับแบบและ AI','รูปทรงและมิติ','Design Criteria','จัดวางเบื้องต้น','รายการคำนวณ','แปลนและรูปตัด','รายงาน PDF','Review & Issue',

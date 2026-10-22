@@ -1,7 +1,7 @@
 import type {Input} from '../domain';
 /** A labelled section arrangement only: connection, gap, plate and nut sizes are not designed. */
 export function AssemblyDetail({x}:{x:Input}){
-  if(x.kind==='COLUMN')return <svg viewBox="0 0 650 390" className="assembly-detail" role="img" aria-label="แนวชุดรัดเสาและจุดต่อมุม แบบร่าง">
+  if(x.kind==='COLUMN'&&!x.columnTies)return <svg viewBox="0 0 650 390" className="assembly-detail" role="img" aria-label="แนวชุดรัดเสาและจุดต่อมุม แบบร่าง">
     <text x="24" y="28" fontSize="13" fill="#173e62">COLUMN YOKE · SCHEMATIC / NTS</text>
     <rect x="220" y="90" width="190" height="190" fill="#eef3f5" stroke="#b9854c" strokeWidth="6"/>
     {[110,155,200,245].map(d=><g key={d}><rect x="208" y={d} width="8" height="8" fill="#3c6688"/><rect x="414" y={d} width="8" height="8" fill="#3c6688"/><rect x={d+115} y="77" width="8" height="8" fill="#3c6688"/><rect x={d+115} y="286" width="8" height="8" fill="#3c6688"/></g>)}

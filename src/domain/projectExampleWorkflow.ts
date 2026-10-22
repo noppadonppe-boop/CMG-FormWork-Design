@@ -1,12 +1,12 @@
-import type {Input} from './index.js';
-import {beamFromCase, type BeamInput} from './beam.js';
+import {calculate, type Input} from './index.js';
+import {beamFromCase, calculateBeam, type BeamInput} from './beam.js';
 import type {SlabInput} from './slab.js';
-import type {WallInput} from './wall.js';
+import {calculateWall, type WallInput} from './wall.js';
 import {sectionById} from './sectionStock.js';
 import {references} from '../workflowV07References.js';
 import {selectReference} from './workflowV07/catalogues.js';
 import {canonical, WORKFLOW_VERSION, type ElementType} from './workflowV07/common.js';
-import {fromLegacy, regenerateDraftLayouts, type WorkflowModel} from './workflowV07/model.js';
+import {fromLegacy, previewSingleWorkflow, regenerateDraftLayouts, type WorkflowModel} from './workflowV07/model.js';
 import {createStoredWorkflowDraft, type StoredWorkflowDraft} from './workflowV07/storage.js';
 import {buildSoffitCandidate, type MemberStiffness} from './workflowV07/soffit.js';
 import {pairFaces} from './workflowV07/geometry.js';
@@ -30,7 +30,6 @@ export const EXAMPLE_PENDING = 'ยังไม่มีหลักฐานส
 const stageId = 'EX-POUR-01', loadCaseId = 'EX-SERVICE-01';
 const scope = {stageId, loadCaseId};
 const sectionSource = 'PAP-TIS107-2026 · src/domain/sectionStock.ts · Ix(cm4) × 10000; kg/m × 9.80665/1000';
-const plywoodSource = 'UPM007CPR 2026-01-01 · PLY-UPM007-18 · Eb0_mean · gross 18 mm · reference only';
 const basis = 'ACI PRC-347-14(21) §4.2.1 · SERVICE · SYNTHETIC teaching case, no wind/placement study';
 const grid = (length: number, spacing: number) => {const n = Math.ceil(length / spacing); return Array.from({length: n + 1}, (_, i) => i * length / n);};
 const row = (id: string) => {
@@ -52,46 +51,99 @@ function member(id: string): MemberStiffness {
 const studId = 'PAP-TIS107-SHS-50x50x2.3', bearerId = 'PAP-TIS107-RHS-100x50x3.2';
 export interface ExampleContext {beam?: BeamInput; slab?: SlabInput; wall?: WallInput; projectId?:string}
 
-function side(model: WorkflowModel): SideLayoutDefinition {
+/** Arrangement values of the example draft, taken from the case inputs (geometry, Design Criteria, layout pages and the 3D model)
+ * so the detailed v0.7 draft always shows the same sizes and spacings as the practical/legacy screens. */
+interface ExampleLayout {
+  plywood: number; studId: string; railId: string; studSpacing: number; walerZ: number[] | null; tieSpacing: number; tieDiameter: number;
+  joistId: string; bearerId: string; joistSpacing: number; shoreSpacing: number; bearerSpacing: number | null;
+}
+/** A catalogue steel section with a mass (the v0.7 member binding needs E, I and self-weight); otherwise the example default. */
+const steelId = (id: string | undefined, fallback: string) => {const s = id ? sectionById(id) : undefined; return s && s.kg_per_m !== null && s.family !== 'TIMBER' ? s.id : fallback;};
+const DEFAULT_LAYOUT: ExampleLayout = {plywood: 18, studId, railId: bearerId, studSpacing: 300, walerZ: null, tieSpacing: 0, tieDiameter: 16,
+  joistId: studId, bearerId, joistSpacing: 300, shoreSpacing: 2000, bearerSpacing: null};
+function exampleLayout(input: Input, elementType: ElementType, context: ExampleContext): ExampleLayout {
+  const base = DEFAULT_LAYOUT;
+  const attempt = <T,>(f: () => T) => {try {return f();} catch {return null;}};
+  if (elementType === 'WALL' && context.wall) {
+    const w = context.wall, r = attempt(() => calculateWall(w));
+    return {...base, plywood: w.plywood, studId: steelId(w.studSectionId, studId), railId: steelId(w.walerSectionId, bearerId), studSpacing: w.studSpacing,
+      walerZ: r?.levels ?? null, tieSpacing: w.system === 'TWO_SIDED' ? w.tieSpacing : 0, tieDiameter: w.tieDiameter};
+  }
+  if (elementType === 'BEAM' && context.beam) {
+    const b = context.beam, r = b.tieRows > 0 ? attempt(() => calculateBeam(b)) : null;
+    return {...base, plywood: b.plywood, studId: steelId(b.studSectionId, studId), railId: steelId(b.walerSectionId, bearerId), studSpacing: b.studSpacing,
+      walerZ: r?.tieLevels.length ? r.tieLevels : null, tieSpacing: b.tieRows > 0 ? b.tieSpacing : 0, tieDiameter: b.tieDiameter,
+      joistId: steelId(b.joistSectionId, studId), bearerId: steelId(b.bearerSectionId, bearerId), joistSpacing: b.joistSpacing, shoreSpacing: b.shoreSpacing};
+  }
+  if (elementType === 'SLAB' && context.slab) {
+    const s = context.slab;
+    return {...base, plywood: s.plywood, joistId: steelId(s.joistSectionId, studId), bearerId: steelId(s.bearerSectionId, bearerId),
+      joistSpacing: s.joistSpacing, shoreSpacing: s.shoreSpacing, bearerSpacing: s.bearerSpacing};
+  }
+  if (elementType === 'FOOTING' || elementType === 'COLUMN') {
+    const r = attempt(() => calculate(input)), H = input.height, gap = input.tieDiameter + 6, wB = input.walerB;
+    // Same waler levels as the screened layout and its 3D scene (depth below the top, kept clear of the base and top).
+    const z = r?.waler.levels.map(l => Math.min(Math.max(H - l.depth, gap / 2 + wB), H - gap / 2 - wB)) ?? null;
+    return {...base, plywood: input.plywood, studId: steelId(input.studSectionId, studId), railId: steelId(input.walerSectionId, bearerId), studSpacing: input.studSpacing,
+      walerZ: z && z.length ? z : null, tieSpacing: elementType === 'FOOTING' || input.columnTies ? input.tieSpacing : 0, tieDiameter: input.tieDiameter};
+  }
+  return base;
+}
+/** Interior tie stations along a paired face: equal bays not exceeding the tie spacing (at least one tie). */
+const tieFractions = (length: number, spacing: number) => {
+  if (!(spacing > 0)) return [0.25, 0.75];
+  const n = Math.max(2, Math.ceil(length / spacing));
+  return Array.from({length: n - 1}, (_, i) => Math.round((i + 1) / n * 10000) / 10000);
+};
+const plywoodRef = (t: number) => `UPM007CPR 2026-01-01 · PLY-UPM007-18 · Eb0_mean · gross ${t} mm from the case input · reference only`;
+
+function side(model: WorkflowModel, L: ExampleLayout): SideLayoutDefinition {
   const topology = pairFaces(model.vertices, model.heightMm);
   const tied = model.sideTopology === 'THROUGH_TIE';
   const definition: SideLayoutDefinition = {schemaVersion: '1', ...scope, evidenceRef: EXAMPLE_GEOMETRY,
-    pourHeadMm: model.heightMm, baseElevationMm: model.soffitLayout ? model.soffitLayout.headNodeElevationMm! + 168 : 0,
+    pourHeadMm: model.heightMm, baseElevationMm: model.soffitLayout ? model.soffitLayout.headNodeElevationMm! + stackHeight(L) : 0,
     rebarClearanceEvidence: null, faces: [], ties: []};
   const plywood = row('PLY-UPM007-18');
+  const fractions = new Map(topology.pairs.map(p => [p.id, tieFractions(p.endMm - p.startMm, L.tieSpacing)]));
+  // Waler levels from the screened layout when available (measured up from the side-form base), otherwise the tutorial 15 % / 85 %.
+  const levels = (L.walerZ ?? [0.15, 0.85].map(f => model.heightMm * f)).filter(z => z > 0 && z < model.heightMm);
+  const walerIds = (levels.length ? levels : [0.15, 0.85].map(f => model.heightMm * f)).map((_, i) => `W${i + 1}`);
   for (const face of topology.faces) {
     const vertical = face.a.x === face.b.x;
     const positions = tied ? topology.pairs.filter(p => p.faceAId === face.id || p.faceBId === face.id).flatMap(p =>
-      [0.25, 0.75].map(f => ({pair: p.id, coordinate: p.startMm + (p.endMm - p.startMm) * f, fraction: f}))) : [];
+      fractions.get(p.id)!.map(f => ({pair: p.id, coordinate: p.startMm + (p.endMm - p.startMm) * f, fraction: f}))) : [];
     const supports = tied ? positions.map(p => ({id: `${p.pair}-${p.fraction}`, xMm: Math.abs(p.coordinate - (vertical ? face.a.y : face.a.x))})).sort((a,b) => a.xMm-b.xMm)
       : [{id: 'S1', xMm: face.lengthMm / 4}, {id: 'S2', xMm: 3 * face.lengthMm / 4}];
-    const {selfWeightKNPerM: _j, ...stud} = member(studId), {selfWeightKNPerM: _r, ...rail} = member(bearerId);
-    definition.faces.push({faceId: face.id, evidenceRef: EXAMPLE_GEOMETRY, studPositionsMm: grid(face.lengthMm, 300),
-      walers: [0.15, 0.85].map((f,i) => ({id: `W${i+1}`, zMm: model.heightMm * f + (vertical && tied ? 20 : 0), supports})),
-      stud, rail, plywood: {thicknessMm: 18, effectiveE_MPa: property(plywood, 'Eb0_mean_MPa'), grainAxis: 'ALONG_FACE', jointsAtEveryStud: true, evidenceRef: plywoodSource},
+    const {selfWeightKNPerM: _j, ...stud} = member(L.studId), {selfWeightKNPerM: _r, ...rail} = member(L.railId);
+    definition.faces.push({faceId: face.id, evidenceRef: EXAMPLE_GEOMETRY, studPositionsMm: grid(face.lengthMm, L.studSpacing),
+      walers: walerIds.map((id, i) => ({id, zMm: Math.min(model.heightMm - 1, (levels[i] ?? model.heightMm * (i ? 0.85 : 0.15)) + (vertical && tied ? 20 : 0)), supports})),
+      stud, rail, plywood: {thicknessMm: L.plywood, effectiveE_MPa: property(plywood, 'Eb0_mean_MPa'), grainAxis: 'ALONG_FACE', jointsAtEveryStud: true, evidenceRef: plywoodRef(L.plywood)},
       heavierRailShare: 0.5, sharingEvidence: `${EXAMPLE_GEOMETRY} · assumed equal twin-rail sharing, contact unverified`});
   }
-  if (tied) for (const p of topology.pairs) for (const walerId of ['W1','W2']) for (const fraction of [0.25,0.75]) {
+  if (tied) for (const p of topology.pairs) for (const walerId of walerIds) for (const fraction of fractions.get(p.id)!) {
     const supportId = `${p.id}-${fraction}`;
-    definition.ties.push({id: `${p.id}-${walerId}-${fraction}`, a:{faceId:p.faceAId,walerId,supportId}, b:{faceId:p.faceBId,walerId,supportId},diameterMm:16,assembly:null});
+    definition.ties.push({id: `${p.id}-${walerId}-${fraction}`, a:{faceId:p.faceAId,walerId,supportId}, b:{faceId:p.faceBId,walerId,supportId},diameterMm:L.tieDiameter,assembly:null});
   }
   return definition;
 }
+/** Plywood + joist + bearer depth between the U-head bearing surface and the soffit (168 mm for the default 18 / 50 / 100 stack). */
+const stackHeight = (L: ExampleLayout) => L.plywood + sectionById(L.joistId)!.H + sectionById(L.bearerId)!.H;
 
-function soffit(model: WorkflowModel, context: ExampleContext): WorkflowModel {
+function soffit(model: WorkflowModel, context: ExampleContext, L: ExampleLayout): WorkflowModel {
   const x = Math.max(...model.vertices.map(p=>p.x)), y = Math.max(...model.vertices.map(p=>p.y));
   const b = context.beam;
   const left = b?.slabLeft ?? 0, right = b?.slabRight ?? 0;
   const start = -left, end = y + right;
-  const height = (b?.soffitHeight ?? context.slab?.soffitHeight ?? 3000) - 168;
-  const heads = grid(x, 2000), bearerYs = grid(end-start, 2000).map(v=>v+start);
+  const height = (b?.soffitHeight ?? context.slab?.soffitHeight ?? 3000) - stackHeight(L);
+  // Shore heads and joists follow the page spacings; slab bearer lines follow the bearer spacing (beam bearer lines keep the example grid).
+  const heads = grid(x, L.shoreSpacing), bearerYs = grid(end-start, L.bearerSpacing ?? 2000).map(v=>v+start);
   const ply = row('PLY-UPM007-18');
   model.soffitLayout = {schemaVersion:'1',...scope,ownershipId:`${model.id}-DECK`,evidenceRef:EXAMPLE_GEOMETRY,
-    joistXMm:grid(x,300),joistStartYMm:start,joistEndYMm:end,bearerStartXMm:-75,bearerEndXMm:x+75,
+    joistXMm:grid(x,L.joistSpacing),joistStartYMm:start,joistEndYMm:end,bearerStartXMm:-75,bearerEndXMm:x+75,
     bearers:bearerYs.map((yMm,i)=>({id:`B${i+1}`,yMm,headsXMm:heads})),headNodeElevationMm:height,baseElevationMm:0,
-    concreteStripStartYMm:start,deadStripStartYMm:start,liveStripStartYMm:start,joist:member(studId),bearer:member(bearerId),
-    plywood:{schemaVersion:'1',thicknessMm:18,effectiveE_MPa:property(ply,'Eb0_mean_MPa'),grainAxis:'X',jointsAtEveryJoist:true,evidenceRef:plywoodSource,
-      startYMm:start,endYMm:end,selfWeightKPa:property(ply,'density_mean_kg_m3')*0.018*9.80665/1000,selfWeightOwnership:'SEPARATE_ACTION',selfWeightEvidenceRef:`${plywoodSource} · density × thickness × g`}};
+    concreteStripStartYMm:start,deadStripStartYMm:start,liveStripStartYMm:start,joist:member(L.joistId),bearer:member(L.bearerId),
+    plywood:{schemaVersion:'1',thicknessMm:L.plywood,effectiveE_MPa:property(ply,'Eb0_mean_MPa'),grainAxis:'X',jointsAtEveryJoist:true,evidenceRef:plywoodRef(L.plywood),
+      startYMm:start,endYMm:end,selfWeightKPa:property(ply,'density_mean_kg_m3')*L.plywood/1000*9.80665/1000,selfWeightOwnership:'SEPARATE_ACTION',selfWeightEvidenceRef:`${plywoodRef(L.plywood)} · density × thickness × g`}};
   model.ringlock = {...selectRinglockPlan(null),manufacturer:'CUSTOM — example geometry, supplier not selected',systemId:'EX-CUSTOM',configurationId:'EX-CUSTOM-GEOMETRY',ratingId:null,
     bayXMm:heads[1]-heads[0],bayYMm:bearerYs[1]-bearerYs[0],totalHeightMm:height,liftHeightsMm:[height-300],
     headExtensionMm:150,baseExtensionMm:150,headEngagementMm:100,baseEngagementMm:100,
@@ -104,19 +156,20 @@ function soffit(model: WorkflowModel, context: ExampleContext): WorkflowModel {
   return {...model,members:candidate.members,actions:candidate.actions,requiredChecks:candidate.requiredChecks,ringlock:candidate.ringlock};
 }
 
-function assembly(model: WorkflowModel) {
+function assembly(model: WorkflowModel, L: ExampleLayout) {
+  const joist = sectionById(L.joistId)!, bearer = sectionById(L.bearerId)!;
   const a = captureRinglockAssembly(model);
   a.evidenceRef=EXAMPLE_GEOMETRY;a.headDatum='U_HEAD_BEARING_SURFACE';a.headDatumEvidenceRef=EXAMPLE_GEOMETRY;
   for (const l of a.legs) {
-    l.toleranceMm=1;l.soffitElevationMm=l.headBearingElevationMm+168;l.soleBoard={thicknessMm:0,evidenceRef:`${EXAMPLE_GEOMETRY} · direct support, no sole board`};
-    l.upperStack={bearerDepthMm:100,joistDepthMm:50,plywoodThicknessMm:18,evidenceRef:sectionSource};
+    l.toleranceMm=1;l.soffitElevationMm=l.headBearingElevationMm+stackHeight(L);l.soleBoard={thicknessMm:0,evidenceRef:`${EXAMPLE_GEOMETRY} · direct support, no sole board`};
+    l.upperStack={bearerDepthMm:bearer.H,joistDepthMm:joist.H,plywoodThicknessMm:L.plywood,evidenceRef:sectionSource};
     for (const j of [l.baseJack,l.headJack]) Object.assign(j,{productRef:'CUSTOM-EXAMPLE-JACK',nominalLengthMm:250,installedHeightMm:150,extensionMm:150,engagementMm:100,
       geometryEvidenceRef:EXAMPLE_GEOMETRY,limitEvidenceRef:EXAMPLE_PENDING});
     l.standards=[{id:'STD1',productRef:'CUSTOM-EXAMPLE-TUBE',nominalLengthMm:l.headBearingElevationMm-300,installedRiseMm:l.headBearingElevationMm-300,datumEvidenceRef:EXAMPLE_GEOMETRY}];
     l.headBearing={...emptyHeadBearing(),productRef:'CUSTOM-EXAMPLE-JACK',geometryEvidenceRef:EXAMPLE_GEOMETRY,layout:'SINGLE_FLAT_BEARER',
       seatCenterMm:[l.xMm,l.yMm,l.headBearingElevationMm],seatLocalX:[1,0],plateLengthMm:150,plateWidthMm:150,plateThicknessMm:6,
-      cavityOffsetYMm:0,insideClearWidthMm:100,minimumSideClearanceMm:5,bearerWidthMm:50,bearerDepthMm:100,bearerCenterOffsetYMm:0,bearerGeometryEvidenceRef:sectionSource,
-      contactCenterMm:[l.xMm,l.yMm,l.headBearingElevationMm],contactLengthMm:150,contactWidthMm:50,sideBlocking:'NONE',sideBlockingEvidenceRef:`${EXAMPLE_GEOMETRY} · no lateral blocking credited`,
+      cavityOffsetYMm:0,insideClearWidthMm:Math.max(100,bearer.B+10),minimumSideClearanceMm:5,bearerWidthMm:bearer.B,bearerDepthMm:bearer.H,bearerCenterOffsetYMm:0,bearerGeometryEvidenceRef:sectionSource,
+      contactCenterMm:[l.xMm,l.yMm,l.headBearingElevationMm],contactLengthMm:150,contactWidthMm:bearer.B,sideBlocking:'NONE',sideBlockingEvidenceRef:`${EXAMPLE_GEOMETRY} · no lateral blocking credited`,
       pressureModel:'RIGID_HORIZONTAL_RECTANGLE_AFFINE_COMPRESSION_ONLY',pressureModelEvidenceRef:`${EXAMPLE_GEOMETRY} · conditional rigid contact; plate strength unverified`};
   }
   return stampRinglockAssembly(model,a);
@@ -179,11 +232,11 @@ function sideFrame(model: WorkflowModel): FrameLayoutDefinition {
   return f;
 }
 
-export function projectExampleWorkflowDraft(input:Input,elementType:ElementType,caseId:string,context:ExampleContext={}):StoredWorkflowDraft {
+function buildExampleDraft(input:Input,elementType:ElementType,caseId:string,context:ExampleContext,L:ExampleLayout):StoredWorkflowDraft {
   const base=fromLegacy(input,caseId), vertical=elementType==='BEAM'||elementType==='SLAB';
   const s=references.sections.find(r=>r.section_id==='PAP-2026-CLIP-100x50x20x3.2')!;
   let m:WorkflowModel={...base,revisionId:PROJECT_EXAMPLE_REVISION,elementType,humanInputReviewed:false,sourceRef:EXAMPLE_GEOMETRY,designBasisRef:basis,
-    sideTopology:elementType==='SLAB'?null:elementType==='COLUMN'?'COLUMN_YOKE':context.wall?.system==='SINGLE_SIDED'?'GROUND_BRACED':'THROUGH_TIE',
+    sideTopology:elementType==='SLAB'?null:elementType==='COLUMN'?(input.columnTies?'THROUGH_TIE':'COLUMN_YOKE'):context.wall?.system==='SINGLE_SIDED'?'GROUND_BRACED':'THROUGH_TIE',
     slabThicknessMm:elementType==='SLAB'?input.height:elementType==='BEAM'?(context.beam?.slabT??0):null,
     beamWidthMm:elementType==='BEAM'?input.length:null,
     concreteStripMm:elementType==='BEAM'?input.length+(context.beam?.slabLeft??0)+(context.beam?.slabRight??0):null,
@@ -192,9 +245,9 @@ export function projectExampleWorkflowDraft(input:Input,elementType:ElementType,
     selections:{section:selectReference(s,'PAP-2026'),material:selectReference(row('STEEL-SSCS400'),'materials@0.5.0'),ringlock:null},
     checkCatalogue:{version:'0.7',specifications:references.checks.map(r=>({id:String(r.check_id),group:String(r.group),description:String(r.description),appliesTo:String(r.applicable_to)}))}};
   if(elementType==='BEAM')m.deadStripMm=m.liveStripMm=m.concreteStripMm;
-  if(vertical)m=soffit(m,context);
-  if(elementType!=='SLAB')m.sideLayout=stampSideLayout(m,side(m));
-  if(vertical){m.ringlockAssembly=assembly(m);m.frameLayout=stampFrameLayout(m,frame(m));}
+  if(vertical)m=soffit(m,context,L);
+  if(elementType!=='SLAB')m.sideLayout=stampSideLayout(m,side(m,L));
+  if(vertical){m.ringlockAssembly=assembly(m,L);m.frameLayout=stampFrameLayout(m,frame(m));}
   else if(m.sideTopology==='COLUMN_YOKE'||m.sideTopology==='GROUND_BRACED')m.frameLayout=stampFrameLayout(m,sideFrame(m));
   if(m.frameLayout?.nodes.some(n=>n.role==='BASE')){
     m.supportLayout=stampSupportLayout(m,{schemaVersion:'1',...scope,evidenceRef:EXAMPLE_GEOMETRY,bases:m.frameLayout.nodes.filter(n=>n.role==='BASE').map((n,i)=>({
@@ -278,4 +331,40 @@ export function upgradeProjectExampleCase<T extends {id:string;name:string;input
     return {...c,workflowV07:createStoredWorkflowDraft(updated,c.input),review:undefined};
   }
   return canonical(c.workflowV07??null)===canonical(workflowV07)?c:{...c,workflowV07};
+}
+
+/**
+ * Example v0.7 draft built from the case inputs. The detailed model has hard size limits (frame nodes/elements, tie dossiers,
+ * draft size), so the page arrangement is used in full when it fits; otherwise waler levels, tie stations and the shore grid fall
+ * back to the simplified tutorial arrangement while plywood, sections, stud/joist spacing and tie diameter still follow the page.
+ */
+export function projectExampleWorkflowDraft(input:Input,elementType:ElementType,caseId:string,context:ExampleContext={}):StoredWorkflowDraft {
+  const full=exampleLayout(input,elementType,context);
+  const reduced:ExampleLayout={...full,walerZ:null,tieSpacing:0,shoreSpacing:DEFAULT_LAYOUT.shoreSpacing,bearerSpacing:null};
+  const materials:ExampleLayout={...reduced,studSpacing:DEFAULT_LAYOUT.studSpacing,joistSpacing:DEFAULT_LAYOUT.joistSpacing};
+  let last:unknown;
+  const sideOnly:ExampleLayout={...full,walerZ:null,tieSpacing:0},shoresOnly:ExampleLayout={...full,shoreSpacing:DEFAULT_LAYOUT.shoreSpacing,bearerSpacing:null};
+  // Cheap size estimate first, so layouts that must exceed the v0.7 limits are not built at all.
+  const base=fromLegacy(input,caseId),topology=pairFaces(base.vertices,base.heightMm),xs=base.vertices.map(p=>p.x),ys=base.vertices.map(p=>p.y);
+  const bays=(len:number,s:number)=>Math.ceil(len/s-1e-9)+1;
+  const fits=(L:ExampleLayout)=>{
+    const vertical=elementType==='BEAM'||elementType==='SLAB';
+    const legs=vertical?bays(Math.max(...xs)-Math.min(...xs),L.shoreSpacing)*(L.bearerSpacing?bays(Math.max(...ys)-Math.min(...ys),L.bearerSpacing):2):0;
+    const levels=L.walerZ?.length??2,ties=L.tieSpacing>0?levels*topology.pairs.reduce((n,p)=>n+tieFractions(p.endMm-p.startMm,L.tieSpacing).length,0):levels*2*topology.pairs.length;
+    return legs<=(elementType==='BEAM'?10:16)&&ties<=36;
+  };
+  const candidates=[full,sideOnly,shoresOnly,reduced,materials].filter(fits);
+  // Only arrangements that differ from the tutorial counts (waler levels, tie stations, shore grid) need the acceptance preview.
+  const changesCounts=(L:ExampleLayout)=>L.walerZ!==null||L.tieSpacing>0||L.shoreSpacing!==DEFAULT_LAYOUT.shoreSpacing||L.bearerSpacing!==null;
+  for(const L of candidates){try{const d=buildExampleDraft(input,elementType,caseId,context,L);if(!changesCounts(L)||analysable(d.model))return d;last=Error('Example layout not analysable');}catch(e){last=e;}}
+  try{return buildExampleDraft(input,elementType,caseId,context,DEFAULT_LAYOUT);}catch{throw last;}
+}
+/** Acceptance of a candidate layout (single-stage preview, the fast part of the example test): side, soffit and frame analyses are available. */
+function analysable(m:WorkflowModel){
+  const p=previewSingleWorkflow(m);
+  if(m.frameLayout&&!p.frame?.analysis)return false;
+  if(m.elementType!=='SLAB'&&(!p.side||p.side.faces.length!==p.topology.faces.length||p.blockers.some(b=>/UNSUPPORTED_TIE_PATH|TIE_COLLISION|STALE_SIDE_LAYOUT/.test(b))))return false;
+  if(m.soffitLayout&&(!p.loadPath||p.blockers.some(b=>/ACTUAL_HEAD_SPACING_DIFFERS|STALE|MAPPING_STALE|GLOBAL_LOAD_BALANCE_FAILED|GLOBAL_MOMENT_BALANCE_FAILED/.test(b))
+    ||!p.assembly?.rows.every(r=>r.geometryReady)||!p.headBearings?.rows.every(r=>r.geometryReady)))return false;
+  return true;
 }

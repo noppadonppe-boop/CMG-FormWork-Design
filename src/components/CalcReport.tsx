@@ -1,5 +1,5 @@
 import {useMemo, type ReactNode} from 'react';
-import type {Check, Result} from '../domain';
+import {usesTies, type Check, type Result} from '../domain';
 import {buildFormworkLayout} from '../domain/formworkLayout';
 import {buildScene} from '../domain/scene';
 import {adviseLayout} from '../domain/optimize';
@@ -81,7 +81,7 @@ export function CalcReport({r, project, code, caseName, caseId, titleBlock: tb, 
     ['ไม้อัด (Plywood)', r.checks.filter(c => c.id.startsWith('ply-')), <Fig key="f" no={4} w={150} h={68} caption={`แบบจำลองไม้อัดแถบกว้าง 1 m พาดระหว่างคร่าว @ ${x.studSpacing} mm (${r.plywoodDesign.spans === 1 ? 'ช่วงเดี่ยว' : `ต่อเนื่อง ${r.plywoodDesign.spans} ช่วง ตาม APA V345`}; แสดงหนึ่งช่วง) · แรงดันที่รับได้ ${n(r.plywoodDesign.allowablePressure, 1)} kPa`}><BeamDiagram L={x.studSpacing} w={r.pressure} title="ไม้อัดแถบ 1 m"/></Fig>],
     ['คร่าว (Stud)', r.checks.filter(c => c.id.startsWith('stud-')), <Fig key="f" no={5} w={150} h={68} caption={`แบบจำลองคร่าวพาดระหว่างคานคู่ ช่วงจริง ${n(r.waler.verticalSpan, 0)} mm`}><BeamDiagram L={r.waler.verticalSpan} w={r.pressure / 1000 * x.studSpacing} title={`คร่าว ${L.stud.label}`}/></Fig>],
     ['คานคู่ (Twin waler)', r.checks.filter(c => c.id.startsWith('waler-')), <WalerDetails key="w" r={r} report/>],
-    [x.kind === 'COLUMN' ? 'ชุดรัดเสา (Column yoke)' : 'Tie rod', r.checks.filter(c => c.id.startsWith('tie') || c.id.startsWith('column-')), x.kind === 'COLUMN' ? <ColumnYokeDetails key="c" r={r} report/> : null],
+    [x.kind === 'COLUMN' ? (x.columnTies ? 'Tie rod + ชุดรัดเสา (Column yoke)' : 'ชุดรัดเสา (Column yoke)') : 'Tie rod', r.checks.filter(c => c.id.startsWith('tie') || c.id.startsWith('column-')), x.kind === 'COLUMN' ? <ColumnYokeDetails key="c" r={r} report/> : null],
   ];
   const fails = r.checks.filter(c => c.status === 'FAIL');
   return <article className="calc-report">
@@ -115,7 +115,7 @@ export function CalcReport({r, project, code, caseName, caseId, titleBlock: tb, 
         <tr><td>ไม้อัด t / E,eq / Fb,eq{r.plywood.Fs !== null ? ' / Fs' : ''}</td><td>{x.plywood} mm / {n(r.plywood.E, 0)} MPa / {n(r.plywood.Fb)} MPa{r.plywood.Fs !== null ? ` / ${n(r.plywood.Fs, 3)} MPa` : ''} · {PLYWOOD_GRADE_LABEL[r.plywood.grade]}</td><td>{r.plywood.grade === 'CUSTOM' ? 'ผู้ใช้กำหนด ต้องมีใบรับรอง' : 'APA V345 ตาราง 12–13'}</td></tr>
         <tr><td>คร่าว</td><td>{L.stud.label}{L.stud.material === 'TIMBER' ? '' : ` · Fy ${x.steelFy} MPa · E ${x.steelE} MPa`}</td><td>{L.stud.material === 'TIMBER' ? 'ว.ส.ท. (หนังสือ ตาราง 3.4)' : 'มอก. / AISC 360 ต้องยืนยันใบรับรอง'}</td></tr>
         <tr><td>คานคู่</td><td>{L.waler.label} · α = {x.pairShare}</td><td>ค่าหน้าตัดจากแคตตาล็อก ต้องยืนยันใบรับรอง</td></tr>
-        {x.kind === 'FOOTING' && <tr><td>Tie rod</td><td>Ø{x.tieDiameter} {x.tieGrade} · Fy {x.tieFy} / Fu {x.tieFu} MPa · Ae {x.tieNetArea || '—'} mm² · SWL {x.tieAssemblySWL || '—'} kN</td><td>{x.tieNetArea && x.tieAssemblySWL ? 'ผู้ใช้กำหนด' : 'ยังไม่ครบ'}</td></tr>}
+        {usesTies(x) && <tr><td>Tie rod</td><td>Ø{x.tieDiameter} {x.tieGrade} · Fy {x.tieFy} / Fu {x.tieFu} MPa · Ae {x.tieNetArea || '—'} mm² · SWL {x.tieAssemblySWL || '—'} kN</td><td>{x.tieNetArea && x.tieAssemblySWL ? 'ผู้ใช้กำหนด' : 'ยังไม่ครบ'}</td></tr>}
         <tr><td>ตัวหารกำลัง Ωb / Ωv</td><td>{x.steelOmegaB} / {x.steelOmegaShear}</td><td>เกณฑ์คัดกรอง</td></tr>
         <tr><td>เกณฑ์การโก่ง</td><td>L/{x.deflectionRatio}</td><td>เกณฑ์โครงการ</td></tr>
       </tbody></table></section>
@@ -127,7 +127,7 @@ export function CalcReport({r, project, code, caseName, caseId, titleBlock: tb, 
       </div>
       <table className="rp-tab"><thead><tr><th>ด้าน</th><th>ความยาว (mm)</th><th>คร่าว (ตัว)</th><th>Tie ต่อระดับ</th><th>แรงดันรวมต่อด้าน (kN)</th></tr></thead>
         <tbody>{L.faces.map((f, i) => <tr key={f.id}><td>{f.id}</td><td>{n(f.length, 0)}</td><td>{f.studs.length}</td><td>{f.ties.length || '—'}</td><td>{n(r.faces[i].force)}</td></tr>)}</tbody></table>
-      <p>ระยะคร่าวสูงสุด {x.studSpacing} mm · ระยะคานคู่สูงสุด {x.walerSpacing} mm ({L.levels.length} ระดับ, ช่วงพาดคร่าวจริง {n(r.waler.verticalSpan, 0)} mm){x.kind === 'FOOTING' ? ` · ระยะ Tie สูงสุด ${x.tieSpacing} mm` : ''} · ระยะเท่ากันไม่เกินค่าที่กำหนด</p></section>
+      <p>ระยะคร่าวสูงสุด {x.studSpacing} mm · ระยะคานคู่สูงสุด {x.walerSpacing} mm ({L.levels.length} ระดับ, ช่วงพาดคร่าวจริง {n(r.waler.verticalSpan, 0)} mm){usesTies(x) ? ` · ระยะ Tie สูงสุด ${x.tieSpacing} mm` : ''} · ระยะเท่ากันไม่เกินค่าที่กำหนด</p></section>
 
     <section className="rp-sec"><h2>3. {SECTIONS[2]}</h2>
       <p>{pm.method === 'ACI347' ? <>ตาม {ACI_REFERENCE}: ตาราง 4.2.2.1b เลือกสมการจากค่ายุบตัว ความลึกการจี้ ชนิดองค์อาคาร (เสา = ไม่มีด้านใดเกิน 2 m) ความสูง และอัตราการเท แรงดันเพิ่มแบบของเหลวจนถึง CCPmax แล้วคงที่ (รูปที่ 4.2.2)</> : <>ใช้แรงดันแบบของเหลว p = ρgh ตลอดความสูงเท ซึ่ง ACI PRC-347-14(21) §4.2.2 กำหนดให้ใช้เมื่อไม่เข้าเงื่อนไขของสมการลดแรงดัน หรือยังไม่ทราบอัตราการเท อุณหภูมิ และส่วนผสม</>}</p>
@@ -158,7 +158,7 @@ export function CalcReport({r, project, code, caseName, caseId, titleBlock: tb, 
       <table className="rp-tab"><thead><tr><th>เลขที่แบบ</th><th>ชื่อแบบ</th><th>ขนาด</th></tr></thead><tbody>
         {[['FW-01', 'แปลนแบบหล่อ'], ['FW-02', 'รูปตัดและรูปด้าน'], ['FW-03', 'รายละเอียดขยายและภาพ 3 มิติ'], ['FW-04', 'ตารางวัสดุและข้อมูลออกแบบ']].map(([a, b]) => <tr key={a}><td>{a}</td><td>{b}</td><td>A3</td></tr>)}</tbody></table>
       <div className="rp-two">
-        <Fig no={6} w={150} h={96} caption={x.kind === 'COLUMN' ? 'รายละเอียดคานคู่ชุดรัด (FW-03)' : 'รายละเอียดชุด Tie rod (FW-03)'}><TieDetail L={L} box={{x: 0, y: 0, w: 150, h: 96}} titled={false}/></Fig>
+        <Fig no={6} w={150} h={96} caption={x.kind === 'COLUMN' && !x.columnTies ? 'รายละเอียดคานคู่ชุดรัด (FW-03)' : 'รายละเอียดชุด Tie rod (FW-03)'}><TieDetail L={L} box={{x: 0, y: 0, w: 150, h: 96}} titled={false}/></Fig>
         <Fig no={7} w={150} h={96} caption="รายละเอียดมุมแบบหล่อ (FW-03)"><CornerDetail L={L} box={{x: 0, y: 0, w: 150, h: 96}} titled={false}/></Fig>
       </div></section>
 

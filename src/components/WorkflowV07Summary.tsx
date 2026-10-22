@@ -1,5 +1,6 @@
 import type {WorkflowModel} from '../domain/workflowV07/model';
 import {level, memberName, spacing} from '../drawing/workflowInstallation';
+import {rowMatches, type LayoutCompareRow} from '../domain/draftCompare';
 
 const f = (n: number | null | undefined, d = 0) => n == null || !Number.isFinite(n) ? 'ไม่ระบุ' : n.toLocaleString('en-US', {maximumFractionDigits: d});
 const TOPOLOGY: Record<string, string> = {THROUGH_TIE: 'Tie ทะลุ', SEGMENTED_TIE: 'Tie แบบแยกชิ้น (Inner/Outer)', COLUMN_YOKE: 'วงรัดเสาภายนอก', GROUND_BRACED: 'ค้ำยันลงพื้น (ด้านเดียว)'};
@@ -13,7 +14,8 @@ export function draftExtents(m: WorkflowModel) {
 }
 
 /** Read-only view of every stored v0.7 draft field relevant to the page, so geometry/layout pages show all existing data of the case. */
-export function WorkflowV07Summary({model: m, mode, compare = [], onOpen}: {model: WorkflowModel; mode: 'geometry' | 'layout'; compare?: DimensionCompare[]; onOpen?: () => void}) {
+export function WorkflowV07Summary({model: m, mode, compare = [], layoutRows = [], sync, onOpen}: {model: WorkflowModel; mode: 'geometry' | 'layout'; compare?: DimensionCompare[];
+  layoutRows?: LayoutCompareRow[]; sync?: 'auto' | 'authored' | null; onOpen?: () => void}) {
   const e = draftExtents(m), side = m.sideLayout, soffit = m.soffitLayout, legs = m.ringlockAssembly?.legs ?? [], leg = legs[0];
   const mismatched = compare.filter(c => c.page != null && c.draft != null && Math.abs(c.page - c.draft) > 0.5);
   const rows: [string, string][] = mode === 'geometry' ? [
@@ -54,6 +56,13 @@ export function WorkflowV07Summary({model: m, mode, compare = [], onOpen}: {mode
       const status = c.page == null && c.draft == null ? 'ไม่มีทั้งสองฝั่ง' : !both ? 'มีข้อมูลฝั่งเดียว' : ok ? 'ตรงกัน' : 'ไม่ตรงกัน';
       return <tr key={c.label}><td>{c.label}</td><td>{f(c.page)}</td><td>{f(c.draft)}</td><td className={ok || !both ? 'pass' : 'warn'}>{status}</td></tr>;
     })}</tbody></table>}
+    {sync === 'auto' && <p className="notice">ร่างตัวอย่างนี้ปรับตามค่าในหน้ารูปทรง/จัดวาง และโมเดล 3D อัตโนมัติ</p>}
+    {sync === 'authored' && <p className="notice">ร่างนี้แก้ไขเองในโหมดละเอียด จึงไม่ปรับตามค่าหน้านี้อัตโนมัติ · ตรวจรายการที่ไม่ตรงกันด้านล่าง</p>}
+    {layoutRows.length > 0 && <table className="v07-layout-compare"><thead><tr><th>การจัดวาง</th><th>หน้านี้ / 3D</th><th>ร่าง v0.7</th><th>สถานะ</th></tr></thead><tbody>{layoutRows.map(row => {
+      const ok = rowMatches(row), text = ok ? 'ตรงกัน' : row.simplified ? 'v0.7 จัดวางแบบย่อ' : 'ไม่ตรงกัน';
+      return <tr key={row.label}><td>{row.label}</td><td>{row.page ?? '—'}</td><td>{row.draft ?? '—'}</td><td className={ok ? 'pass' : row.simplified ? 'muted' : 'warn'}>{text}</td></tr>;
+    })}</tbody></table>}
+    {layoutRows.some(row => !rowMatches(row) && row.simplified) && <p className="muted">แบบย่อ: โมเดลละเอียด v0.7 จำกัดขนาด (เฟรมค้ำยัน ≤ 80 จุด / 240 ชิ้น, ชุดข้อมูล Tie และขนาดร่าง) จึงใช้จำนวนระดับคานคู่ ค้ำยัน หรือแนวคานรับแบบย่อ ส่วนไม้อัด หน้าตัด ระยะคร่าว และ Tie Ø ยังตามค่าหน้านี้</p>}
     {mismatched.length > 0 && <div className="warning">มิติไม่ตรงกับร่าง v0.7: {mismatched.map(c => c.label).join(', ')} · ตรวจให้ตรงกันก่อนส่งงาน (ระบบไม่แก้ให้อัตโนมัติ)</div>}
     <table><tbody>{rows.map(([k, v]) => <tr key={k}><th>{k}</th><td>{v}</td></tr>)}</tbody></table>
   </section>;

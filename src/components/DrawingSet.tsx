@@ -60,7 +60,7 @@ const SHEETS: {code: string; title: string; draw: (c: Ctx) => ReactElement}[] = 
           {t: 'ยาวตัด (mm)', w: 22, a: 'end'}, {t: 'รวม', w: 44, a: 'end'}, {t: 'หมายเหตุ', w: 158}]}
         rows={L.bom.map((b, i) => [String(i + 1), b.item, b.spec, b.unit, b.qty === null ? '—' : b.qty.toLocaleString('en-US'), b.cutLength === null ? '—' : b.cutLength.toLocaleString('en-US'), b.total, b.remark])}/>
       <Table x={23} y={100} title="ข้อมูลออกแบบ (DESIGN DATA)" rh={5.4} s={2.1} cols={[{t: 'รายการ', w: 52}, {t: 'ค่า', w: 66}]} rows={[
-        ['องค์อาคาร / รูปทรง', `${x.kind === 'COLUMN' ? 'เสา' : 'ฐานราก'} / ${x.shape === 'L' ? 'รูป L' : 'สี่เหลี่ยม'}`],
+        ['องค์อาคาร / รูปทรง', `${x.kind === 'COLUMN' ? 'เสา' : 'ฐานราก'} / ${x.shape === 'L' ? 'รูป L' : 'สี่เหลี่ยม'}${x.kind === 'COLUMN' ? (x.columnTies ? ' · Tie ทะลุเสา + วงรัดมุม' : ' · วงรัดภายนอก ไม่ใช้ Tie') : ''}`],
         ['ขนาด กว้าง × ยาว × สูง', `${x.width} × ${x.length} × ${x.height} mm`],
         ['น้ำหนักคอนกรีต γ', `${x.gamma} kN/m³`], ['แรงดันสูงสุด pmax', `${n2(r.pressure, 1)} kPa`],
         ['ไม้อัด t / E / Fb', `${x.plywood} mm / ${x.plywoodE} / ${x.plywoodFb} MPa`], ['เหล็ก Fy / E', `${x.steelFy} / ${x.steelE} MPa`],

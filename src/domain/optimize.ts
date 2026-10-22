@@ -1,4 +1,4 @@
-import {calculate, type Check, type Input, type Result} from './index.js';
+import {calculate, usesTies, type Check, type Input, type Result} from './index.js';
 import {buildFormworkLayout, type FormworkLayout} from './formworkLayout.js';
 import {WALER_TYPE, catalogueProperties, sectionById, type StockSection} from './sectionStock.js';
 import {sectionProperties} from './mechanics.js';
@@ -61,7 +61,7 @@ function smallestTie(x: Input, target: number) {
   for (const d of TIE_DIAMETERS) {const r = tryCalc({...x, tieDiameter: d}); if (ok(r, ['tie'], target)) return d;}
   return null;
 }
-const throughTies = (x: Input) => x.kind === 'FOOTING';
+const throughTies = (x: Input) => usesTies(x);
 const withStud = (x: Input, s: Sec): Input => s.label === 'เดิม' ? x : {...x, studSectionId: s.id, rhsB: s.B, rhsH: s.H, ...(s.family === 'TIMBER' ? {} : {rhsT: s.t})};
 const withWaler = (x: Input, s: Sec): Input => s.label === 'เดิม' ? x
   : {...x, walerType: WALER_TYPE[s.family as keyof typeof WALER_TYPE], walerSectionId: s.id, walerB: s.B, walerH: s.H, walerT: s.t};
@@ -133,6 +133,9 @@ function option(name: string, base: Input, input: Input): OptimizeOption {
     studSection: input.studSectionId ? sectionById(input.studSectionId)!.designation : label({B: input.rhsB, H: input.rhsH, t: input.rhsT}), walerSection: '2-' + (input.walerSectionId ? sectionById(input.walerSectionId)!.designation : label({B: input.walerB, H: input.walerH, t: input.walerT}, input.walerType)),
     changes: Object.fromEntries(keys.filter(k => input[k] !== base[k]).map(k => [k, input[k]])) as Partial<LayoutChanges>};
 }
+
+/** The values the user has chosen (layout page, section picker or 3D model), evaluated exactly like an optimizer alternative. */
+export function currentOption(input: Input): OptimizeOption {return option('ค่าที่เลือกอยู่', input, input);}
 
 /**
  * Feasible layouts (one per plywood thickness), lightest estimated steel first.
