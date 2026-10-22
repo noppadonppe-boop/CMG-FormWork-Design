@@ -25,7 +25,7 @@ import {parseSectionStock} from './domain/sectionStock';
 import {SectionPicker} from './components/SectionPicker';
 import {DesignBook} from './components/DesignBook';
 import {PlywoodCriteria,PressureGuide,SteelGuide} from './components/CriteriaGuide';
-import {defaultTitleBlock,parseTitleBlock,type TitleBlock} from './domain/titleBlock';
+import {defaultTitleBlock,parseTitleBlock,today,type TitleBlock} from './domain/titleBlock';
 import {applyChanges,changesToInput,type ModelChange} from './domain/scene';
 import type {PreparedSource} from './sourceFiles';
 import {AuthProvider, ProfileMenu, navigate, useAuth, usePathname} from './auth';
@@ -58,7 +58,7 @@ import {Library,Package,ShoppingCart} from 'lucide-react';
 import {ProjectOrderPanel} from './components/ProjectOrder';
 import {parseOrder,type CaseOrder} from './domain/projectBom';
 import {ProjectKitPanel,KitBadge,KitSummaryCard} from './components/ProjectKit';
-import {applyKitToCase,caseKitStatus,kitFieldKeys,kitFromCase,kitNote as kitNoteText,parseKit,caseKitInput,type ProjectKit} from './domain/projectKit';
+import {applyKitToCase,caseKitStatus,kitFieldKeys,reviseKit,kitFromCase,kitNote as kitNoteText,parseKit,caseKitInput,type ProjectKit} from './domain/projectKit';
 import {auditCaseIdentities,suggestedElementTypeFromName} from './domain/caseIntegrity';
 import {ReconciliationPanel} from './components/ReconciliationPanel';
 import './style.css';
@@ -227,7 +227,7 @@ function App(){
  function setSlab(v:SlabInput){if(canEditCurrentProject)setProjects(ps=>ps.map(q=>q.id!==p.id?q:{...q,cases:q.cases.map(z=>z.id!==c.id?z:{...z,slab:v})}));}
  function setBeam(v:BeamInput){if(canEditCurrentProject)setProjects(ps=>ps.map(q=>q.id!==p.id?q:{...q,cases:q.cases.map(z=>z.id!==c.id?z:{...z,beam:v})}));}
  /** Project kit: save/remove, apply to one case or every case without an exception, record an exception reason. */
- function setKit(kit:ProjectKit|undefined){if(!canEditCurrentProject)return;setProjects(ps=>ps.map(q=>{if(q.id!==p.id)return q;const {kit:_old,...rest}=q;void _old;return kit?{...rest,kit}:rest;}));setMessage(kit?'บันทึกชุดมาตรฐาน '+kit.revision+' แล้ว':'ลบชุดมาตรฐานแล้ว · ค่าใน Design Case ไม่เปลี่ยน');}
+ function setKit(next:ProjectKit|undefined){if(!canEditCurrentProject)return;const kit=next&&reviseKit(p.kit,next,today());setProjects(ps=>ps.map(q=>{if(q.id!==p.id)return q;const {kit:_old,...rest}=q;void _old;return kit?{...rest,kit}:rest;}));setMessage(kit?'บันทึกชุดมาตรฐาน '+kit.revision+' แล้ว'+(p.kit&&kit.revision!==p.kit.revision?' (Rev เพิ่มจาก '+p.kit.revision+') · กด “ใช้ชุดกับทุก Design Case” เพื่อแทนค่า':''):'ลบชุดมาตรฐานแล้ว · ค่าใน Design Case ไม่เปลี่ยน');}
  function applyKitToCurrent(){if(!canEditCurrentProject||!p.kit)return;const {value,error}=applyKitToCase(c,p.kit);if(error){setMessage('ใช้ชุดมาตรฐานไม่ได้: '+error);return;}setProjects(ps=>ps.map(q=>q.id!==p.id?q:{...q,cases:q.cases.map(z=>z.id!==c.id?z:value)}));setMessage('ใช้ค่าชุดมาตรฐาน '+p.kit.revision+' กับ '+c.name+' แล้ว');}
  function applyKitToAll(){if(!canEditCurrentProject||!p.kit)return;const kit=p.kit,failed:string[]=[];let changed=0;
    const cases=p.cases.map(z=>{if(z.kitException?.trim()||caseKitStatus(z,kit).state==='ON')return z;const {value,error}=applyKitToCase(z,kit);if(error){failed.push(z.name+': '+error);return z;}changed++;return value;});
@@ -559,7 +559,7 @@ function App(){
  {tab==='review'&&<ReviewQueue rows={p.cases.map(z=>({caseId:z.id,name:z.name,elementType:z.workflowElementType??z.input.kind,record:z.review??null,integrityIssues:caseAudit.byCase[z.id]??[],
    stale:z.review&&z.review.state!=='DRAFT'?(z.workflowV07?(z.review.engineVersion!==WORKFLOW_VERSION||z.review.engineVersion!==z.workflowV07.engineVersion?true:null):true):null}))}
    onOpen={id=>{setCaseId(id);const next=p.cases.find(z=>z.id===id);setWorkflowElementType(next?.workflowElementType??(next?.input.kind as ElementType)??'FOOTING');setTab('overview');}}/>}
- {tab==='kit'&&<ProjectKitPanel kit={p.kit} rows={p.cases.map(z=>({id:z.id,name:z.name,type:ELEMENT_TYPES.find(t=>t.id===caseType(z))?.label??caseType(z),status:caseKitStatus(z,p.kit)}))} canEdit={canEditCurrentProject} stockIds={p.sectionStock}
+ {tab==='kit'&&<ProjectKitPanel kit={p.kit} cases={p.cases} rows={p.cases.map(z=>({id:z.id,name:z.name,type:ELEMENT_TYPES.find(t=>t.id===caseType(z))?.label??caseType(z),status:caseKitStatus(z,p.kit)}))} canEdit={canEditCurrentProject} stockIds={p.sectionStock}
    onSave={setKit} onRemove={()=>setKit(undefined)} onSeed={()=>kitFromCase(caseType(c),caseKitInput(c))} onApplyAll={applyKitToAll} onOpen={id=>{const next=p.cases.find(z=>z.id===id);setCaseId(id);setWorkflowElementType(next?caseType(next):'FOOTING');setTab('overview');}}/>}
  {tab==='order'&&<ProjectOrderPanel cases={p.cases} types={Object.fromEntries(p.cases.map(z=>[z.id,ELEMENT_TYPES.find(t=>t.id===caseType(z))?.label??caseType(z)]))} code={p.code} canEdit={canEditCurrentProject} onOrderChange={setCaseOrder}/>}
  {tab==='library'&&<RegistryPanel registry={registry} reviewerName={reviewerName} canReview={canReviewRegistry} canDelete={!configured||hasRole(userProfile,'MasterAdmin')} onSave={saveRegistry} onDelete={removeRegistryItem} onSeed={seedRegistryItems} onSeedPublic={seedPublicReferenceItems} onSeedClosure={seedClosureReferenceItems}/>}
