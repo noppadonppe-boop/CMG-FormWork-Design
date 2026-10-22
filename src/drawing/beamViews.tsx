@@ -1,3 +1,4 @@
+import type {ReactNode} from 'react';
 import type {BeamResult, MemberMaterial} from '../domain/beam';
 import {ChainDim, Dim, Leader, Line, LW, SectionMark, Txt, ViewTitle, fitScale, mm, poly, type Box, type V} from './primitives';
 
@@ -74,7 +75,9 @@ export function BeamSectionView({r, box, n = '1', titled = true}: {r: BeamResult
   </g>;
 }
 
-export function BeamElevationView({r, box, n = '2', titled = true}: {r: BeamResult; box: Box; n?: string; titled?: boolean}) {
+/** `overlay` draws extra marks in elevation coordinates (mm along the beam, drawn levels `s` with the shores cut short). */
+export function BeamElevationView({r, box, n = '2', titled = true, overlay}: {r: BeamResult; box: Box; n?: string; titled?: boolean;
+  overlay?: (P: Mapper, s: {shoreTop: number; bearerTop: number; joistTop: number; soffit: number; top: number}) => ReactNode}) {
   const x = r.input, s0 = beamStack(r), cut = Math.max(0, s0.shoreTop - 700), Lb = x.length;
   const s = {shoreTop: s0.shoreTop - cut, bearerTop: s0.bearerTop - cut, joistTop: s0.joistTop - cut, soffit: s0.soffit - cut, top: s0.top - cut};
   const ext: [number, number, number, number] = [-400, Lb + 400, -300, s.top + 250];
@@ -93,6 +96,7 @@ export function BeamElevationView({r, box, n = '2', titled = true}: {r: BeamResu
     {r.studs.map((z, i) => <Line key={i} a={P(z, s.soffit)} b={P(z, s.soffit + r.sideHeights[1])} w={LW.med} color={C.stud}/>)}
     {r.tieLevels.map((lv, j) => <g key={j}><Line a={P(0, s.soffit + lv)} b={P(Lb, s.soffit + lv)} w={LW.thick} color={C.waler}/>
       {r.ties.map((z, i) => <circle key={i} cx={P(z, 0)[0]} cy={P(0, s.soffit + lv)[1]} r={0.9} fill={C.tie}/>)}</g>)}
+    {overlay?.(P, s)}
     <Txt x={P(Lb / 2, 0)[0]} y={P(0, 0)[1] + 20} s={2.2} a="middle" fill="#555">ด้านข้างคาน (แสดงคร่าวแนวตั้ง{r.tieLevels.length ? ' คานคู่ และ Tie' : ''})</Txt>
     <ChainDim pts={r.shores.map(z => P(z, 0))} values={diffs(r.shores)} o={[0, 7]} total={mm(Lb)}/>
     <ChainDim pts={r.joists.map(z => P(z, s.top))} values={diffs(r.joists)} o={[0, -7]} total={mm(Lb)}/>

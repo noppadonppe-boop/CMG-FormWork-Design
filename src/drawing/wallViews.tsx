@@ -1,12 +1,14 @@
+import type {ReactNode} from 'react';
 import type {WallResult} from '../domain/wall';
-import {C, Member, diffs, mapper, rect} from './beamViews';
+import {C, Member, diffs, mapper, rect, type Mapper} from './beamViews';
 import {ChainDim, Dim, Leader, Line, LW, SectionMark, Txt, ViewTitle, fitScale, mm, poly, type Box} from './primitives';
 
 const GAP = 20;
 /** Offsets from the concrete face outwards (mm): plywood, studs, twin walers. */
 const offsets = (r: WallResult) => {const t = r.input.plywood, s = t + r.stud.section.H, w = s + r.waler.section.H; return {ply: t, stud: s, waler: w, outer: w + (r.strongback?.section.H ?? 0)};};
 
-export function WallElevationView({r, box, n = '1', titled = true}: {r: WallResult; box: Box; n?: string; titled?: boolean}) {
+/** `overlay` draws extra marks in elevation coordinates (mm along / up the wall). */
+export function WallElevationView({r, box, n = '1', titled = true, overlay}: {r: WallResult; box: Box; n?: string; titled?: boolean; overlay?: (P: Mapper) => ReactNode}) {
   const x = r.input, ext: [number, number, number, number] = [-500, x.length + 500, -500, x.height + 500], bS = r.stud.section.B, wB = r.waler.section.B;
   const S = fitScale(ext[1] - ext[0], ext[3] - ext[2], box.w - 40, box.h - 34), P = mapper(box, ext, S);
   return <g>
@@ -18,6 +20,7 @@ export function WallElevationView({r, box, n = '1', titled = true}: {r: WallResu
     {r.levels.flatMap(z => r.ties.map(t => <circle key={z + ':' + t} cx={P(t, z)[0]} cy={P(t, z)[1]} r={0.9} fill={C.tie}/>))}
     {r.strongback && r.braces.map((z, i) => <polygon key={'sb' + i} points={poly(rect(P, z - r.strongback!.section.B, -30, z + r.strongback!.section.B, x.height + 30))} fill={C.waler} fillOpacity={0.55} stroke={C.waler} strokeWidth={LW.thin}/>)}
     {r.braces.map((z, i) => <path key={i} d={`M${P(z, 0)[0] - 2} ${P(z, 0)[1] + 3.5}h4l-2 -3.5z`} fill={C.shore}/>)}
+    {overlay?.(P)}
     <ChainDim pts={r.studs.map(z => P(z, x.height))} values={diffs(r.studs)} o={[0, -7]} total={mm(x.length)}/>
     <ChainDim pts={r.levels.map(z => P(x.length, z))} values={diffs(r.levels)} o={[9, 0]} total={mm(x.height)}/>
     {r.ties.length > 0 ? <ChainDim pts={r.ties.map(z => P(z, 0))} values={diffs(r.ties)} o={[0, 9]} total={mm(x.length)}/> : <ChainDim pts={r.braces.map(z => P(z, 0))} values={diffs(r.braces)} o={[0, 9]} total={mm(x.length)}/>}

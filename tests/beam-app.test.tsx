@@ -67,5 +67,14 @@ describe('beam workflow inside the app (offline)', () => {
     expect(document.body.textContent).toContain('WF-02');
     await act(async () => {button('รายงาน PDF', document.querySelector('nav')!).click(); await wait();});
     expect(document.body.textContent).toContain('รายการคำนวณออกแบบแบบหล่อผนัง');
-  });
+    // Short report option: same menu, governing members only; the choice stays when switching element.
+    await act(async () => {button('แบบย่อ', document.querySelector('.report-tools')!).click(); await wait();});
+    expect(document.body.textContent).toContain('รายการคำนวณแบบหล่อผนัง (แบบย่อ)');
+    expect(document.body.textContent).toContain('การเลือกองค์อาคารควบคุม');
+    await act(async () => {button('พื้น', document.querySelector('.element-menu')!).click(); await wait();});
+    await act(async () => {button('รายงาน PDF', document.querySelector('nav')!).click(); await wait();});
+    expect(document.body.textContent).toContain('รายการคำนวณแบบหล่อพื้น (แบบย่อ)');
+    await act(async () => {button('ฉบับเต็ม', document.querySelector('.report-tools')!).click(); await wait();});
+    expect(document.body.textContent).toContain('รายการคำนวณออกแบบแบบหล่อพื้น');
+  }, 20000); // walks every menu of three systems (~5 s here)
 });

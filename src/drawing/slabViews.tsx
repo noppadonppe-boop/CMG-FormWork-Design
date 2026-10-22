@@ -1,5 +1,6 @@
+import type {ReactNode} from 'react';
 import type {SlabResult} from '../domain/slab';
-import {C, Member, diffs, mapper, rect} from './beamViews';
+import {C, Member, diffs, mapper, rect, type Mapper} from './beamViews';
 import {ChainDim, Dim, Leader, Line, LW, SectionMark, Txt, ViewTitle, fitScale, mm, poly, type Box} from './primitives';
 
 /** Vertical stack (mm above the floor); shores taller than 700 mm are drawn broken. */
@@ -8,7 +9,8 @@ function stack(r: SlabResult) {
   return {cut, shoreTop: st, bearerTop: st + r.bearer.section.H, joistTop: st + r.bearer.section.H + r.joist.section.H, soffit: x.soffitHeight - cut, top: x.soffitHeight - cut + x.t};
 }
 
-export function SlabPlanView({r, box, n = '1', titled = true}: {r: SlabResult; box: Box; n?: string; titled?: boolean}) {
+/** `overlay` draws extra marks in plan coordinates (mm), e.g. governing members in the short report. */
+export function SlabPlanView({r, box, n = '1', titled = true, overlay}: {r: SlabResult; box: Box; n?: string; titled?: boolean; overlay?: (P: Mapper) => ReactNode}) {
   const x = r.input, ext: [number, number, number, number] = [-500, x.lx + 500, -800, x.ly + 800], bB = r.bearer.section.B;
   const S = fitScale(ext[1] - ext[0], ext[3] - ext[2], box.w - 40, box.h - 34), P = mapper(box, ext, S);
   const yA = (r.bearers[0] + r.bearers[1]) / 2, xB = (r.shores[0] + r.shores[1]) / 2;
@@ -17,6 +19,7 @@ export function SlabPlanView({r, box, n = '1', titled = true}: {r: SlabResult; b
     {r.joists.map((z, i) => <Line key={i} a={P(z, 0)} b={P(z, x.ly)} w={LW.thin} color={C.stud}/>)}
     {r.bearers.map((y, i) => <polygon key={i} points={poly(rect(P, 0, y - bB / 2, x.lx, y + bB / 2))} fill="#fbeaea" stroke={C.waler} strokeWidth={LW.med}/>)}
     {r.bearers.flatMap(y => r.shores.map(z => <g key={z + ':' + y}><circle cx={P(z, y)[0]} cy={P(z, y)[1]} r={1.2} fill={C.shore}/><circle cx={P(z, y)[0]} cy={P(z, y)[1]} r={2} fill="none" stroke={C.shore} strokeWidth={LW.thin}/></g>))}
+    {overlay?.(P)}
     <ChainDim pts={r.shores.map(z => P(z, 0))} values={diffs(r.shores)} o={[0, 8]} total={mm(x.lx)}/>
     <Dim a={P(0, 0)} b={P(x.lx, 0)} o={[0, 15]} text={mm(x.lx)}/>
     <ChainDim pts={r.joists.map(z => P(z, x.ly))} values={diffs(r.joists)} o={[0, -8]} total={mm(x.lx)}/>
