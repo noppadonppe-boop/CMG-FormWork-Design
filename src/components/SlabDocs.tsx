@@ -91,7 +91,7 @@ export function SlabReport({r, project, code, caseName, caseId, titleBlock: tb, 
         <p className="rp-note">อ้างอิง ACI PRC-347-14(21) §4.2.1 · แบบพื้นไม่มีแรงดันคอนกรีตสดด้านข้าง · แรงด้านข้าง §4.2.3.2 ตรวจในข้อ 5.1</p></div></section>
     <section className="rp-sec"><h2>4. {SECTIONS[3]}</h2>
       <CheckSections groups={numbered.groups} section="4" figs={{
-        '4.1': <Fig no={3} w={150} h={68} caption={`ไม้อัดแถบ 1 m พาดระหว่างคร่าว @ ${n(sj, 0)} mm (${r.plywood.spans === 1 ? 'ช่วงเดี่ยว' : `ต่อเนื่อง ${r.plywood.spans} ช่วง ตาม APA V345`}) · รับได้ ${n(r.plywood.allowablePressure, 1)} kPa`}><BeamDiagram L={sj} w={r.loads.q} title="ไม้อัดแถบ 1 m"/></Fig>,
+        '4.1': <Fig no={3} w={150} h={68} caption={`ไม้อัดแถบ 1 m พาดระหว่างคร่าว @ ${n(sj, 0)} mm (${r.plywood.spans === 1 ? 'ช่วงเดี่ยว' : `ต่อเนื่อง ${r.plywood.spans} ช่วง ตาม APA V345`}) · รับได้ ${n(r.plywood.allowablePressure, 1)} kPa`}><BeamDiagram L={sj} w={r.loads.q} title="ไม้อัดแถบ 1 m" spans={r.plywood.spans}/></Fig>,
         '4.2': <Fig no={4} w={150} h={68} caption={`คร่าวพาดระหว่างคานรับ @ ${n(sb, 0)} mm`}><BeamDiagram L={sb} w={r.joistLine} title={`คร่าว ${r.joist.name}`}/></Fig>,
         '4.3': <Fig no={5} w={150} h={68} caption={`คานรับพาดระหว่างค้ำยัน @ ${n(ss, 0)} mm`}><BeamDiagram L={ss} w={r.bearerLine} title={`คานรับ ${r.bearer.name}`}/></Fig>,
       }}/></section>

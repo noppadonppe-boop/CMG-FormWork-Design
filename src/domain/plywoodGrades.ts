@@ -38,6 +38,8 @@ const T13: Record<Exclude<PlywoodGrade, 'CUSTOM'>, {E: number; Ee: number; Fb: n
   PLYFORM_I: {E: 1650000, Ee: 1500000, Fb: 1930, Fs: 72}, PLYFORM_II: {E: 1430000, Ee: 1300000, Fb: 1330, Fs: 72}, STRUCT_I: {E: 1650000, Ee: 1500000, Fb: 1930, Fs: 102}};
 /** Beam coefficients for 1, 2 and 3+ equal spans under uniform load (APA V345 constants 96/120, 19.2/20, 2220/1743 in SI form). */
 const COEF = {1: {m: 1 / 8, v: 0.5, d: 5 / 384}, 2: {m: 1 / 8, v: 0.625, d: 12 / 2220}, 3: {m: 1 / 10, v: 0.6, d: 12 / 1743}} as const;
+/** The same coefficients for figures and reports (moment, shear, deflection per equal-span count). */
+export const SPAN_COEF = COEF;
 
 export interface PlywoodProperties {grade: PlywoodGrade; faceGrain: FaceGrain;
   /** MPa: E for bending deflection (adjusted when shear deflection is added), Ee unadjusted, allowable Fb and rolling shear Fs. */

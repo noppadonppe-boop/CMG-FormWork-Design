@@ -10,7 +10,7 @@ import {WalerDetails} from './WalerDetails';
 import {ColumnYokeDetails} from './ColumnYokeDetails';
 import {generalNotes} from './DrawingSet';
 import {ACI_REFERENCE, type PressureModel} from '../domain/pressure';
-import {PLYWOOD_GRADE_LABEL} from '../domain/plywoodGrades';
+import {PLYWOOD_GRADE_LABEL, SPAN_COEF} from '../domain/plywoodGrades';
 import {REPORT_SECTIONS, legacyCheckGroups, numberChecks, type NumberedCheck, type NumberedGroup} from '../domain/reportOutline';
 import {ScreenPill} from './FormParts';
 
@@ -44,8 +44,13 @@ export function PressureDiagram({m}: {m: PressureModel}) {
     <Txt x={x0 - 12} y={y0 + h / 2} s={2.8} a="middle" rot={-90}>H = {m.H.toLocaleString('en-US')} mm · ρ = {n(m.rho, 0)} kg/m³</Txt>
   </g>;
 }
-export function BeamDiagram({L, w, title, unit = 'N/mm'}: {L: number; w: number; title: string; unit?: string}) {
-  const x0 = 15, x1 = 135, y = 26, M = w * L * L / 8, V = w * L / 2;
+/** Uniform load on 1 (simple), 2 or 3+ equal continuous spans; moment and shear use the APA V345 span coefficients, as the plywood checks do. */
+export function BeamDiagram({L, w, title, unit = 'N/mm', spans = 1}: {L: number; w: number; title: string; unit?: string; spans?: 1 | 2 | 3}) {
+  const c = SPAN_COEF[spans], x0 = 15, x1 = 135, y = 26, M = c.m * w * L * L, V = c.v * w * L, sx = (x1 - x0) / spans;
+  const supports = Array.from({length: spans + 1}, (_, i) => x0 + sx * i), frac = (v: number) => v === 0.125 ? '1/8' : v === 0.1 ? '1/10' : String(v);
+  // Moment line: sagging in each span, hogging over interior supports for continuous spans.
+  const path = spans === 1 ? `M${x0} ${y + 14} Q75 ${y + 34} ${x1} ${y + 14}`
+    : supports.slice(0, -1).map((sx0, i) => {const sx1 = sx0 + sx, mid = (sx0 + sx1) / 2; return `${i ? 'L' : 'M'}${sx0} ${y + 17 - (i ? 5 : 0)} Q${mid} ${y + 30} ${sx1} ${y + 17 - (i < spans - 1 ? 5 : 0)}`;}).join(' ');
   return <g>
     <Txt x={75} y={6} s={3} a="middle" b>{title}</Txt>
     {Array.from({length: 11}, (_, i) => x0 + (x1 - x0) * i / 10).map(x => <line key={x} x1={x} y1={y - 12} x2={x} y2={y - 1.5} stroke="#1d4e89" strokeWidth={LW.thin} markerEnd="url(#arrb)"/>)}
@@ -53,12 +58,12 @@ export function BeamDiagram({L, w, title, unit = 'N/mm'}: {L: number; w: number;
     <line x1={x0} y1={y - 12} x2={x1} y2={y - 12} stroke="#1d4e89" strokeWidth={LW.thin}/>
     <Txt x={75} y={y - 13.5} s={2.6} a="middle" fill="#1d4e89">w = {n(w, 3)} {unit}</Txt>
     <line x1={x0} y1={y} x2={x1} y2={y} stroke="#111" strokeWidth={1}/>
-    {[x0, x1].map(x => <polygon key={x} points={`${x},${y + 0.5} ${x - 3},${y + 5} ${x + 3},${y + 5}`} fill="none" stroke="#111" strokeWidth={LW.med}/>)}
-    <Txt x={75} y={y + 9} s={2.6} a="middle">L = {n(L, 0)} mm (ช่วงเดี่ยวรองรับสองปลาย)</Txt>
-    <path d={`M${x0} ${y + 14} Q75 ${y + 34} ${x1} ${y + 14}`} fill="#fbeaea" stroke="#9b1c1c" strokeWidth={LW.med}/>
-    <line x1={x0} y1={y + 14} x2={x1} y2={y + 14} stroke="#111" strokeWidth={LW.thin}/>
-    <Txt x={75} y={y + 27} s={2.6} a="middle" fill="#9b1c1c">Mmax = wL²/8 = {n(M / 1e6, 3)} kN·m</Txt>
-    <Txt x={x1} y={y + 36} s={2.4} a="end" fill="#444">V = wL/2 = {n(V / 1000, 3)} kN</Txt>
+    {supports.map(x => <polygon key={x} points={`${x},${y + 0.5} ${x - 3},${y + 5} ${x + 3},${y + 5}`} fill="none" stroke="#111" strokeWidth={LW.med}/>)}
+    <Txt x={75} y={y + 9} s={2.6} a="middle">L = {n(L, 0)} mm {spans === 1 ? '(ช่วงเดี่ยวรองรับสองปลาย)' : `ต่อช่วง (ต่อเนื่อง ${spans}${spans === 3 ? '+' : ''} ช่วงเท่ากัน)`}</Txt>
+    <path d={path} fill={spans === 1 ? '#fbeaea' : 'none'} stroke="#9b1c1c" strokeWidth={LW.med}/>
+    <line x1={x0} y1={y + (spans === 1 ? 14 : 17)} x2={x1} y2={y + (spans === 1 ? 14 : 17)} stroke="#111" strokeWidth={LW.thin}/>
+    <Txt x={75} y={y + 27} s={2.6} a="middle" fill="#9b1c1c">Mmax = {frac(c.m)} wL² = {n(M / 1e6, 3)} kN·m</Txt>
+    <Txt x={x1} y={y + 36} s={2.4} a="end" fill="#444">V = {c.v} wL = {n(V / 1000, 3)} kN</Txt>
   </g>;
 }
 export function CheckCard({c, no}: {c: Check; no: string}) {
@@ -102,7 +107,7 @@ export function CalcReport({r, project, code, caseName, caseId, titleBlock: tb, 
   const advice = useMemo(() => adviseLayout(r.input), [r]);
   const pm = r.pressureModel, x = r.input, docNo = `CAL-${code || 'CMG'}-${caseId.replace(/[^\w]/g, '').slice(0, 6).toUpperCase()}`;
   const numbered = numberChecks(legacyCheckGroups(x.kind, !!x.columnTies), r.checks);
-  const figs: Record<string, ReactNode> = {'4.1': <Fig key="f" no={4} w={150} h={68} caption={`แบบจำลองไม้อัดแถบกว้าง 1 m พาดระหว่างคร่าว @ ${x.studSpacing} mm (${r.plywoodDesign.spans === 1 ? 'ช่วงเดี่ยว' : `ต่อเนื่อง ${r.plywoodDesign.spans} ช่วง ตาม APA V345`}; แสดงหนึ่งช่วง) · แรงดันที่รับได้ ${n(r.plywoodDesign.allowablePressure, 1)} kPa`}><BeamDiagram L={x.studSpacing} w={r.pressure} title="ไม้อัดแถบ 1 m"/></Fig>, '4.2': <Fig key="f" no={5} w={150} h={68} caption={`แบบจำลองคร่าวพาดระหว่างคานคู่ ช่วงจริง ${n(r.waler.verticalSpan, 0)} mm`}><BeamDiagram L={r.waler.verticalSpan} w={r.pressure / 1000 * x.studSpacing} title={`คร่าว ${L.stud.label}`}/></Fig>, '4.3': <WalerDetails key="w" r={r} report/>, '4.4': x.kind === 'COLUMN' ? <ColumnYokeDetails key="c" r={r} report/> : null};
+  const figs: Record<string, ReactNode> = {'4.1': <Fig key="f" no={4} w={150} h={68} caption={`แบบจำลองไม้อัดแถบกว้าง 1 m พาดระหว่างคร่าว @ ${x.studSpacing} mm (${r.plywoodDesign.spans === 1 ? 'ช่วงเดี่ยว' : `ต่อเนื่อง ${r.plywoodDesign.spans} ช่วง ตาม APA V345`}; แสดงหนึ่งช่วง) · แรงดันที่รับได้ ${n(r.plywoodDesign.allowablePressure, 1)} kPa`}><BeamDiagram L={x.studSpacing} w={r.pressure} title="ไม้อัดแถบ 1 m" spans={r.plywoodDesign.spans}/></Fig>, '4.2': <Fig key="f" no={5} w={150} h={68} caption={`แบบจำลองคร่าวพาดระหว่างคานคู่ ช่วงจริง ${n(r.waler.verticalSpan, 0)} mm`}><BeamDiagram L={r.waler.verticalSpan} w={r.pressure / 1000 * x.studSpacing} title={`คร่าว ${L.stud.label}`}/></Fig>, '4.3': <WalerDetails key="w" r={r} report/>, '4.4': x.kind === 'COLUMN' ? <ColumnYokeDetails key="c" r={r} report/> : null};
   const fails = r.checks.filter(c => c.status === 'FAIL');
   return <article className="calc-report">
     <section className="rp-page rp-cover">

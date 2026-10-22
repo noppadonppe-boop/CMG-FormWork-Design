@@ -20,7 +20,7 @@ export interface ShortMember {
   tag: string; name: string; use: string; where: string; from: string; given: string;
   checks: Check[]; governing: Check | null; rows: EqRow[];
   /** Simple-span diagram data for the figure (w in N/mm = kN/m, L in mm). */
-  diagram?: {L: number; w: number; title: string; unit?: string};
+  diagram?: {L: number; w: number; title: string; unit?: string; spans?: 1 | 2 | 3};
   /** Largest spacing without FAIL for this member, when the advice search covers it. */
   maxSpacing?: string;
 }
@@ -105,7 +105,7 @@ const plywoodMember = (prefix: string, name: string, t: number, d: PlywoodDesign
   prefix, tag: '', name: `${name} ${t} mm`, use: 'แถบกว้าง 1 m', where: `แผ่นต่อเนื่องเหนือ${uniformTo}`,
   from: `${pLabel} = ${n(p)} kPa, ช่วง ${n(spacing, 0)} mm, ${d.spans === 1 ? 'ช่วงเดี่ยว' : `ต่อเนื่อง ${d.spans} ช่วง`}`,
   given: `แถบกว้าง 1 m พาดบน${uniformTo} @ ${n(spacing, 0)} mm (${d.spans === 1 ? 'ช่วงเดี่ยว' : `ต่อเนื่อง ${d.spans} ช่วง ตาม APA V345`}) · รับแรงดันได้สูงสุด ${n(d.allowablePressure, 1)} kPa`,
-  diagram: {L: spacing, w: p, title: 'ไม้อัดแถบ 1 m', unit: 'kN/m'},
+  diagram: {L: spacing, w: p, title: 'ไม้อัดแถบ 1 m', unit: 'kN/m', spans: d.spans},
 });
 const plyMaterial = (label: string, d: PlywoodDesign): [string, string, string, string] => [label, n(d.props.E, 0), n(d.props.Fb), d.props.Fs === null ? '—' : n(d.props.Fs, 3) + '*'];
 const memberMaterial = (label: string, m: MemberMaterial): [string, string, string, string] => [`${label} ${m.name}`, n(m.E, 0), n(m.Fb), m.Fv === null ? '—' : n(m.Fv)];

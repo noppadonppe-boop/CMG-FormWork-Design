@@ -1,4 +1,5 @@
 import {Fragment, useMemo, type ReactNode} from 'react';
+import {beamCheckGroups, legacyCheckGroups, numberChecks, slabCheckGroups, wallCheckGroups} from '../domain/reportOutline';
 import type {Check, Result} from '../domain';
 import {buildFormworkLayout} from '../domain/formworkLayout';
 import {adviseLayout} from '../domain/optimize';
@@ -43,15 +44,20 @@ function Mark({P, x0, y0, x1, y1, tag}: {P: Mapper; x0: number; y0: number; x1: 
 }
 
 interface Props {model: ShortModel; project: string; code: string; caseName: string; caseId: string; titleBlock: TitleBlock; revisionBinding?: DesignRevisionBinding;
-  section: ReactNode; sectionCaption: string; plan: ReactNode; planCaption: string; lang?: ReportLang}
+  section: ReactNode; sectionCaption: string; plan: ReactNode; planCaption: string; lang?: ReportLang;
+  /** Check numbers of the full report (shared outline), shown next to each governing check. */
+  numbers?: Record<string, string>;
+  /** Project kit line (revision and on/off kit). */
+  kitNote?: string | null}
 
 /** A4 short calculation (textbook layout): design criteria → loads → governing members → derivation of each governing check → summary.
  * `lang` = 'en' translates the model, the engine texts and the figure labels (`ReportLangContext`). */
-export function ShortReport({model, project, code, caseName, caseId, titleBlock: tb, revisionBinding, section, sectionCaption, plan, planCaption, lang = 'th'}: Props) {
+export function ShortReport({model, project, code, caseName, caseId, titleBlock: tb, revisionBinding, section, sectionCaption, plan, planCaption, lang = 'th', numbers = {}, kitNote}: Props) {
   const tr = useMemo(() => ({lang, stud: model.stud}), [lang, model.stud]), M = useMemo(() => translateDeep(model, tr), [model, tr]), t = (s: string) => translate(tr, s);
   const docNo = `CAL-${code || 'CMG'}-${caseId.replace(/[^\w]/g, '').slice(0, 6).toUpperCase()}-S`;
   const detailed = M.members.filter(m => m.governing), tagged = M.members.filter(m => m.tag);
   const isGov = (m: ShortMember, c: Check) => c.id === m.governing?.id;
+  const ref = (c: Check | null) => c && numbers[c.id] ? ` [${t('ฉบับเต็มข้อ')} ${numbers[c.id]}]` : '';
   const value = (c: Check) => c.utilization === null ? (c.demand === null ? '—' : `${n(c.demand)} ${c.unit}`) : ratio(c.utilization);
   let fig = 2;
   const head = <div className="sr-head"><div><b>CMG FORMWORK</b><span>{t('รายการคำนวณแบบย่อ')}</span></div>
@@ -64,6 +70,7 @@ export function ShortReport({model, project, code, caseName, caseId, titleBlock:
       <table className="sr-info"><tbody>
         {[0, 2].map(i => <tr key={i}>{M.info.slice(i, i + 2).map(([k, v]) => <Fragment key={k}><th>{k}</th><td>{v}</td></Fragment>)}</tr>)}
         <tr><th>{t('วิธีออกแบบ')}</th><td>{t('หน่วยแรงที่ยอมให้ (ASD) · คัดกรอง')}</td><th>{t('สถานะ')}</th><td><span className={'sr-st ' + (M.status === 'FAIL' ? 'fail' : 'incomplete')}>{M.status}</span></td></tr>
+        {kitNote && <tr><th>{t('ชุดมาตรฐาน')}</th><td colSpan={3}>{t(kitNote)}</td></tr>}
         {revisionBinding && <tr><th>Design Revision</th><td>{revisionBinding.designRevision}</td><th>Review</th><td>{revisionBinding.reviewState}</td></tr>}
       </tbody></table>
       <h2>1. {t('เกณฑ์การออกแบบ (Design Criteria)')}</h2>
@@ -92,7 +99,7 @@ export function ShortReport({model, project, code, caseName, caseId, titleBlock:
           <td className="c">{m.tag ? <span className="sr-tag" style={{background: TAG_COLOR[m.tag]}}>{m.tag}</span> : '—'}</td>
           <td><b>{m.name}</b><br/><small>{m.use}</small></td><td>{m.where}</td><td>{m.from}</td>
           <td>{m.checks.map((c, i) => <span key={c.id} className={isGov(m, c) && c.utilization !== null ? 'sr-gv' : ''}>{i ? ' · ' : ''}{checkKind(c)} {value(c)}</span>)}</td>
-          <td><b>{m.governing ? checkKind(m.governing) + (m.governing.utilization === null ? ' ' + t('(ยังไม่มีค่ายอมให้)') : '') : '—'}</b></td></tr>)}</tbody></table>
+          <td><b>{m.governing ? checkKind(m.governing) + (m.governing.utilization === null ? ' ' + t('(ยังไม่มีค่ายอมให้)') : '') : '—'}</b>{m.governing && numbers[m.governing.id] ? <small className="sr-ref">{ref(m.governing)}</small> : null}</td></tr>)}</tbody></table>
       <p className="sr-note">{t('ตัวเข้ม = รายการควบคุมที่แสดงรายการคำนวณในข้อ 4 · รายการอื่นแสดงเฉพาะอัตราส่วน (รายการคำนวณฉบับเต็มมีทุกรายการ)')}</p>
       <figure className="sr-fig"><figcaption>{t('รูปที่')} {fig++} {t(planCaption)}</figcaption>
         <div className="sr-plan">{plan}
@@ -102,7 +109,7 @@ export function ShortReport({model, project, code, caseName, caseId, titleBlock:
     <section className="sr-sec">
       <h2>4. {t('รายการคำนวณองค์อาคารควบคุม')}</h2>
       {detailed.map((m, i) => {const g = m.governing!, others = m.checks.filter(c => !isGov(m, c)), v = verdict(g); return <div key={m.name} className="sr-calc">
-        <h3>4.{i + 1} {m.name}{m.tag ? ` (${m.tag})` : ''} — {t('ควบคุมโดย')}{lang === 'en' ? ' ' : ''}{checkKind(g)}</h3>
+        <h3>4.{i + 1} {m.name}{m.tag ? ` (${m.tag})` : ''} — {t('ควบคุมโดย')}{lang === 'en' ? ' ' : ''}{checkKind(g)}{ref(g)}</h3>
         <div className={m.diagram ? 'sr-calc-body' : ''}>
           <div><p className="sr-giv">{t('กำหนดให้')} {m.given}</p>
             <Eq rows={m.rows}/>
@@ -111,15 +118,15 @@ export function ShortReport({model, project, code, caseName, caseId, titleBlock:
               : <>{checkKind(g)} = {n(g.demand, 3)} {g.unit} {g.demand > g.limit ? '>' : '≤'} {n(g.limit, 3)} {g.unit} · {t('อัตราส่วน')} <b>{ratio(g.utilization)}</b> → <Verdict m={m} t={t}/></>}</div>
             {others.length > 0 && <p className="sr-also">{t('รายการรอง')}: {others.map(c => `${checkKind(c)} ${value(c)}`).join(' · ')}{m.maxSpacing ? ` · ${t('ระยะสูงสุดที่ไม่เกินเกณฑ์')} ${m.maxSpacing}` : ''}</p>}
             <p className="sr-src">{t('ที่มา')}: {g.source}</p></div>
-          {m.diagram && <Fig w={150} h={68} caption={`${t('รูปที่')} ${fig++} ${m.diagram.title} ${t('ช่วง')} ${n(m.diagram.L, 0)} mm`}><BeamDiagram L={m.diagram.L} w={m.diagram.w} title={m.diagram.title} unit={m.diagram.unit}/></Fig>}
+          {m.diagram && <Fig w={150} h={68} caption={`${t('รูปที่')} ${fig++} ${m.diagram.title} ${t('ช่วง')} ${n(m.diagram.L, 0)} mm`}><BeamDiagram L={m.diagram.L} w={m.diagram.w} title={m.diagram.title} unit={m.diagram.unit} spans={m.diagram.spans}/></Fig>}
         </div></div>;})}
     </section>
 
     <section className="sr-sec">
       <h2>5. {t('สรุปผล')}</h2>
-      <table className="sr-tb"><thead><tr><th>{t('องค์อาคาร')}</th><th>{t('ที่ใช้')}</th><th>{t('ควบคุมโดย')}</th><th>{t('อัตราส่วน')}</th><th>{t('ระยะสูงสุดที่ไม่เกินเกณฑ์')}</th><th>{t('ผล')}</th></tr></thead>
+      <table className="sr-tb"><thead><tr><th>{t('องค์อาคาร')}</th><th>{t('ที่ใช้')}</th><th>{t('ควบคุมโดย')}</th><th>{t('อัตราส่วน')}</th><th>{t('ระยะสูงสุดที่ไม่เกินเกณฑ์')}</th><th>{t('ฉบับเต็มข้อ')}</th><th>{t('ผล')}</th></tr></thead>
         <tbody>{M.members.map(m => <tr key={m.name}><td>{m.name}</td><td>{m.use}</td><td>{m.governing ? checkKind(m.governing) : '—'}</td><td className="c">{ratio(m.governing?.utilization ?? null)}</td>
-          <td>{m.maxSpacing ?? '—'}</td><td><Verdict m={m} t={t}/></td></tr>)}</tbody></table>
+          <td>{m.maxSpacing ?? '—'}</td><td className="c">{m.governing ? numbers[m.governing.id] ?? '—' : '—'}</td><td><Verdict m={m} t={t}/></td></tr>)}</tbody></table>
       <p className="sr-note">{t('* ยังไม่รวมรายการที่ไม่มีค่ากำลัง (SWL) · สถานะรวม')} <b>{M.status}</b>: {t('ผลคัดกรองเท่านั้น ไม่ใช่การอนุมัติก่อสร้าง ต้องให้วิศวกรตรวจและลงนามก่อนใช้งาน')} · {M.engineVersion}</p>
       <h2>6. {t('รายการที่ต้องดำเนินการก่อนใช้งาน')}</h2>
       <ol className="sr-refs">{M.blockers.map((b, i) => <li key={i}>{b}</li>)}</ol>
@@ -135,20 +142,20 @@ type Common = Omit<Props, 'model' | 'section' | 'sectionCaption' | 'plan' | 'pla
 const tags = (M: ShortModel) => new Set(M.members.map(m => m.tag).filter(Boolean));
 
 export function SlabShortReport({r, ...rest}: Common & {r: SlabResult}) {
-  const model = useMemo(() => slabShortModel(r, slabAdvice(r.input)), [r]), x = r.input, has = tags(model);
+  const model = useMemo(() => slabShortModel(r, slabAdvice(r.input)), [r]), x = r.input, has = tags(model), numbers = useMemo(() => numberChecks(slabCheckGroups(), r.checks).byId, [r]);
   const sj = sp(x.lx, r.joists), sb = sp(x.ly, r.bearers), ss = sp(x.lx, r.shores);
   const ji = Math.max(1, Math.floor((r.joists.length - 1) / 4)), bi = r.bearers.length > 2 ? 1 : 0, bk = Math.max(0, r.bearers.length - 2), k = mid(r.shores), c = mid(r.bearers);
   const overlay = (P: Mapper) => <>
     {has.has('1') && <Mark P={P} tag="1" x0={r.joists[ji] - sj / 2} x1={r.joists[ji] + sj / 2} y0={r.bearers[bi]} y1={r.bearers[bi + 1]}/>}
     {has.has('2') && <Mark P={P} tag="2" x0={r.shores[Math.min(k + 1, r.shores.length - 2)]} x1={r.shores[Math.min(k + 2, r.shores.length - 1)]} y0={r.bearers[bk] - sb / 2} y1={r.bearers[bk] + sb / 2}/>}
     {has.has('3') && <Mark P={P} tag="3" x0={r.shores[k] - ss / 2} x1={r.shores[k] + ss / 2} y0={r.bearers[c] - sb / 2} y1={r.bearers[c] + sb / 2}/>}</>;
-  return <ShortReport model={model} {...rest}
+  return <ShortReport model={model} numbers={numbers} {...rest}
     section={<Svg w={180} h={64}><SlabSectionView r={r} axis="X" box={{x: 0, y: 0, w: 180, h: 64}} titled={false}/></Svg>} sectionCaption="รูปตัดแบบหล่อพื้นและการถ่ายแรง (อ้างอิงแบบ SF-02)"
     plan={<Svg w={150} h={120}><SlabPlanView r={r} box={{x: 0, y: 0, w: 150, h: 120}} titled={false} overlay={overlay}/></Svg>} planCaption="แปลนแบบหล่อพื้นและตำแหน่งวิกฤตขององค์อาคารควบคุม (อ้างอิงแบบ SF-01)"/>;
 }
 
 export function BeamShortReport({r, ...rest}: Common & {r: BeamResult}) {
-  const model = useMemo(() => beamShortModel(r, beamAdvice(r.input)), [r]), x = r.input, has = tags(model);
+  const model = useMemo(() => beamShortModel(r, beamAdvice(r.input)), [r]), x = r.input, has = tags(model), numbers = useMemo(() => numberChecks(beamCheckGroups(), r.checks).byId, [r]);
   const sj = sp(x.length, r.joists), ss = sp(x.length, r.shores), st = sp(x.length, r.studs), k = mid(r.shores), ji = Math.max(1, Math.floor((r.joists.length - 1) / 4));
   const si = Math.min(r.studs.length - 2, Math.max(1, Math.floor((r.studs.length - 1) * 3 / 4))), ti = mid(r.ties), lv = r.tieLevels[0] ?? r.studSpan;
   const overlay = (P: Mapper, s: {shoreTop: number; bearerTop: number; soffit: number}) => <>
@@ -157,13 +164,13 @@ export function BeamShortReport({r, ...rest}: Common & {r: BeamResult}) {
     {has.has('3') && <Mark P={P} tag="3" x0={Math.max(0, r.shores[k + 1] - ss / 2)} x1={Math.min(x.length, r.shores[k + 1] + ss / 2)} y0={0} y1={s.shoreTop}/>}
     {has.has('4') && <Mark P={P} tag="4" x0={r.studs[si] - st / 2} x1={r.studs[si] + st / 2} y0={s.soffit} y1={s.soffit + r.studSpan}/>}
     {has.has('5') && r.ties.length > 1 && <Mark P={P} tag="5" x0={r.ties[ti]} x1={r.ties[ti + 1]} y0={s.soffit + lv - 40} y1={s.soffit + lv + 40}/>}</>;
-  return <ShortReport model={model} {...rest}
+  return <ShortReport model={model} numbers={numbers} {...rest}
     section={<Svg w={180} h={95}><BeamSectionView r={r} box={{x: 0, y: 0, w: 180, h: 95}} titled={false}/></Svg>} sectionCaption="รูปตัดแบบหล่อคานและการถ่ายแรง (อ้างอิงแบบ BF-01)"
     plan={<Svg w={150} h={100}><BeamElevationView r={r} box={{x: 0, y: 0, w: 150, h: 100}} titled={false} overlay={overlay}/></Svg>} planCaption="รูปด้านตามยาวคานและตำแหน่งวิกฤตขององค์อาคารควบคุม (อ้างอิงแบบ BF-02)"/>;
 }
 
 export function WallShortReport({r, ...rest}: Common & {r: WallResult}) {
-  const model = useMemo(() => wallShortModel(r, wallAdvice(r.input)), [r]), x = r.input, has = tags(model), single = !!r.strongback;
+  const model = useMemo(() => wallShortModel(r, wallAdvice(r.input)), [r]), x = r.input, has = tags(model), single = !!r.strongback, numbers = useMemo(() => numberChecks(wallCheckGroups(single), r.checks).byId, [r, single]);
   const st = sp(x.length, r.studs), sw = sp(x.height, r.levels), spans = single ? r.braces : r.ties, k = mid(spans);
   const si = Math.max(1, Math.floor((r.studs.length - 1) / 4)), lv = r.levels.length > 2 ? 1 : 0, kb = mid(r.braces), kb2 = Math.min(kb + 1, r.braces.length - 1);
   const overlay = (P: Mapper) => <>
@@ -174,14 +181,14 @@ export function WallShortReport({r, ...rest}: Common & {r: WallResult}) {
       : <Mark P={P} tag="3" x0={r.ties[Math.min(k + 1, r.ties.length - 1)] - sp(x.length, r.ties) / 2} x1={r.ties[Math.min(k + 1, r.ties.length - 1)] + sp(x.length, r.ties) / 2} y0={r.levels[lv] - sw / 2} y1={r.levels[lv] + sw / 2}/>)}
     {single && has.has('4') && <Mark P={P} tag="4" x0={r.braces[kb] - 150} x1={r.braces[kb] + 150} y0={-120} y1={120}/>}
     {has.has(single ? '5' : '4') && <Mark P={P} tag={single ? '5' : '4'} x0={r.braces[kb2] - 150} x1={r.braces[kb2] + 150} y0={0} y1={x.braceHeight}/>}</>;
-  return <ShortReport model={model} {...rest}
+  return <ShortReport model={model} numbers={numbers} {...rest}
     section={<Svg w={180} h={100}><WallSectionView r={r} box={{x: 0, y: 0, w: 180, h: 100}} titled={false}/></Svg>} sectionCaption="รูปตัดแบบหล่อผนังและการถ่ายแรง (อ้างอิงแบบ WF-01)"
     plan={<Svg w={150} h={110}><WallElevationView r={r} box={{x: 0, y: 0, w: 150, h: 110}} titled={false} overlay={overlay}/></Svg>} planCaption="รูปด้านแบบหล่อผนังและตำแหน่งวิกฤตขององค์อาคารควบคุม (อ้างอิงแบบ WF-01)"/>;
 }
 
 export function LegacyShortReport({r, ...rest}: Common & {r: Result}) {
-  const {model, L} = useMemo(() => ({model: legacyShortModel(r, adviseLayout(r.input)), L: buildFormworkLayout(r)}), [r]), column = r.input.kind === 'COLUMN';
-  return <ShortReport model={model} {...rest}
+  const {model, L, numbers} = useMemo(() => ({model: legacyShortModel(r, adviseLayout(r.input)), L: buildFormworkLayout(r), numbers: numberChecks(legacyCheckGroups(r.input.kind, !!r.input.columnTies), r.checks).byId}), [r]), column = r.input.kind === 'COLUMN';
+  return <ShortReport model={model} numbers={numbers} {...rest}
     section={<Svg w={180} h={110}><SectionView L={L} box={{x: 0, y: 0, w: 180, h: 110}} titled={false}/></Svg>} sectionCaption={`รูปตัดแบบหล่อ${column ? 'เสา' : 'ฐานราก'}และการถ่ายแรง (อ้างอิงแบบ FW-02)`}
     plan={<Svg w={150} h={120}><PlanView L={L} box={{x: 0, y: 0, w: 150, h: 120}} titled={false}/></Svg>} planCaption={`แปลนแบบหล่อ${column ? 'เสา' : 'ฐานราก'} (อ้างอิงแบบ FW-01) · ตำแหน่งวิกฤตตามตารางข้อ 3`}/>;
 }

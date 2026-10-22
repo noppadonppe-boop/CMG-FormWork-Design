@@ -3,6 +3,8 @@ import {assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEn
 import {readFileSync} from 'node:fs';
 import {collection, deleteDoc, deleteField, doc, getDoc, getDocs, runTransaction, serverTimestamp, setDoc, Timestamp, updateDoc, writeBatch} from 'firebase/firestore';
 import {deleteObject, getBytes, listAll, ref, updateMetadata, uploadBytes, type StorageReference} from 'firebase/storage';
+import {kitDefaults, parseKit} from '../src/domain/projectKit';
+import {parseOrder} from '../src/domain/projectBom';
 
 let env: RulesTestEnvironment;
 const root = 'RC-FormWork-App/root';
@@ -159,6 +161,18 @@ describe('Project scope and client saves', () => {
     await assertFails(getDocs(collection(db, `${root}/projects`)));
     await assertFails(setDoc(doc(db, projectPath('p3')), project('p3')));
     await assertFails(deleteDoc(doc(db, projectPath('p1'))));
+  });
+
+  it('stores the project kit, kit exceptions and order counts through the client save path', async () => {
+    const db = context('engineer').firestore(), kit = {...kitDefaults, revision: 'K3', shoreTable: [{length: 2500, swl: 25}], history: [{revision: 'K3', date: '22/10/2569', note: 'แก้ ไม้อัด'}]};
+    const cases = [{id: 'c1', name: 'W01', input: {}, workflowElementType: 'WALL', kitException: 'Tie ที่มีในไซต์', order: {count: 6, reuse: 3}}];
+    const saved = {...project('p1'), kit, cases, updatedBy: 'engineer', updatedAt: serverTimestamp()};
+    await assertSucceeds(setDoc(doc(db, projectPath('p1')), saved, {merge: true}));
+    await assertSucceeds(setDoc(doc(db, `${root}/overview/p1__c1`), {...saved, caseId: 'c1', snapshot: {...project('p1'), kit, cases}}, {merge: true}));
+    const back = (await getDoc(doc(db, projectPath('p1')))).data()!;
+    expect(parseKit(back.kit)).toEqual(kit);
+    expect(back.cases[0].kitException).toBe('Tie ที่มีในไซต์');
+    expect(parseOrder(back.cases[0].order)).toEqual({count: 6, reuse: 3});
   });
 
   it.each(adminIds)('approved %s can list, create, update and delete projects', async id => {

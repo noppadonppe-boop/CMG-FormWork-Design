@@ -79,3 +79,20 @@ describe('shared report outline and check numbering', () => {
     if (r.blockers.length > 9) expect(html).toContain(`และอีก ${r.blockers.length - 8} รายการ`);
   });
 });
+
+describe('short report uses the full-report check numbers', () => {
+  it('labels each governing check with its full-report number and shows the kit line in both languages', async () => {
+    const {BeamShortReport, LegacyShortReport} = await import('../src/components/ShortReport');
+    const beam = calculateBeam({...beamDefaults, tieRows: 1}), byId = numberChecks(beamCheckGroups(), beam.checks).byId;
+    const th = renderToStaticMarkup(<BeamShortReport r={beam} {...common} kitNote="ชุดมาตรฐาน K2 · นอกชุด: ไม้อัด, คร่าว"/>);
+    expect(th).toContain('ชุดมาตรฐาน K2 · นอกชุด: ไม้อัด, คร่าว');
+    const governing = [...th.matchAll(/\[ฉบับเต็มข้อ (\d\.\d\.\d+)\]/g)].map(m => m[1]);
+    expect(governing.length).toBeGreaterThan(3);
+    for (const no of governing) expect(Object.values(byId)).toContain(no);
+    const en = renderToStaticMarkup(<BeamShortReport r={beam} {...common} lang="en" kitNote="ชุดมาตรฐาน K2 · ตรงชุด"/>);
+    expect(en).toContain('Project kit K2 · on kit');
+    expect(en).toContain('[full report item ');
+    const legacy = renderToStaticMarkup(<LegacyShortReport r={calculate(defaults)} {...common}/>);
+    expect(legacy).toContain('[ฉบับเต็มข้อ 4.1.');
+  });
+});

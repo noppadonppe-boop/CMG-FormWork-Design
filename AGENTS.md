@@ -48,6 +48,7 @@
 
 ## Identity (rules)
 - Some production Google accounts have NO email in Firebase Auth. Their profile key is the lowercased UID (client `emailKey(user.email ?? user.uid)`, Functions `managedProfile`). Firestore/Storage rules use `email() = token.get('email', uid).lower()` and reject anonymous sessions; keep it a single expression (rules evaluation budget). Test: "admits Google sessions without an email claim" in `tests/rules.test.ts`.
+- If the Firestore emulator exits with "failed to open a new selector / Invalid argument: connect" (JDK 21 Unix-domain pipe under the short TEMP path), set `JAVA_TOOL_OPTIONS=-Djdk.net.unixdomain.tmpdir=C:jtmp` (an existing plain folder). The rules suite includes the kit / kitException / order save round trip.
 - Rules tests: ports 8080/9199 and 8180 may be held by other emulators; run `firebase emulators:exec --config <temp config with free ports> --project demo-cmg-formwork --only firestore,storage "npx vitest run --config vitest.rules.config.ts"`.
 
 ## MCP server (`mcp/`)
