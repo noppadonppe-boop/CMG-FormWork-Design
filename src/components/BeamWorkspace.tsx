@@ -65,18 +65,26 @@ export function BeamPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab}
       <div className="form-grid four"><Num {...p} k="joistSpacing" label="ระยะคร่าวท้องสูงสุด"/><Num {...p} k="shoreSpacing" label="ระยะค้ำยันตามยาวสูงสุด"/><Num {...p} k="shoreWidth" label="ระยะค้ำยันตามขวาง" help="ระยะระหว่างแนวคานรับสองแนว"/>
         <label className="field"><span>คานรับต่อแนว</span><select aria-label="จำนวนคานรับต่อแนว" disabled={!canEdit} value={x.bearerCount} onChange={e => edit({bearerCount: Number(e.target.value) as 1 | 2})}><option value={1}>1 ตัว</option><option value={2}>2 ตัว (คู่)</option></select></label>
         <Num {...p} k="shoreSWL" label="SWL ค้ำยันที่ความยาวใช้งาน" unit="kN" help="จากผู้ผลิต · 0 = ยังไม่ทราบ"/>
-        <label className="field"><span>รุ่น/เอกสารค้ำยัน</span><input aria-label="รุ่นค้ำยัน" maxLength={300} disabled={!canEdit} value={x.shoreReference} onChange={e => edit({shoreReference: e.target.value})}/></label></div>
-      {r && <p className="muted">ค้ำยันรับ {f(r.shoreLoad)} kN/ต้น · ความยาวใช้งาน ≈ {f(r.shoreLength, 0)} mm · แรงด้านข้างที่ต้องค้ำ {f(r.lateralPerM)} kN/m</p>}</section>
+        <label className="field"><span>รุ่น/เอกสารค้ำยัน</span><input aria-label="รุ่นค้ำยัน" maxLength={300} disabled={!canEdit} value={x.shoreReference} onChange={e => edit({shoreReference: e.target.value})}/></label>
+        <Num {...p} k="lateralCapacity" label="กำลังค้ำยันทแยง/ledger" unit="kN/m" help="จากการออกแบบค้ำยัน · 0 = ยังไม่ออกแบบ"/></div>
+      {r && <p className="muted">ค้ำยันรับ {f(r.shoreLoad)} kN/ต้น (k = {f(r.shoreFactor, 3)} คานรับต่อเนื่อง) · ความยาวใช้งาน ≈ {f(r.shoreLength, 0)} mm · แรงด้านข้างที่ต้องค้ำ {f(r.lateralPerM)} kN/m</p>}</section>
     <section className="card"><h3>แบบข้างคาน: ไม้อัด → คร่าวแนวตั้ง → (คานคู่ + Tie) / ไม้กันตีน</h3>
       <div className="grid two"><MemberPicker {...p} k="studSectionId" role="stud" title="คร่าวแบบข้าง" stockIds={stockIds}/>{x.tieRows > 0 && <MemberPicker {...p} k="walerSectionId" role="waler" title="คานคู่แบบข้าง (2 ตัวต่อแถว)" stockIds={stockIds} pair/>}</div>
       <div className="form-grid four"><Num {...p} k="studSpacing" label="ระยะคร่าวข้างสูงสุด"/>
         <label className="field"><span>แถว Tie ทะลุคาน</span><select aria-label="แถว Tie" disabled={!canEdit} value={x.tieRows} onChange={e => edit({tieRows: Number(e.target.value)})}>{[0, 1, 2, 3].map(v => <option key={v} value={v}>{v === 0 ? 'ไม่มี (คานตื้น)' : v + ' แถว'}</option>)}</select></label>
-        {x.tieRows > 0 && <><Num {...p} k="tieSpacing" label="ระยะ Tie ตามยาวสูงสุด"/><Num {...p} k="tieDiameter" label="Tie Ø"/><Num {...p} k="tieSWL" label="SWL ชุด Tie" unit="kN" help="จากผู้ผลิต (SF ≥ 2.0 ตาม ACI Table 4.4)"/></>}</div>
-      {r && <p className="muted">ช่วงคร่าวข้าง {f(r.studSpan, 0)} mm · แรงที่ไม้กันตีน {f(r.kickerForcePerM)} kN/m{r.tieForce !== null ? ` · แรง Tie ${f(r.tieForce)} kN/ตัว` : ''}</p>}</section>
+        {x.tieRows > 0 && <><Num {...p} k="tieSpacing" label="ระยะ Tie ตามยาวสูงสุด"/><Num {...p} k="tieDiameter" label="Tie Ø"/><Num {...p} k="tieSWL" label="SWL ชุด Tie" unit="kN" help="จากผู้ผลิต (SF ≥ 2.0 ตาม ACI Table 4.4)"/>
+          <Num {...p} k="tieFy" label="Fy เหล็ก Tie" unit="MPa" help="มอก. 24 SD40 = 390"/><Num {...p} k="tieOmega" label="Ω ตัวเหล็ก Tie"/></>}</div>
+      <div className="form-grid four"><Num {...p} k="kickerCapacity" label="กำลังไม้กันตีน (ล่าง)" unit="kN/m" help="รวมตะปู/สกรู · 0 = ยังไม่ออกแบบ"/>
+        <Num {...p} k="topRestraintCapacity" label="กำลังจุดยึดบนแบบข้าง" unit="kN/m" help="แบบพื้น ค้ำยัน หรือเหล็กรัดบน · 0 = ยังไม่ออกแบบ"/>
+        <label className="field"><span>เอกสารจุดยึด/ค้ำยันทแยง</span><input aria-label="เอกสารจุดยึดแบบ" maxLength={300} disabled={!canEdit} value={x.restraintReference} onChange={e => edit({restraintReference: e.target.value})}/></label></div>
+      {r && <p className="muted">ช่วงคร่าวข้าง {f(r.studSpan, 0)} mm · แรงที่ไม้กันตีน {f(r.kickerForcePerM)} kN/m · จุดยึดบน {f(r.topForcePerM)} kN/m{r.tieForce !== null ? ` · แรง Tie ${f(r.tieForce)} kN/ตัว` : ''}</p>}</section>
     <AdviceTable<BeamInput> advice={advice} edit={edit} canEdit={canEdit}/>
     <button className="btn" onClick={() => onTab('results')}>ดูรายการคำนวณ <ChevronRight size={16}/></button></>;
   return <>{err}{r && <>
     <div className="metrics"><div><small>SOFFIT q</small><strong>{f(r.loads.beam)}<em>kPa</em></strong></div><div><small>SIDE pmax</small><strong>{f(r.pressureModel.pmax, 1)}<em>kPa</em></strong></div>
       <div><small>SHORE LOAD</small><strong>{f(r.shoreLoad)}<em>kN</em></strong></div><div><small>SYSTEM STATUS</small><strong className="amber">{r.status}</strong></div></div>
+    <section className="card"><h3>ที่มาของแรง</h3><ol className="muted">{r.loads.steps.map(s => <li key={s}>{s}</li>)}
+      <li>แรงดันข้าง pmax = {f(r.pressureModel.pmax, 1)} kPa · {r.pressureModel.reason}</li>
+      <li>ค้ำยัน: คานรับต่อเนื่อง {r.shores.length - 1} ช่วง k = {f(r.shoreFactor, 3)} → {f(r.shoreLoad)} kN/ต้น · แบบข้าง: ไม้กันตีน/จุดยึดบน {f(r.kickerForcePerM)} kN/m ต่อด้าน</li></ol></section>
     <section className="card"><h3>ตรวจเบื้องต้น / ตรวจวิธีที่ยังขาด</h3><ChecksTable checks={r.checks}/><h3>ก่อนออกเอกสารใช้งานจริง</h3><ul className="blockers">{r.blockers.map(b => <li key={b}>{b}</li>)}</ul></section></>}</>;
 }

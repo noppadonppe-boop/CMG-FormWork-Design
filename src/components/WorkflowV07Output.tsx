@@ -10,6 +10,14 @@ import {WorkflowV07Drawings} from './WorkflowV07Drawings';
 type View = Awaited<ReturnType<typeof documentView>>;
 
 /** Render calculation and drawing outputs from one persisted v0.7 draft identity. */
+/** Prints only the v0.7 part; the main calculation on the same page prints from its own button. */
+function printV07() {
+  document.body.classList.add('print-v07');
+  const done = () => {document.body.classList.remove('print-v07'); window.removeEventListener('afterprint', done);};
+  window.addEventListener('afterprint', done);
+  window.print();
+}
+
 export function WorkflowV07Output({model, review, mode, project, code, caseName, titleBlock, canEdit, onTitleBlockChange}: {
   model: WorkflowModel;
   review?: ReviewRecord | null;
@@ -40,7 +48,7 @@ export function WorkflowV07Output({model, review, mode, project, code, caseName,
   return <section className="card workflow-v07-output" aria-label={label}>
     <div className="report-tools">
       <div><h2>{label}</h2><p className="muted">คำนวณและแบบใช้ Design Revision เดียวกัน · DRAFT / NO_GO · ยังไม่ใช่เอกสารเพื่อก่อสร้าง</p></div>
-      <button className="btn" onClick={() => window.print()}>พิมพ์ / บันทึก PDF</button>
+      <button className="btn" onClick={printV07}>พิมพ์ / บันทึก PDF</button>
     </div>
     <p className="muted">Design Revision: <code>{model.revisionId}</code> · input hash: <code>{view.inputHash}</code> · snapshot hash: <code>{snapshot.snapshotHash}</code></p>
     {review && review.state !== 'DRAFT' && <p className={reviewStale ? 'warning' : 'notice'} role={reviewStale ? 'alert' : undefined}>

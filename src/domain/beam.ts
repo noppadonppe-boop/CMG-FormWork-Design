@@ -9,7 +9,7 @@ export type {MemberMaterial} from './members.js';
 import {equalPositions} from './mechanics.js';
 import type {Check,Status} from './index.js';
 
-export const BEAM_ENGINE_VERSION = 'beam-0.1.0-screening';
+export const BEAM_ENGINE_VERSION = 'beam-0.2.0-screening';
 export const ACI_LOADS_REFERENCE = 'ACI PRC-347-14(21) §4.2.1 (น้ำหนักบรรทุกแนวดิ่ง) และ §4.2.3.2 (แรงด้านข้างของแบบหล่อพื้นยก)';
 export interface BeamInput {
   /** Beam width b, total depth h (top of slab to soffit), slab thickness, clear length, floor-to-soffit height (mm). */
@@ -33,6 +33,11 @@ export interface BeamInput {
   studSectionId: string; studSpacing: number; tieRows: number; tieSpacing: number; tieDiameter: number;
   /** Tie assembly safe working load (kN, manufacturer data incl. ACI Table 4.4 SF 2.0). 0 = unknown → INCOMPLETE. */
   tieSWL: number; walerSectionId: string;
+  /** Tie rod body screen Fy·Ag/Ω (same basis as the wall module). */
+  tieFy: number; tieOmega: number;
+  /** Designed capacities along the beam (kN/m, user/manufacturer data): side-form bottom kicker, side-form top restraint,
+   * soffit lateral bracing (ACI §4.2.3.2). 0 = not designed → INCOMPLETE. */
+  kickerCapacity: number; topRestraintCapacity: number; lateralCapacity: number; restraintReference: string;
 }
 export const beamDefaults: BeamInput = {
   b: 300, h: 600, slabT: 120, length: 6000, soffitHeight: 3000, slabSides: 2, slabLeft: 0, slabRight: 0, confirmed: false,
@@ -45,14 +50,17 @@ export const beamDefaults: BeamInput = {
   shoreSWL: 0, shoreReference: '',
   studSectionId: 'PAP-TIS107-SHS-50x50x2.3', studSpacing: 300, tieRows: 0, tieSpacing: 600, tieDiameter: 12,
   tieSWL: 0, walerSectionId: 'PAP-TIS107-SHS-50x50x2.3',
+  tieFy: 390, tieOmega: 1.67, kickerCapacity: 0, topRestraintCapacity: 0, lateralCapacity: 0, restraintReference: '',
 };
+/** Fields added after beam-0.1.0; stored beams without them read these values. */
+const LATER = {tieFy: 390, tieOmega: 1.67, kickerCapacity: 0, topRestraintCapacity: 0, lateralCapacity: 0, restraintReference: ''};
 const TEXT_KEYS = ['confirmed', 'motorized', 'pressureMethod', 'plywoodGrade', 'plywoodSpans', 'plywoodFaceGrain', 'timberGrade', 'joistSectionId', 'bearerSectionId',
-  'studSectionId', 'walerSectionId', 'shoreReference', 'slabSides', 'bearerCount'] as const;
-const NON_NEGATIVE = ['slabT', 'slabLeft', 'slabRight', 'shoreSWL', 'tieSWL', 'tieRows', 'formDead'] as const;
+  'studSectionId', 'walerSectionId', 'shoreReference', 'slabSides', 'bearerCount', 'restraintReference'] as const;
+const NON_NEGATIVE = ['slabT', 'slabLeft', 'slabRight', 'shoreSWL', 'tieSWL', 'tieRows', 'formDead', 'kickerCapacity', 'topRestraintCapacity', 'lateralCapacity'] as const;
 
 export function validateBeamInput(v: unknown): BeamInput {
   if (!v || typeof v !== 'object') throw Error('ข้อมูลคานไม่ถูกต้อง');
-  const q = v as Record<string, unknown>, keys = Object.keys(beamDefaults) as (keyof BeamInput)[];
+  const q = {...LATER, ...v} as Record<string, unknown>, keys = Object.keys(beamDefaults) as (keyof BeamInput)[];
   if (Object.keys(q).some(k => !keys.includes(k as keyof BeamInput))) throw Error('มีช่องข้อมูลคานที่ไม่รองรับ');
   for (const k of keys.filter(k => !(TEXT_KEYS as readonly string[]).includes(k))) {
     const n = q[k], min = (NON_NEGATIVE as readonly string[]).includes(k) ? 0 : Number.MIN_VALUE;
@@ -65,6 +73,8 @@ export function validateBeamInput(v: unknown): BeamInput {
   if (!['HYDROSTATIC', 'ACI347'].includes(x.pressureMethod) || !CC_VALUES.includes(x.chemistryCc as typeof CC_VALUES[number])) throw Error('วิธีคำนวณแรงดันหรือค่า Cc ไม่ถูกต้อง');
   if (typeof x.timberGrade !== 'string' || !timberGrade(x.timberGrade)) throw Error('ชั้นไม้ไม่ถูกต้อง');
   if (typeof x.shoreReference !== 'string' || x.shoreReference.length > 300) throw Error('แหล่งอ้างอิงค้ำยันไม่ถูกต้อง');
+  if (typeof x.restraintReference !== 'string' || x.restraintReference.length > 300) throw Error('แหล่งอ้างอิงจุดยึดแบบไม่ถูกต้อง');
+  if (x.tieFy > 1000 || x.tieOmega < 1 || x.tieOmega > 10 || x.tieDiameter > 50) throw Error('ค่า Tie (Fy, Ω, Ø) อยู่นอกขอบเขต');
   for (const [k, role] of [['joistSectionId', 'stud'], ['studSectionId', 'stud'], ['bearerSectionId', 'waler'], ['walerSectionId', 'waler']] as const) {
     const s = typeof x[k] === 'string' ? sectionById(x[k]) : undefined;
     if (!s || !s.roles.includes(role)) throw Error('ไม่พบหน้าตัดในตารางเหล็ก/ไม้: ' + k);
@@ -103,6 +113,24 @@ export function patchBeam(L: number, patches: {a: number; c: number; w: number}[
   return {RA, RB, total, Mmax, xM, Vmax: Math.max(RA, RB), dmax};
 }
 
+/** Largest interior support reaction of a continuous beam with `spans` equal spans under uniform load, as a multiple of wL
+ * (three-moment equation: M(i-1) + 4 M(i) + M(i+1) = -wL²/2, M = 0 at the ends). 2 spans → 1.25, 3 → 1.10, 4 → 1.143; 1 span → 1. */
+export function continuousSupportFactor(spans: number): number {
+  const n = Math.round(spans) - 1;
+  if (n < 1) return 1;
+  // Thomas algorithm for the tridiagonal system (w = L = 1).
+  const c = new Array<number>(n).fill(0), d = new Array<number>(n).fill(0);
+  for (let i = 0; i < n; i++) {
+    const m = 4 - (i > 0 ? c[i - 1] : 0);
+    c[i] = 1 / m; d[i] = (-0.5 - (i > 0 ? d[i - 1] : 0)) / m;
+  }
+  const M = new Array<number>(n + 2).fill(0);
+  for (let i = n - 1; i >= 0; i--) M[i + 1] = d[i] - c[i] * M[i + 2];
+  let best = 0;
+  for (let i = 1; i <= n; i++) best = Math.max(best, 1 + M[i - 1] - 2 * M[i] + M[i + 1]);
+  return best;
+}
+
 export interface BeamLoads {concrete: number; formDead: number; liveUsed: number; liveMin: number; totalMin: number; beam: number; slab: number; steps: string[]}
 /** Vertical design loads per ACI PRC-347-14(21) §4.2.1 (kPa). */
 export function beamLoads(x: BeamInput): BeamLoads {
@@ -131,7 +159,7 @@ export interface BeamResult {
   sideHeights: [number, number]; tieLevels: number[];
   /** Transverse layout (mm from the left bearer line): beam and slab strips. */
   beamStart: number; joistReaction: number; bearerLine: number; shoreLoad: number; studSpan: number; tieForce: number | null;
-  kickerForcePerM: number; lateralPerM: number; shoreLength: number; volume: number; quantities: BeamQuantity[];
+  kickerForcePerM: number; topForcePerM: number; shoreFactor: number; lateralPerM: number; shoreLength: number; volume: number; quantities: BeamQuantity[];
 }
 
 export function calculateBeam(raw: unknown): BeamResult {
@@ -159,13 +187,16 @@ export function calculateBeam(raw: unknown): BeamResult {
   const shores = equalPositions(x.length, x.shoreSpacing), ss = x.length / (shores.length - 1), bearerLine = jb.Vmax / sj;
   member('bearer', 'คานรับท้อง (ตามยาว)', bearer, x.bearerCount, bearerLine * ss ** 2 / 8, bearerLine * ss / 2, 5 * bearerLine * ss ** 4 / (384 * bearer.E * bearer.I), ss,
     `w = Rmax / sj = ${fx(jb.Vmax / 1000, 3)} kN / ${fx(sj, 0)} mm = ${fx(bearerLine, 3)} N/mm; L = ${fx(ss, 0)} mm; M = wL²/8, V = wL/2, δ = 5wL⁴/(384EI)`);
-  const shoreLoad = bearerLine * ss / 1000;
-  add('shore-p', 'ค้ำยัน: แรงอัดต่อต้น', shoreLoad, x.shoreSWL > 0 ? x.shoreSWL : null, 'kN', 'P = w × ss ≤ SWL (ผู้ผลิต)', `P = ${fx(bearerLine, 3)} N/mm × ${fx(ss, 0)} mm = ${fx(shoreLoad, 2)} kN` +
-    (x.shoreSWL > 0 ? `; SWL = ${fx(x.shoreSWL)} kN` : '; ยังไม่มี SWL ของค้ำยันที่ความยาวใช้งาน'), 'แรงจากช่วงเดี่ยว ไม่รวมผลคานต่อเนื่อง (ต้นภายในอาจเพิ่ม ~25%); ต้องยืนยันความยาวยืด ความเอียง และฐานรองรับ',
+  // Bearers lap over the shore heads and act as continuous beams: the largest interior shore takes k·w·ss (k from the three-moment equation).
+  const shoreFactor = continuousSupportFactor(shores.length - 1), shoreLoad = shoreFactor * bearerLine * ss / 1000;
+  add('shore-p', 'ค้ำยัน: แรงอัดต่อต้น', shoreLoad, x.shoreSWL > 0 ? x.shoreSWL : null, 'kN', 'P = k × w × ss ≤ SWL (ผู้ผลิต)', `k = ${fx(shoreFactor, 3)} (คานรับต่อเนื่อง ${shores.length - 1} ช่วงเท่ากัน, ต้นภายในที่รับแรงมากสุด); P = ${fx(shoreFactor, 3)} × ${fx(bearerLine, 3)} N/mm × ${fx(ss, 0)} mm = ${fx(shoreLoad, 2)} kN` +
+    (x.shoreSWL > 0 ? `; SWL = ${fx(x.shoreSWL)} kN` : '; ยังไม่มี SWL ของค้ำยันที่ความยาวใช้งาน'), 'k จากสมการสามโมเมนต์ของคานต่อเนื่องช่วงเท่ากันรับแรงแผ่สม่ำเสมอ (1 ช่วง k = 1); ต้องยืนยันความยาวยืด ความเอียง และฐานรองรับ',
     x.shoreSWL > 0 ? 'ค่าผู้ผลิต: ' + (x.shoreReference || 'ไม่ระบุแหล่งอ้างอิง') : 'ACI PRC-347-14(21) §4.3: ใช้ค่ารับน้ำหนักที่ผู้ผลิตแนะนำพร้อมผลทดสอบ');
   const DLperM = (loads.concrete + x.formDead) * x.b / 1000 + (x.slabLeft + x.slabRight) / 1000 * (x.gamma * x.slabT / 1000 + x.formDead), lateralPerM = Math.max(1.5, 0.02 * DLperM);
-  add('lateral', 'แรงด้านข้างที่ต้องค้ำ (ACI §4.2.3.2)', lateralPerM, null, 'kN/m', 'H = max(1.5 kN/m, 2% DL)', `DL = ${fx(DLperM, 3)} kN/m ต่อความยาวคาน → H = max(1.5, ${fx(0.02 * DLperM, 3)}) = ${fx(lateralPerM, 3)} kN/m`,
-    'ต้องออกแบบค้ำยันทแยง/ledger ให้รับแรงนี้ (ยังไม่มีวิธีตรวจใน engine)', ACI_LOADS_REFERENCE);
+  const restraintSource = (capacity: number, fallback: string) => capacity > 0 ? 'ค่าที่ผู้ใช้กำหนด: ' + (x.restraintReference || 'ไม่ระบุแหล่งอ้างอิง') : fallback;
+  add('lateral', 'แรงด้านข้างที่ต้องค้ำ (ACI §4.2.3.2)', lateralPerM, x.lateralCapacity > 0 ? x.lateralCapacity : null, 'kN/m', 'H = max(1.5 kN/m, 2% DL) ≤ กำลังค้ำยันทแยง/ledger',
+    `DL = ${fx(DLperM, 3)} kN/m ต่อความยาวคาน → H = max(1.5, ${fx(0.02 * DLperM, 3)}) = ${fx(lateralPerM, 3)} kN/m` + (x.lateralCapacity > 0 ? `; กำลังที่ออกแบบ = ${fx(x.lateralCapacity)} kN/m` : '; ยังไม่มีกำลังค้ำยันทแยงที่ออกแบบ'),
+    'กำลังต้องมาจากการออกแบบค้ำยันทแยง/ledger และจุดยึด (ผู้ผลิตหรือรายการคำนวณแยก)', restraintSource(x.lateralCapacity, ACI_LOADS_REFERENCE));
 
   // Side forms: pressure on depth h; plywood spans between vertical studs; studs span between soffit kicker, tie rows and top restraint.
   const pressureModel = lateralPressure({pressureMethod: x.pressureMethod, gamma: x.gamma, height: x.h, width: x.b, length: x.length, pourRate: x.pourRate,
@@ -178,9 +209,15 @@ export function calculateBeam(raw: unknown): BeamResult {
   const studSpan = hSide / (x.tieRows + 1), ws = p / 1000 * st;
   member('stud', 'คร่าวแบบข้าง (แนวตั้ง)', stud, 1, ws * studSpan ** 2 / 8, ws * studSpan / 2, 5 * ws * studSpan ** 4 / (384 * stud.E * stud.I), studSpan,
     `w = pmax × s = ${fx(p)} × ${fx(st, 0)} / 1000 = ${fx(ws, 3)} N/mm; L = hข้าง/(แถว Tie + 1) = ${fx(hSide, 0)} / ${x.tieRows + 1} = ${fx(studSpan, 0)} mm`);
-  const kickerForcePerM = p * studSpan / 2 / 1000;
-  add('kicker', 'แรงที่ไม้กันตีน/จุดยึดล่างแบบข้าง', kickerForcePerM, null, 'kN/m', 'R = pmax × L / 2', `R = ${fx(p)} × ${fx(studSpan, 0)} / 2 / 1000 = ${fx(kickerForcePerM, 3)} kN/m`,
-    'ต้องออกแบบไม้กันตีน ตะปู/สกรู และการยึดกับคร่าวท้องคาน (ยังไม่มีวิธีตรวจใน engine)', 'สมดุลแรง');
+  // Each stud span is simply supported, so the bottom kicker and the top restraint each carry half of the end span.
+  const kickerForcePerM = p * studSpan / 2 / 1000, topForcePerM = kickerForcePerM;
+  add('kicker', 'แรงที่ไม้กันตีน/จุดยึดล่างแบบข้าง', kickerForcePerM, x.kickerCapacity > 0 ? x.kickerCapacity : null, 'kN/m', 'R = pmax × L / 2 ≤ กำลังไม้กันตีน',
+    `R = ${fx(p)} × ${fx(studSpan, 0)} / 2 / 1000 = ${fx(kickerForcePerM, 3)} kN/m` + (x.kickerCapacity > 0 ? `; กำลังที่ออกแบบ = ${fx(x.kickerCapacity)} kN/m` : '; ยังไม่มีกำลังไม้กันตีนที่ออกแบบ'),
+    'กำลังต้องรวมไม้กันตีน ตะปู/สกรู และการยึดกับคร่าวท้องคาน', restraintSource(x.kickerCapacity, 'สมดุลแรง'));
+  add('top', 'แรงที่จุดยึดบนแบบข้าง', topForcePerM, x.topRestraintCapacity > 0 ? x.topRestraintCapacity : null, 'kN/m', 'R = pmax × L / 2 ≤ กำลังจุดยึดบน',
+    `R = ${fx(p)} × ${fx(studSpan, 0)} / 2 / 1000 = ${fx(topForcePerM, 3)} kN/m (ช่วงบนสุดของคร่าว)` + (x.topRestraintCapacity > 0 ? `; กำลังที่ออกแบบ = ${fx(x.topRestraintCapacity)} kN/m` : '; ยังไม่มีกำลังจุดยึดบนที่ออกแบบ'),
+    x.tieRows > 0 ? 'ยอดคร่าวต้องยึดกับแบบพื้น/ค้ำยัน หรือเพิ่ม Tie แถวบนชิดขอบแบบ' : 'ไม่มี Tie: แรงดันครึ่งหนึ่งของความสูงแบบข้างต้องส่งเข้าจุดยึดบน (แบบพื้น ค้ำยัน หรือเหล็กรัดบนคาน)',
+    restraintSource(x.topRestraintCapacity, 'สมดุลแรง'));
   let ties: number[] = [], tieLevels: number[] = [], tieForce: number | null = null;
   if (x.tieRows > 0) {
     ties = equalPositions(x.length, x.tieSpacing); const stt = x.length / (ties.length - 1), ww = p / 1000 * studSpan;
@@ -188,6 +225,17 @@ export function calculateBeam(raw: unknown): BeamResult {
     member('waler', 'คานคู่แบบข้าง (ต่อ 1 แถว Tie)', waler, 2, ww * stt ** 2 / 8, ww * stt / 2, 5 * ww * stt ** 4 / (384 * waler.E * waler.I), stt,
       `w = pmax × L_stud = ${fx(p)} × ${fx(studSpan, 0)} / 1000 = ${fx(ww, 3)} N/mm; ช่วง Tie = ${fx(stt, 0)} mm`);
     tieForce = ww * stt / 1000;
+    const Ag = Math.PI * x.tieDiameter ** 2 / 4, tieBody = x.tieFy * Ag / x.tieOmega / 1000;
+    add('tie-body', 'Tie ทะลุคาน: ตัวเหล็กเริ่มคราก', tieForce, tieBody, 'kN', 'T ≤ Fy Ag / Ω',
+      `T = ${fx(tieForce, 2)} kN; Ag = π × ${x.tieDiameter}² / 4 = ${fx(Ag, 0)} mm²; Fy = ${x.tieFy} MPa; Ω = ${x.tieOmega} → ${fx(tieBody, 2)} kN`,
+      'ตรวจเฉพาะหน้าตัดเต็มของเหล็ก ไม่รวมเกลียว นัต แผ่นรอง หรือปลอก', 'Fy ตาม มอก. 24 (SD40 = 390 MPa) · ต้องยืนยันใบรับรอง');
+    // Edge beam: rows are spaced over the full outer depth, but the inner side form stops at the slab soffit.
+    if (sideHeights[0] !== sideHeights[1]) {
+      const topTie = tieLevels[tieLevels.length - 1], innerTop = Math.min(...sideHeights) - waler.section.H / 2;
+      add('tie-level', 'Tie แถวบนสุด: อยู่ในความสูงแบบข้างด้านใน', topTie, innerTop, 'mm', 'z_Tie ≤ h_ใน − H_คานคู่ / 2',
+        `z_Tie = ${fx(topTie, 0)} mm จากท้องคาน; h_ใน = ${fx(Math.min(...sideHeights), 0)} mm; H_คานคู่ = ${fx(waler.section.H, 0)} mm → ${fx(innerTop, 0)} mm`,
+        'คานขอบ: แบบข้างด้านพื้นสั้นกว่าด้านนอก Tie ที่สูงกว่าขอบแบบด้านในไม่มีคานคู่ให้ยึด ให้ลดแถว Tie หรือจัดระดับใหม่', 'เรขาคณิตแบบข้าง');
+    }
     add('tie-t', 'Tie ทะลุคาน: แรงดึง', tieForce, x.tieSWL > 0 ? x.tieSWL : null, 'kN', 'T = pmax × L_stud × s_tie ≤ SWL', `T = ${fx(ww, 3)} × ${fx(stt, 0)} / 1000 = ${fx(tieForce, 2)} kN; Ø${x.tieDiameter} mm` +
       (x.tieSWL > 0 ? `; SWL = ${fx(x.tieSWL)} kN` : '; ยังไม่มี SWL ชุด Tie'), 'ACI Table 4.4 ต้องมีส่วนปลอดภัย ≥ 2.0 เทียบกำลังประลัย; ต้องตรวจแผ่นรองและนัต', 'ACI PRC-347-14(21) Table 4.4 · ค่าผู้ผลิต');
   }
@@ -197,8 +245,9 @@ export function calculateBeam(raw: unknown): BeamResult {
     ...(!x.confirmed ? ['ยังไม่ยืนยันมิติคานจากแบบต้นฉบับ'] : []),
     ...(x.shoreSWL > 0 ? [] : ['ต้องกรอก SWL ค้ำยันที่ความยาวใช้งาน (ข้อมูลผู้ผลิต)']),
     ...(x.tieRows > 0 && !(x.tieSWL > 0) ? ['ต้องกรอก SWL ชุด Tie (ข้อมูลผู้ผลิต)'] : []),
-    'ออกแบบค้ำยันทแยง/ledger ให้รับแรงด้านข้าง ' + fx(lateralPerM) + ' kN/m และตรวจเสถียรภาพนั่งร้าน',
-    'ออกแบบไม้กันตีน/จุดยึดล่างแบบข้าง และการยึดหัวค้ำ (U-head) กับคานรับ',
+    ...(x.lateralCapacity > 0 ? ['ยืนยันเอกสารกำลังค้ำยันทแยง/ledger และตรวจเสถียรภาพนั่งร้าน'] : ['ออกแบบค้ำยันทแยง/ledger ให้รับแรงด้านข้าง ' + fx(lateralPerM) + ' kN/m และตรวจเสถียรภาพนั่งร้าน']),
+    ...(x.kickerCapacity > 0 && x.topRestraintCapacity > 0 ? [] : ['ออกแบบจุดยึดแบบข้าง: ไม้กันตีน (ล่าง) และจุดยึดบน รับ ' + fx(kickerForcePerM) + ' kN/m ต่อด้าน']),
+    'ตรวจการยึดหัวค้ำ (U-head) กับคานรับ และแรงกดที่จุดสัมผัสระหว่างสมาชิก',
     ...(x.slabSides === 1 ? ['คานขอบ (พื้นด้านเดียว): ต้องป้องกันการหมุนของแบบคาน (ACI §4.1.4c)'] : []),
     ...(shoreLength <= 0 ? ['ความสูงใต้ท้องคานน้อยกว่าความสูงชุดแบบหล่อ'] : []),
     'ตรวจกำลังรับน้ำหนักของพื้น/ดินใต้ค้ำยัน และแผ่นรองฐาน',
@@ -219,7 +268,7 @@ export function calculateBeam(raw: unknown): BeamResult {
   ];
   const status: Status = checks.some(k => k.status === 'FAIL') ? 'FAIL' : 'INCOMPLETE';
   return {engineVersion: BEAM_ENGINE_VERSION, input: x, status, checks, blockers, loads, pressureModel, soffitPlywood, sidePlywood, joist, bearer, stud, waler,
-    joists, shores, studs, ties, sideHeights, tieLevels, beamStart, joistReaction: jb.Vmax, bearerLine, shoreLoad, studSpan, tieForce, kickerForcePerM, lateralPerM,
+    joists, shores, studs, ties, sideHeights, tieLevels, beamStart, joistReaction: jb.Vmax, bearerLine, shoreLoad, studSpan, tieForce, kickerForcePerM, topForcePerM, shoreFactor, lateralPerM,
     shoreLength, volume: x.b * x.h * x.length / 1e9, quantities};
 }
 

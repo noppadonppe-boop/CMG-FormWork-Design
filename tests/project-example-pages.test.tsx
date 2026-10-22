@@ -80,3 +80,33 @@ it('fills the geometry and layout pages of every Project Example case, including
   expect(page().text).toContain('มิติภายในคอนกรีต');
   void beam;
 },120000);
+
+it('shows the main calculation first and the v0.7 snapshot as part 2 on the results and report pages',async()=>{
+  vi.stubGlobal('crypto',webcrypto);vi.stubGlobal('TextEncoder',TextEncoder);
+  (globalThis as {IS_REACT_ACT_ENVIRONMENT?:boolean}).IS_REACT_ACT_ENVIRONMENT=true;
+  vi.stubEnv('VITE_FIREBASE_ENABLED','false');vi.stubEnv('VITE_WORKFLOW_V07_ENABLED','true');
+  const project=projectExample();
+  localStorage.clear();localStorage.setItem('cmg-formwork-demo-v1',JSON.stringify([project]));
+  vi.resetModules();document.body.innerHTML='<div id="root"></div>';
+  await act(async()=>{await import('../src/main');});
+  const select=()=>document.querySelector('.case-selector select') as HTMLSelectElement;
+  for(const code of [' F01 ',' B01 ',' S01 ',' W01 ']){
+    const c=project.cases.find(z=>z.name.includes(code))!;
+    await act(async()=>{const s=select();s.value=c.id;s.dispatchEvent(new Event('change',{bubbles:true}));});await settle();
+    for(const [tab,main] of [['รายการคำนวณ','table'],['รายงาน PDF','.calc-report, .report, .short-report']] as const){
+      await act(async()=>{button(tab).click();});await settle();
+      const part=document.querySelector('.v07-part'),label=`${c.name} · ${tab}`;
+      expect(part,label).toBeTruthy();
+      expect(part!.textContent,label).toContain('ส่วนที่ 2');
+      // The main calculation is rendered before the v0.7 part.
+      const first=[...document.querySelectorAll(main)].find(e=>!part!.contains(e));
+      expect(first,label).toBeTruthy();
+      expect(first!.compareDocumentPosition(part!)&Node.DOCUMENT_POSITION_FOLLOWING,label).toBeTruthy();
+    }
+  }
+  const beam=project.cases.find(z=>z.name.includes(' B01 '))!;
+  await act(async()=>{const s=select();s.value=beam.id;s.dispatchEvent(new Event('change',{bubbles:true}));});await settle();
+  await act(async()=>{button('รายการคำนวณ').click();});await settle();
+  expect(page().text).toContain('ที่มาของแรง');
+  expect(page().text).toContain('แรงที่จุดยึดบนแบบข้าง');
+},120000);

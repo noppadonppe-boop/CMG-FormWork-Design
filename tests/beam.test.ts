@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {beamAdvice, beamDefaults, beamLoads, calculateBeam, patchBeam, validateBeamInput} from '../src/domain/beam';
+import {beamAdvice, beamDefaults, beamLoads, calculateBeam, continuousSupportFactor, patchBeam, validateBeamInput} from '../src/domain/beam';
 
 describe('beam formwork engine', () => {
   it('patch beam reproduces closed-form simply supported results', () => {
@@ -30,7 +30,9 @@ describe('beam formwork engine', () => {
     expect(r.joists.length).toBe(21);
     expect(r.joistReaction).toBeCloseTo(w * 300 / 2, 9);
     expect(r.bearerLine).toBeCloseTo(w * 300 / 2 / sj, 9);
-    expect(r.shoreLoad).toBeCloseTo(w * 300 / 2 / sj * 1200 / 1000, 9);
+    // 6000 / 1200 = 5 equal bearer spans: interior shore reaction 43/38 wL (three-moment equation).
+    expect(r.shoreFactor).toBeCloseTo(43 / 38, 9);
+    expect(r.shoreLoad).toBeCloseTo(43 / 38 * w * 300 / 2 / sj * 1200 / 1000, 9);
     expect(r.pressureModel.pmax).toBeCloseTo(24 * 0.6, 9);
     expect(r.sideHeights).toEqual([480, 480]);
     expect(r.studSpan).toBe(480);
@@ -38,7 +40,7 @@ describe('beam formwork engine', () => {
     expect(r.checks.find(k => k.id === 'shore-p')!.limit).toBeNull();
     expect(r.checks.find(k => k.id === 'lateral')!.demand).toBe(1.5);
     expect(r.checks.map(k => k.id)).toEqual(['sof-ply-b', 'sof-ply-v', 'sof-ply-d', 'joist-b', 'joist-v', 'joist-d', 'bearer-b', 'bearer-v', 'bearer-d', 'shore-p', 'lateral',
-      'side-ply-b', 'side-ply-v', 'side-ply-d', 'stud-b', 'stud-v', 'stud-d', 'kicker'].filter(id => r.checks.some(k => k.id === id)));
+      'side-ply-b', 'side-ply-v', 'side-ply-d', 'stud-b', 'stud-v', 'stud-d', 'kicker', 'top'].filter(id => r.checks.some(k => k.id === id)));
     expect(['FAIL', 'INCOMPLETE']).toContain(r.status);
     expect(r.blockers.some(b => b.includes('SWL ค้ำยัน'))).toBe(true);
   });

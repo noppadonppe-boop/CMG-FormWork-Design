@@ -41,7 +41,8 @@ export function completeExamplePractical<T extends {input:Input;beam?:BeamInput;
     checkedBy:old?.checkedBy||'EXAMPLE CHECKER (ยังไม่ลงนาม)',approvedBy:old?.approvedBy||'EXAMPLE APPROVER (ยังไม่ลงนาม)',
     revisions:old?.revisions.length?old.revisions:[{rev:'EX3',date:'19/10/2569',description:'ตัวอย่างกรอกข้อมูลครบ EX-DB-01 (MOCK)'}]};
   return {...c,input,titleBlock,
-    ...(c.beam?{beam:{...c.beam,shoreSWL:c.beam.shoreSWL||EXAMPLE_SHORE_KN,tieSWL:c.beam.tieSWL||EXAMPLE_TIE_KN,shoreReference:ref(c.beam.shoreReference,`${EXAMPLE_BASIS}; assumed custom shore30kN; not vendor rating`)}}:{}),
+    ...(c.beam?{beam:{...c.beam,shoreSWL:c.beam.shoreSWL||EXAMPLE_SHORE_KN,tieSWL:c.beam.tieSWL||EXAMPLE_TIE_KN,shoreReference:ref(c.beam.shoreReference,`${EXAMPLE_BASIS}; assumed custom shore30kN; not vendor rating`),
+      restraintReference:ref(c.beam.restraintReference,`${EXAMPLE_BASIS}; kicker/top restraint/bracing capacities not designed (0 = INCOMPLETE)`)}}:{}),
     ...(c.slab?{slab:{...c.slab,shoreSWL:c.slab.shoreSWL||EXAMPLE_SHORE_KN,shoreReference:ref(c.slab.shoreReference,`${EXAMPLE_BASIS}; assumed custom shore30kN; not vendor rating`)}}:{}),
     ...(c.wall?{wall:{...c.wall,tieSWL:c.wall.tieSWL||EXAMPLE_TIE_KN,braceSWL:c.wall.braceSWL||EXAMPLE_BRACE_KN,anchorSWL:c.wall.anchorSWL||EXAMPLE_ANCHOR_KN,
       braceReference:ref(c.wall.braceReference,`${EXAMPLE_BASIS}; assumed brace20kN and anchor20kN`)}}:{})};
