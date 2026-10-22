@@ -78,23 +78,23 @@ const SHEETS: {code: string; title: string; draw: (c: Ctx) => ReactElement}[] = 
   }},
 ];
 
-export function DrawingSet({result, project, code, caseName, titleBlock: info, canEdit = true, onTitleBlockChange, revisionBinding}: {result: Result; project: string; code: string; caseName: string; titleBlock: TitleBlock; canEdit?: boolean; onTitleBlockChange: (tb: TitleBlock) => void; revisionBinding?: DesignRevisionBinding}) {
+export function DrawingSet({result, project, code, caseName, titleBlock: info, canEdit = true, onTitleBlockChange, revisionBinding, kitNote}: {result: Result; project: string; code: string; caseName: string; kitNote?: string | null; titleBlock: TitleBlock; canEdit?: boolean; onTitleBlockChange: (tb: TitleBlock) => void; revisionBinding?: DesignRevisionBinding}) {
   const base = useMemo(() => {try {return {L: buildFormworkLayout(result), r: result, scene: buildScene(result)};} catch {return null;}}, [result]);
   if (!base) return <div className="warning">ข้อมูลไม่ครบหรือไม่ถูกต้อง จึงสร้างแบบไม่ได้ · ตรวจมิติและระยะก่อน</div>;
   const ctx: Ctx = {...base, tb: info};
   return <A3Set sheets={SHEETS.map(s => ({code: s.code, title: s.title, body: s.draw(ctx)}))} project={project} code={code} caseName={caseName}
-    elementLabel={ctx.L.kind === 'COLUMN' ? 'แบบหล่อเสา' : 'แบบหล่อฐานราก'} confirmed={ctx.L.confirmed} titleBlock={info} canEdit={canEdit} onTitleBlockChange={onTitleBlockChange} revisionBinding={revisionBinding}/>;
+    elementLabel={ctx.L.kind === 'COLUMN' ? 'แบบหล่อเสา' : 'แบบหล่อฐานราก'} confirmed={ctx.L.confirmed} titleBlock={info} canEdit={canEdit} onTitleBlockChange={onTitleBlockChange} revisionBinding={revisionBinding} kitNote={kitNote}/>;
 }
 
 /** A3 sheet set with shared title block, revision log, SVG export and A3 print controls. */
-export function A3Set({sheets, project, code, caseName, elementLabel, confirmed, titleBlock: info, canEdit = true, onTitleBlockChange, revisionBinding}: {sheets: {code: string; title: string; body: ReactElement}[];
+export function A3Set({sheets, project, code, caseName, elementLabel, confirmed, titleBlock: info, canEdit = true, onTitleBlockChange, revisionBinding, kitNote}: {sheets: {code: string; title: string; body: ReactElement}[]; kitNote?: string | null;
   project: string; code: string; caseName: string; elementLabel: string; confirmed: boolean; titleBlock: TitleBlock; canEdit?: boolean; onTitleBlockChange: (tb: TitleBlock) => void; revisionBinding?: DesignRevisionBinding}) {
   const SHEETS = sheets;
   const [note, setNote] = useState('');
   const svgs = useRef<(SVGSVGElement | null)[]>([]);
   useEffect(() => () => document.body.classList.remove('print-a3'), []);
   const title: TitleInfo = {company: 'CMG ENGINEERING & CONSTRUCTION', project, code, caseName, elementLabel,
-    rev: info.rev, date: info.date, designedBy: info.designedBy, drawnBy: info.drawnBy, checkedBy: info.checkedBy, approvedBy: info.approvedBy};
+    rev: info.rev, date: info.date, designedBy: info.designedBy, drawnBy: info.drawnBy, checkedBy: info.checkedBy, approvedBy: info.approvedBy, ...(kitNote ? {kitNote} : {})};
   const nextRev = (r: string) => /^[A-Y]$/.test(r) ? String.fromCharCode(r.charCodeAt(0) + 1) : /^\d+$/.test(r) ? String(Number(r) + 1) : r + '1';
   function addRevision() {
     const rev = info.revisions.length ? nextRev(info.rev) : info.rev;

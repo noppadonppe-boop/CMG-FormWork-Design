@@ -13,11 +13,11 @@ function Figure({r}: {r: SlabResult}) {
   return <svg viewBox="0 0 190 130" className="beam-figure" role="img" aria-label="แปลนแบบหล่อพื้น"><Defs/><rect width="190" height="130" fill="#fff"/><SlabPlanView r={r} box={{x: 0, y: 0, w: 190, h: 130}} titled={false}/></svg>;
 }
 
-export function SlabPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab}: {tab: SlabTab; x: SlabInput; r: SlabResult | null; error: string | null; canEdit: boolean; stockIds?: string[];
+export function SlabPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab, spacingStep}: {spacingStep?: number; tab: SlabTab; x: SlabInput; r: SlabResult | null; error: string | null; canEdit: boolean; stockIds?: string[];
   onChange: (next: SlabInput) => void; onTab: (tab: string) => void}) {
   const edit = (changes: Partial<SlabInput>) => onChange({...x, ...changes, ...(Object.keys(changes).some(k => GEOMETRY.includes(k as keyof SlabInput)) ? {confirmed: false} : {})});
   const p = {x, edit, canEdit};
-  const advice = useMemo(() => {try {return r ? slabAdvice(x) : [];} catch {return [];}}, [x, r]);
+  const advice = useMemo(() => {try {return r ? slabAdvice(x, spacingStep ?? 25) : [];} catch {return [];}}, [x, r, spacingStep]);
   const err = error && <div className="warning"><AlertTriangle size={17}/>{error}</div>;
   if (tab === 'overview') return <>
     <div className="metrics"><div><small>CONCRETE (SLAB)</small><strong>{f(r?.volume ?? null, 3)}<em>m³</em></strong></div><div><small>DESIGN LOAD q</small><strong>{f(r?.loads.q ?? null)}<em>kPa</em></strong></div>
@@ -58,7 +58,7 @@ export function SlabPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab}
         <Num {...p} k="shoreSWL" label="SWL ค้ำยันที่ความยาวใช้งาน" unit="kN" help="จากผู้ผลิต · 0 = ยังไม่ทราบ"/>
         <label className="field"><span>รุ่น/เอกสารค้ำยัน</span><input aria-label="รุ่นค้ำยัน" maxLength={300} disabled={!canEdit} value={x.shoreReference} onChange={e => edit({shoreReference: e.target.value})}/></label></div>
       {r && <p className="muted">ค้ำยัน {r.shoreCount} ต้น · ต้นภายในรับ {f(r.shoreLoad)} kN · ความยาวใช้งาน ≈ {f(r.shoreLength, 0)} mm · แรงด้านข้าง {f(r.lateralX)} / {f(r.lateralY)} kN/m (X / Y)</p>}</section>
-    <AdviceTable<SlabInput> advice={advice} edit={edit} canEdit={canEdit}/>
+    <AdviceTable<SlabInput> advice={advice} edit={edit} canEdit={canEdit} kitStep={spacingStep}/>
     <button className="btn" onClick={() => onTab('results')}>ดูรายการคำนวณ <ChevronRight size={16}/></button></>;
   return <>{err}{r && <>
     <div className="metrics"><div><small>DESIGN LOAD q</small><strong>{f(r.loads.q)}<em>kPa</em></strong></div><div><small>SHORES</small><strong>{r.shoreCount}<em>ต้น</em></strong></div>

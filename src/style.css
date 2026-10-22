@@ -138,3 +138,7 @@ aside nav .nav-group-label{display:block;margin:14px 12px 6px;font-size:10px;let
 /* Print always uses the light paper palette. */
 @media print{:root{color-scheme:light;--bg:#fff;--grid-line:transparent;--surface-1:#fff;--surface-2:#fff;--surface-3:#f0f4f8;--surface-sunken:#fafcfe;--border:#dfe6ed;--border-strong:#adc0d2;--text:#17324e;--text-2:#31536f;--text-3:#708398;--accent:#173e62;--accent-hover:#24557f;--accent-text:#173e62;--accent-soft:#eaf1f8;--on-accent:#fff;--success-bg:#e6f3ed;--success-text:#2f7655;--success-border:#b7dcc7;--warning-bg:#fff6e7;--warning-text:#8d6630;--warning-border:#ebd8b6;--danger-bg:#fdeced;--danger-text:#b6454d;--danger-border:#f0c9cd;color:var(--text)}}
 .pill.ok{background:var(--accent-soft);color:var(--accent-text)}.check-no{font-family:var(--font-mono);white-space:nowrap;color:var(--text-2)}
+.kit-badge{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;margin:-10px 0 18px;padding:9px 12px;border-radius:6px;border:1px solid var(--border)}
+.kit-badge.on{background:var(--success-bg);color:var(--success-text);border-color:var(--success-border)}.kit-badge.exception{background:var(--accent-soft);color:var(--accent-text)}
+.kit-badge.off{margin-top:-10px}.kit-badge .source-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}.kit-badge input{min-width:260px;padding:8px 10px;border:1px solid var(--border);border-radius:5px;background:var(--surface-sunken);color:var(--text)}
+.kit-panel h4{margin:18px 0 8px}.kit-members{margin-top:10px}

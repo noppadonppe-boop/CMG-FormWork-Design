@@ -24,6 +24,9 @@ export interface OptimizeOption {label: string; input: Input; changes: Partial<L
   pieces: number; steelKg: number; quantities: {studs: number; walers: number; ties: number; plywoodSheets: number}; passes: boolean;
   studSection: string; walerSection: string}
 export interface Advice {checkId: string; label: string; ratio: number; text: string}
+/** Project kit lock: sections, plywood and tie Ø stay as the kit; only spacings change, in multiples of `step` (mm). */
+export interface KitLock {step: number}
+export const KIT_SHORT = 'ชุดมาตรฐานโครงการไม่พอที่ระยะต่ำสุด: ใช้ชุดงานหนัก หรือบันทึกเหตุผลใช้นอกชุดมาตรฐาน';
 /** Compact, recalculated optimizer summary for AI context (chat / MCP). */
 export function optimizerBrief(x: Input, stock: StockSection[], target = 1, limit = 3) {
   const round = (v: number) => Math.round(v * 1000) / 1000;
@@ -79,14 +82,14 @@ const sections = (stock: StockSection[], current: Sec, role: 'stud' | 'waler') =
   .map(fromStock).filter(s => s.I >= current.I - 1e-6).sort((a, b) => a.A - b.A)];
 
 /** Waler stage for one waler section: largest waler/tie spacing (and smallest tie Ø) that keeps waler/tie/column checks within target. */
-function walerStage(x: Input, wMax: number, target: number): Input | null {
-  const walers = desc(Math.min(ranges(x).waler, wMax), 200, 50), R = ranges(x);
+function walerStage(x: Input, wMax: number, target: number, lock?: KitLock): Input | null {
+  const step = lock?.step ?? 50, walers = desc(Math.min(ranges(x).waler, wMax), 200, step), R = ranges(x);
   if (throughTies(x)) {
     if (!ok(tryCalc({...x, walerSpacing: 200, tieSpacing: 200}), ['waler'], target)) return null;
-    for (const ws of walers) for (const t of desc(R.tie, 200, 50)) {
+    for (const ws of walers) for (const t of desc(R.tie, 200, step)) {
       const trial = {...x, walerSpacing: ws, tieSpacing: t};
       if (!ok(tryCalc(trial), ['waler'], target)) continue;
-      const d = smallestTie(trial, target);
+      const d = lock ? trial.tieDiameter : smallestTie(trial, target);
       if (d !== null && ok(tryCalc({...trial, tieDiameter: d}), ['tie', 'column'], target)) return {...trial, tieDiameter: d};
     }
     return null;
@@ -96,10 +99,11 @@ function walerStage(x: Input, wMax: number, target: number): Input | null {
   return null;
 }
 
-function solveFor(base: Input, plywood: number, target: number, stock: StockSection[]): Input | null {
-  const R = ranges(base), walers = desc(R.waler, 200, 50);
+function solveFor(base: Input, plywood: number, target: number, stock: StockSection[], lock?: KitLock): Input | null {
+  if (lock) stock = [];
+  const R = ranges(base), walers = desc(R.waler, 200, lock?.step ?? 50);
   let x: Input = {...base, plywood};
-  const s = largest(x, 'studSpacing', desc(R.stud, 100, 25), ['plywood'], target); if (s === null) return null;
+  const s = largest(x, 'studSpacing', desc(R.stud, 100, lock?.step ?? 25), ['plywood'], target); if (s === null) return null;
   x = {...x, studSpacing: s};
   // Stud and waler sections: try the current section, then stock from light to heavy; a heavier member that allows wider
   // spacing can be lighter overall, so up to STUD_TRIES × WALER_TRIES feasible combinations are compared by steel mass.
@@ -113,7 +117,7 @@ function solveFor(base: Input, plywood: number, target: number, stock: StockSect
     let walerFound = 0;
     for (const ws of sections(stock, currentWaler(base), 'waler')) {
       if (walerFound >= WALER_TRIES) break;
-      const solved = walerStage(withWaler({...trial, walerSpacing: w}, ws), w, target); if (!solved) continue;
+      const solved = walerStage(withWaler({...trial, walerSpacing: w}, ws), w, target, lock); if (!solved) continue;
       walerFound++;
       const kg = steelMass(buildFormworkLayout(calculate(solved)));
       if (!best || kg < best.kg - 1e-6) best = {input: solved, kg};
@@ -141,36 +145,38 @@ export function currentOption(input: Input): OptimizeOption {return option('ค�
  * Feasible layouts (one per plywood thickness), lightest estimated steel first.
  * `stock` lists the sections the company can supply; when empty only spacing/plywood/tie Ø change and sections stay as entered.
  */
-export function optimizeLayout(base: Input, target = 1, stock: StockSection[] = []): OptimizeOption[] {
-  const found = PLYWOOD_THICKNESSES.flatMap(t => {const x = solveFor(base, t, target, stock); return x ? [option(`ไม้อัด ${t} mm`, base, x)] : [];});
+export function optimizeLayout(base: Input, target = 1, stock: StockSection[] = [], lock?: KitLock): OptimizeOption[] {
+  const found = (lock ? [base.plywood] : PLYWOOD_THICKNESSES).flatMap(t => {const x = solveFor(base, t, target, stock, lock); return x ? [option(lock ? `ชุดมาตรฐาน · ไม้อัด ${t} mm` : `ไม้อัด ${t} mm`, base, x)] : [];});
   return found.sort((a, b) => a.steelKg - b.steelKg || a.pieces - b.pieces || a.input.plywood - b.input.plywood)
     .map((o, i) => ({...o, label: (i === 0 ? 'แนะนำ · เหล็กเบาที่สุด · ' : '') + o.label}));
 }
 
 const either = (...parts: (string | null | undefined | false)[]) => parts.filter(Boolean).join(' หรือ ');
 /** Plain-language fixes for each check above the target, computed from the current input one parameter at a time. */
-export function adviseLayout(x: Input, target = 1, stock: StockSection[] = []): Advice[] {
+export function adviseLayout(x: Input, target = 1, stock: StockSection[] = [], lock?: KitLock): Advice[] {
   const r = tryCalc(x); if (!r) return [];
+  if (lock) stock = [];
+  const st = (def: number) => lock?.step ?? def;
   const R = ranges(x), fmt = (v: number | null, unit = 'mm') => v === null ? null : `${v} ${unit}`;
   const lightest = (apply: (s: Sec) => Input, groups: Group[], cur: Sec, role: 'stud' | 'waler') => sections(stock, cur, role).slice(1).find(s => ok(tryCalc(apply(s)), groups, target))?.label;
   return r.checks.filter(c => over(c, target)).map(c => {
     let text: string;
     if (GROUPS.plywood(c.id)) {
-      const s = fmt(largest(x, 'studSpacing', desc(Math.min(R.stud, x.studSpacing), 100, 25), ['plywood'], target));
-      const t = PLYWOOD_THICKNESSES.find(t => ok(tryCalc({...x, plywood: t}), ['plywood'], target));
-      text = either(s && `ลดระยะคร่าวเป็น ≤ ${s} (ไม้อัด ${x.plywood} mm เดิม)`, t !== undefined && `ใช้ไม้อัด ≥ ${t} mm ที่ระยะคร่าวเดิม`) || 'ต้องใช้ไม้อัดที่แข็งแรงกว่า หรือระยะคร่าวน้อยกว่า 100 mm';
+      const s = fmt(largest(x, 'studSpacing', desc(Math.min(R.stud, x.studSpacing), 100, st(25)), ['plywood'], target));
+      const t = lock ? undefined : PLYWOOD_THICKNESSES.find(t => ok(tryCalc({...x, plywood: t}), ['plywood'], target));
+      text = either(s && `ลดระยะคร่าวเป็น ≤ ${s} (ไม้อัด ${x.plywood} mm เดิม)`, t !== undefined && `ใช้ไม้อัด ≥ ${t} mm ที่ระยะคร่าวเดิม`) || (lock ? KIT_SHORT : 'ต้องใช้ไม้อัดที่แข็งแรงกว่า หรือระยะคร่าวน้อยกว่า 100 mm');
     } else if (GROUPS.stud(c.id)) {
-      const w = fmt(largest(x, 'walerSpacing', desc(Math.min(R.waler, x.walerSpacing), 200, 50), ['stud'], target));
+      const w = fmt(largest(x, 'walerSpacing', desc(Math.min(R.waler, x.walerSpacing), 200, st(50)), ['stud'], target));
       const sec = lightest(s => withStud(x, s), ['stud'], currentStud(x), 'stud');
-      text = either(w && `ลดระยะคานคู่ (ช่วงพาดคร่าว) เป็น ≤ ${w}`, sec && `เปลี่ยนคร่าวเป็น ${sec} ที่ระยะเดิม`) || 'เพิ่มขนาดหน้าตัดคร่าว (ไม่มีหน้าตัดในคลังที่พอ)';
+      text = either(w && `ลดระยะคานคู่ (ช่วงพาดคร่าว) เป็น ≤ ${w}`, sec && `เปลี่ยนคร่าวเป็น ${sec} ที่ระยะเดิม`) || (lock ? KIT_SHORT : 'เพิ่มขนาดหน้าตัดคร่าว (ไม่มีหน้าตัดในคลังที่พอ)');
     } else if (GROUPS.waler(c.id)) {
-      const t = throughTies(x) ? fmt(largest(x, 'tieSpacing', desc(Math.min(R.tie, x.tieSpacing), 200, 50), ['waler'], target)) : null;
+      const t = throughTies(x) ? fmt(largest(x, 'tieSpacing', desc(Math.min(R.tie, x.tieSpacing), 200, st(50)), ['waler'], target)) : null;
       const sec = lightest(s => withWaler(x, s), ['waler'], currentWaler(x), 'waler');
       text = either(t && `ลดระยะ Tie เป็น ≤ ${t}`, sec && `เปลี่ยนคานคู่เป็น 2-${sec}`)
-        || (throughTies(x) ? 'เพิ่มขนาดคานคู่ หรือลดระยะคร่าว/คานคู่' : 'เสาไม่มี Tie ทะลุ: เพิ่มขนาดคานคู่ หรือลดระยะคานคู่');
+        || (lock ? KIT_SHORT : throughTies(x) ? 'เพิ่มขนาดคานคู่ หรือลดระยะคร่าว/คานคู่' : 'เสาไม่มี Tie ทะลุ: เพิ่มขนาดคานคู่ หรือลดระยะคานคู่');
     } else if (c.id === 'tie') {
-      const d = smallestTie(x, target);
-      text = d ? `เพิ่มขนาด Tie เป็น Ø${d} mm หรือลดระยะ Tie/คานคู่` : 'ลดระยะ Tie หรือคานคู่ (ขนาด Tie ในรายการไม่พอ)';
+      const d = lock ? null : smallestTie(x, target);
+      text = d ? `เพิ่มขนาด Tie เป็น Ø${d} mm หรือลดระยะ Tie/คานคู่` : lock ? `ลดระยะ Tie หรือคานคู่ (ทวีคูณ ${lock.step} mm) · Tie Ø${x.tieDiameter} ตามชุดมาตรฐาน` : 'ลดระยะ Tie หรือคานคู่ (ขนาด Tie ในรายการไม่พอ)';
     } else text = 'ลดระยะ Tie/คานคู่ หรือใช้อุปกรณ์ที่มีกำลังรับรองสูงขึ้น (ต้องใช้ค่าจากผู้ผลิต)';
     return {checkId: c.id, label: c.label, ratio: c.utilization ?? 0, text};
   });

@@ -97,7 +97,7 @@ export function ReportReferences({extra = []}: {extra?: ReactElement[]}) {
 
 const SECTIONS = REPORT_SECTIONS;
 
-export function CalcReport({r, project, code, caseName, caseId, titleBlock: tb, revisionBinding}: {r: Result; project: string; code: string; caseName: string; caseId: string; titleBlock: TitleBlock; revisionBinding?: DesignRevisionBinding}) {
+export function CalcReport({r, project, code, caseName, caseId, titleBlock: tb, revisionBinding, kitNote}: {kitNote?: string | null; r: Result; project: string; code: string; caseName: string; caseId: string; titleBlock: TitleBlock; revisionBinding?: DesignRevisionBinding}) {
   const {L, scene} = useMemo(() => ({L: buildFormworkLayout(r), scene: buildScene(r)}), [r]);
   const advice = useMemo(() => adviseLayout(r.input), [r]);
   const pm = r.pressureModel, x = r.input, docNo = `CAL-${code || 'CMG'}-${caseId.replace(/[^\w]/g, '').slice(0, 6).toUpperCase()}`;
@@ -114,6 +114,7 @@ export function CalcReport({r, project, code, caseName, caseId, titleBlock: tb, 
         <tr><th>องค์อาคาร</th><td>{caseName} · {x.kind === 'COLUMN' ? 'แบบหล่อเสา' : 'แบบหล่อฐานราก'} ({x.shape === 'L' ? 'รูป L' : 'สี่เหลี่ยม'})</td><th>เลขที่เอกสาร</th><td>{docNo}</td></tr>
         <tr><th>ขนาด</th><td>{x.width} × {x.length} × {x.height} mm</td><th>Rev / วันที่</th><td>{tb.rev} / {tb.date}</td></tr>
         <tr><th>สถานะผลคัดกรอง</th><td>{r.status} · {fails.length ? `${fails.length} รายการเกินเกณฑ์` : 'ไม่มีรายการเกินเกณฑ์คัดกรอง'}</td><th>แบบประกอบ</th><td>FW-01 ถึง FW-04 (A3)</td></tr>
+        {kitNote&&<tr><th>ชุดมาตรฐาน</th><td colSpan={3}>{kitNote}</td></tr>}
         {revisionBinding&&<tr><th>Design Revision</th><td>{revisionBinding.designRevision}</td><th>Review / hash</th><td>{revisionBinding.reviewState} · {revisionBinding.contentHash ? `${revisionBinding.contentHash.slice(0, 16)}…` : 'ยังไม่มี review hash'}</td></tr>}
       </tbody></table>
       <Fig w={190} h={112} caption="ภาพรวมแบบหล่อ 3 มิติ (ภาพประกอบ ไม่ใช่แบบติดตั้ง)"><IsoView scene={scene} box={{x: 0, y: 0, w: 190, h: 112}} titled={false}/></Fig>

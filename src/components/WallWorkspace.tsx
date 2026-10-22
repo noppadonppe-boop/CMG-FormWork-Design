@@ -13,11 +13,11 @@ function Figure({r}: {r: WallResult}) {
   return <svg viewBox="0 0 190 130" className="beam-figure" role="img" aria-label="รูปตัดแบบหล่อผนัง"><Defs/><rect width="190" height="130" fill="#fff"/><WallSectionView r={r} box={{x: 0, y: 0, w: 190, h: 130}} titled={false}/></svg>;
 }
 
-export function WallPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab}: {tab: WallTab; x: WallInput; r: WallResult | null; error: string | null; canEdit: boolean; stockIds?: string[];
+export function WallPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab, spacingStep}: {spacingStep?: number; tab: WallTab; x: WallInput; r: WallResult | null; error: string | null; canEdit: boolean; stockIds?: string[];
   onChange: (next: WallInput) => void; onTab: (tab: string) => void}) {
   const edit = (changes: Partial<WallInput>) => onChange({...x, ...changes, ...(Object.keys(changes).some(k => GEOMETRY.includes(k as keyof WallInput)) ? {confirmed: false} : {})});
   const p = {x, edit, canEdit}, single = x.system === 'SINGLE_SIDED';
-  const advice = useMemo(() => {try {return r ? wallAdvice(x) : [];} catch {return [];}}, [x, r]);
+  const advice = useMemo(() => {try {return r ? wallAdvice(x, spacingStep ?? 25) : [];} catch {return [];}}, [x, r, spacingStep]);
   const err = error && <div className="warning"><AlertTriangle size={17}/>{error}</div>;
   if (tab === 'overview') return <>
     <div className="metrics"><div><small>CONCRETE (WALL)</small><strong>{f(r?.volume ?? null, 3)}<em>m³</em></strong></div><div><small>FORMWORK AREA</small><strong>{f(r?.formArea ?? null)}<em>m²</em></strong></div>
@@ -69,7 +69,7 @@ export function WallPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab}
         <Num {...p} k="braceSWL" label="SWL ค้ำยัน" unit="kN" help="จากผู้ผลิต · 0 = ยังไม่ทราบ"/>
         <label className="field"><span>รุ่น/เอกสารค้ำยัน</span><input aria-label="รุ่นค้ำยันเอียง" maxLength={300} disabled={!canEdit} value={x.braceReference} onChange={e => edit({braceReference: e.target.value})}/></label></div>
       {r && <p className="muted">โมเมนต์พลิก {f(r.braceMoment, 3)} kN·m/m ({r.braceGoverning}) · แรงค้ำยัน {f(r.braceForce)} kN/ตัว</p>}</section>
-    <AdviceTable<WallInput> advice={advice} edit={edit} canEdit={canEdit}/>
+    <AdviceTable<WallInput> advice={advice} edit={edit} canEdit={canEdit} kitStep={spacingStep}/>
     <button className="btn" onClick={() => onTab('results')}>ดูรายการคำนวณ <ChevronRight size={16}/></button></>;
   return <>{err}{r && <>
     <div className="metrics"><div><small>PRESSURE</small><strong>{f(r.pressureModel.pmax, 1)}<em>kPa</em></strong></div>{single ? <div><small>ANCHOR UPLIFT</small><strong>{f(r.anchorUplift)}<em>kN</em></strong></div> : <div><small>TIE FORCE</small><strong>{f(r.tieForce)}<em>kN</em></strong></div>}

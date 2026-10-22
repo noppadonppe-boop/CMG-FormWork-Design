@@ -14,11 +14,11 @@ function Figure({r}: {r: BeamResult}) {
   return <svg viewBox="0 0 190 130" className="beam-figure" role="img" aria-label="รูปตัดแบบหล่อคาน"><Defs/><rect width="190" height="130" fill="#fff"/><BeamSectionView r={r} box={{x: 0, y: 0, w: 190, h: 130}} titled={false}/></svg>;
 }
 
-export function BeamPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab}: {tab: BeamTab; x: BeamInput; r: BeamResult | null; error: string | null; canEdit: boolean; stockIds?: string[];
+export function BeamPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab, spacingStep}: {spacingStep?: number; tab: BeamTab; x: BeamInput; r: BeamResult | null; error: string | null; canEdit: boolean; stockIds?: string[];
   onChange: (next: BeamInput) => void; onTab: (tab: string) => void}) {
   const edit: Edit = changes => onChange({...x, ...changes, ...(Object.keys(changes).some(k => GEOMETRY.includes(k as keyof BeamInput)) ? {confirmed: false} : {})});
   const p = {x, edit, canEdit};
-  const advice = useMemo(() => {try {return r ? beamAdvice(x) : [];} catch {return [];}}, [x, r]);
+  const advice = useMemo(() => {try {return r ? beamAdvice(x, spacingStep ?? 25) : [];} catch {return [];}}, [x, r, spacingStep]);
   const err = error && <div className="warning"><AlertTriangle size={17}/>{error}</div>;
   if (tab === 'overview') return <>
     <div className="metrics"><div><small>CONCRETE (BEAM)</small><strong>{f(r?.volume ?? null, 3)}<em>m³</em></strong></div><div><small>SOFFIT LOAD q</small><strong>{f(r?.loads.beam ?? null)}<em>kPa</em></strong></div>
@@ -79,7 +79,7 @@ export function BeamPanel({tab, x, r, error, canEdit, stockIds, onChange, onTab}
         <Num {...p} k="topRestraintCapacity" label="กำลังจุดยึดบนแบบข้าง" unit="kN/m" help="แบบพื้น ค้ำยัน หรือเหล็กรัดบน · 0 = ยังไม่ออกแบบ"/>
         <label className="field"><span>เอกสารจุดยึด/ค้ำยันทแยง</span><input aria-label="เอกสารจุดยึดแบบ" maxLength={300} disabled={!canEdit} value={x.restraintReference} onChange={e => edit({restraintReference: e.target.value})}/></label></div>
       {r && <p className="muted">ช่วงคร่าวข้าง {f(r.studSpan, 0)} mm · แรงที่ไม้กันตีน {f(r.kickerForcePerM)} kN/m · จุดยึดบน {f(r.topForcePerM)} kN/m{r.tieForce !== null ? ` · แรง Tie ${f(r.tieForce)} kN/ตัว` : ''}</p>}</section>
-    <AdviceTable<BeamInput> advice={advice} edit={edit} canEdit={canEdit}/>
+    <AdviceTable<BeamInput> advice={advice} edit={edit} canEdit={canEdit} kitStep={spacingStep}/>
     <button className="btn" onClick={() => onTab('results')}>ดูรายการคำนวณ <ChevronRight size={16}/></button></>;
   return <>{err}{r && <>
     <div className="metrics"><div><small>SOFFIT q</small><strong>{f(r.loads.beam)}<em>kPa</em></strong></div><div><small>SIDE pmax</small><strong>{f(r.pressureModel.pmax, 1)}<em>kPa</em></strong></div>

@@ -140,12 +140,12 @@ export const SLAB_SPACINGS = [
   {key: 'shoreSpacing', label: 'ระยะค้ำยันตามแนวคานรับ', prefixes: ['bearer-', 'shore-']},
 ] as const;
 /** Largest requested spacing (25 mm steps) without FAIL in the members it governs. Never changes sections. */
-export function slabAdvice(x: SlabInput) {
+export function slabAdvice(x: SlabInput, step = 25) {
   return SLAB_SPACINGS.map(s => {
     const cap = Math.min(s.key === 'bearerSpacing' ? x.ly : x.lx, 3000);
     const ok = (v: number) => {try {return !calculateSlab({...x, [s.key]: v}).checks.some(k => s.prefixes.some(p => k.id.startsWith(p)) && k.status === 'FAIL');} catch {return false;}};
     let best: number | null = null;
-    for (let v = cap; v >= 100; v -= 25) if (ok(v)) {best = v; break;}
+    for (let v = Math.floor(cap / step) * step; v >= 100; v -= step) if (ok(v)) {best = v; break;}
     const unchecked = calculateSlab(x).checks.filter(k => s.prefixes.some(p => k.id.startsWith(p)) && k.limit === null).map(k => k.label);
     return {key: s.key, label: s.label, current: x[s.key], max: best, unchecked};
   });

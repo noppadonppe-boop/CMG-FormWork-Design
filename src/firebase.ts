@@ -70,7 +70,7 @@ export interface UserProfile {
 }
 
 export interface AppMetaConfig {firstUserRegistered: boolean; totalUsers: number; createdAt: unknown}
-export type SharedProject = {id: string; name: string; code: string; cases: unknown[]; sectionStock?: unknown};
+export type SharedProject = {id: string; name: string; code: string; cases: unknown[]; sectionStock?: unknown; kit?: unknown};
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -344,7 +344,7 @@ export async function saveProject(project: SharedProject, category: MenuCategory
 export async function loadProjects(profile?: UserProfile | null): Promise<SharedProject[]> {
   const {db, auth} = requireCloud(); if (!auth.currentUser) throw Error('กรุณาเข้าสู่ระบบก่อนโหลดโครงการ');
   const refs = isAdminProfile(profile) ? (await getDocs(collection(db, SHARED_COLLECTION, SHARED_DOCUMENT, 'projects'))).docs : await Promise.all(assignedProjectIds(profile).map(id => getDoc(projectDoc(id))));
-  const projects = refs.flatMap(item => {if (!item.exists()) return []; const data = item.data() as Record<string, unknown>; return [{id: typeof data.id === 'string' ? data.id : item.id, name: typeof data.name === 'string' ? data.name : 'โครงการไม่มีชื่อ', code: typeof data.code === 'string' ? data.code : item.id, cases: Array.isArray(data.cases) ? data.cases : [], ...(Array.isArray(data.sectionStock) ? {sectionStock: data.sectionStock} : {})}];});
+  const projects = refs.flatMap(item => {if (!item.exists()) return []; const data = item.data() as Record<string, unknown>; return [{id: typeof data.id === 'string' ? data.id : item.id, name: typeof data.name === 'string' ? data.name : 'โครงการไม่มีชื่อ', code: typeof data.code === 'string' ? data.code : item.id, cases: Array.isArray(data.cases) ? data.cases : [], ...(Array.isArray(data.sectionStock) ? {sectionStock: data.sectionStock} : {}), ...(data.kit && typeof data.kit === 'object' ? {kit: data.kit} : {})}];});
   // Attach each case's v0.7 draft; a failed draft read leaves that case without a draft.
   return Promise.all(projects.map(async p => {
     const [drafts, reviews] = await Promise.all([loadWorkflowDrafts(p.id).catch(() => ({} as Record<string, StoredWorkflowDraft>)), loadReviewRecords(p.id).catch(() => ({} as Record<string, ReviewRecord>))]);
@@ -354,7 +354,7 @@ export async function loadProjects(profile?: UserProfile | null): Promise<Shared
 }
 export async function listUsers() {const snap = await getDocs(collection(requireCloud().db, SHARED_COLLECTION, SHARED_DOCUMENT, 'users')); return snap.docs.map(item => ({...item.data(), email: item.data().email ?? item.id} as UserProfile));}
 export function subscribeUsers(callback: (users: UserProfile[]) => void, onError?: (error: Error) => void) {return onSnapshot(collection(requireCloud().db, SHARED_COLLECTION, SHARED_DOCUMENT, 'users'), snap => callback(snap.docs.map(item => ({...item.data(), email: item.data().email ?? item.id} as UserProfile))), error => onError?.(error));}
-export async function listAllProjects(): Promise<SharedProject[]> {const snap = await getDocs(collection(requireCloud().db, SHARED_COLLECTION, SHARED_DOCUMENT, 'projects')); return snap.docs.flatMap(item => {const data = item.data() as Record<string, unknown>; return [{id: typeof data.id === 'string' ? data.id : item.id, name: typeof data.name === 'string' ? data.name : 'โครงการไม่มีชื่อ', code: typeof data.code === 'string' ? data.code : item.id, cases: Array.isArray(data.cases) ? data.cases : [], ...(Array.isArray(data.sectionStock) ? {sectionStock: data.sectionStock} : {})}];});}
+export async function listAllProjects(): Promise<SharedProject[]> {const snap = await getDocs(collection(requireCloud().db, SHARED_COLLECTION, SHARED_DOCUMENT, 'projects')); return snap.docs.flatMap(item => {const data = item.data() as Record<string, unknown>; return [{id: typeof data.id === 'string' ? data.id : item.id, name: typeof data.name === 'string' ? data.name : 'โครงการไม่มีชื่อ', code: typeof data.code === 'string' ? data.code : item.id, cases: Array.isArray(data.cases) ? data.cases : [], ...(Array.isArray(data.sectionStock) ? {sectionStock: data.sectionStock} : {}), ...(data.kit && typeof data.kit === 'object' ? {kit: data.kit} : {})}];});}
 export async function updateManagedUser(email: string, patch: Partial<Pick<UserProfile, 'firstName' | 'lastName' | 'position' | 'department' | 'role' | 'status' | 'assignedProjects' | 'projectPermissions'>>) {await updateDoc(profileDoc(email), patch); const user = requireCloud().auth.currentUser; void logActivity(patch.status === 'approved' ? 'USER_APPROVE' : patch.status === 'rejected' ? 'USER_REJECT' : 'USER_UPDATE', user, {targetEmail: email});}
 export async function deleteProject(projectId: string) {
   if (!requireCloud().auth.currentUser) throw Error('กรุณาเข้าสู่ระบบก่อนลบโครงการ');

@@ -200,13 +200,13 @@ export const WALL_SPACINGS = [
   {key: 'braceSpacing', label: 'ระยะ strongback / ค้ำยัน', prefixes: ['waler-', 'strongback-', 'brace-', 'anchor']},
 ] as const;
 /** Largest requested spacing (25 mm steps) without FAIL in the members it governs. Never changes sections. */
-export function wallAdvice(x: WallInput) {
+export function wallAdvice(x: WallInput, step = 25) {
   // Single-sided walls have no ties; their walers span between strongbacks, so the brace spacing governs instead.
   return WALL_SPACINGS.filter(s => x.system === 'SINGLE_SIDED' ? s.key !== 'tieSpacing' : s.key !== 'braceSpacing').map(s => {
     const cap = Math.min(s.key === 'walerSpacing' ? x.height : x.length, 3000);
     const ok = (v: number) => {try {return !calculateWall({...x, [s.key]: v}).checks.some(k => s.prefixes.some(p => k.id.startsWith(p)) && k.status === 'FAIL');} catch {return false;}};
     let best: number | null = null;
-    for (let v = cap; v >= 100; v -= 25) if (ok(v)) {best = v; break;}
+    for (let v = Math.floor(cap / step) * step; v >= 100; v -= step) if (ok(v)) {best = v; break;}
     const unchecked = calculateWall(x).checks.filter(k => s.prefixes.some(p => k.id.startsWith(p)) && k.limit === null).map(k => k.label);
     return {key: s.key, label: s.label, current: x[s.key], max: best, unchecked};
   });

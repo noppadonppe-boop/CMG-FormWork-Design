@@ -46,7 +46,7 @@ it('fills the geometry and layout pages of every Project Example case, including
   // Main work in design order, then the reference group.
   const menu=[...document.querySelectorAll('aside nav button, aside nav .nav-group-label')].map(e=>e.textContent?.trim());
   expect(menu).toEqual(['งานหลัก (ทำตามลำดับ)','ภาพรวม','รับแบบและ AI','รูปทรงและมิติ','Design Criteria','จัดวางเบื้องต้น','รายการคำนวณ','แปลนและรูปตัด','รายงาน PDF','Review & Issue',
-    'ข้อมูลประกอบ','จุดต่อและค้ำยัน','คลังวัสดุ/วิธีคำนวณ','Design Book','Audit & Settings']);
+    'ข้อมูลประกอบ','ชุดมาตรฐานโครงการ','จุดต่อและค้ำยัน','คลังวัสดุ/วิธีคำนวณ','Design Book','Audit & Settings']);
   for(const c of project.cases){
     await act(async()=>{const s=select();s.value=c.id;s.dispatchEvent(new Event('change',{bubbles:true}));});await settle();
     for(const tab of ['รูปทรงและมิติ','จัดวางเบื้องต้น']){

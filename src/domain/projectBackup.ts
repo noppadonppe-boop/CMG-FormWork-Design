@@ -9,7 +9,8 @@ import {stampLoadCases} from './workflowV07/loadCases.js';
 import {canonical} from './workflowV07/common.js';
 import {parseTitleBlock,type TitleBlock} from './titleBlock.js';
 import {exampleEvidenceWorksheets} from './projectExampleEvidence.js';
-export interface BackupProject{id:string;name:string;code:string;cases:{id:string;name:string;input:Input;workflowElementType?:ElementType;workflowV07?:StoredWorkflowDraft;beam?:BeamInput;slab?:SlabInput;wall?:WallInput;titleBlock?:TitleBlock}[]}
+import {parseKit,type ProjectKit} from './projectKit.js';
+export interface BackupProject{id:string;name:string;code:string;cases:{id:string;name:string;input:Input;workflowElementType?:ElementType;workflowV07?:StoredWorkflowDraft;beam?:BeamInput;slab?:SlabInput;wall?:WallInput;titleBlock?:TitleBlock;kitException?:string}[];kit?:ProjectKit}
 const ELEMENTS:readonly string[]=['FOOTING','COLUMN','WALL','BEAM','SLAB'];
 export function parseProjectBackup(text:string,makeId:()=>string=()=>crypto.randomUUID()):BackupProject{
   // A populated ten-case walkthrough includes per-case v0.7 drafts (up to 900 kB
@@ -17,8 +18,8 @@ export function parseProjectBackup(text:string,makeId:()=>string=()=>crypto.rand
   if(text.length>10*1024*1024)throw Error('ไฟล์โครงการใหญ่เกินขอบเขต');
   const raw=JSON.parse(text);
   if(![1,2,3].includes(raw?.schemaVersion)||!raw.project||typeof raw.project.name!=='string'||raw.project.name.length<1||raw.project.name.length>200||typeof raw.project.code!=='string'||raw.project.code.length>60||!Array.isArray(raw.project.cases)||raw.project.cases.length<1||raw.project.cases.length>100)throw Error('รูปแบบไฟล์โครงการไม่ถูกต้อง');
-  const projectId=makeId();
-  return {id:projectId,name:raw.project.name,code:raw.project.code,cases:raw.project.cases.map((item:unknown)=>{
+  const projectId=makeId(),kit=parseKit(raw.project.kit);
+  return {id:projectId,name:raw.project.name,code:raw.project.code,...(kit?{kit}:{}),cases:raw.project.cases.map((item:unknown)=>{
     if(!item||typeof item!=='object'||!('name' in item)||typeof item.name!=='string'||item.name.length<1||item.name.length>200||!('input' in item))throw Error('รายการแบบไม่ถูกต้อง');
     const element='workflowElementType' in item?item.workflowElementType:undefined;
     if(element!==undefined&&!ELEMENTS.includes(String(element)))throw Error('ประเภทองค์อาคารในไฟล์โครงการไม่ถูกต้อง');
@@ -39,6 +40,6 @@ export function parseProjectBackup(text:string,makeId:()=>string=()=>crypto.rand
       if(model.loadCases)model={...model,loadCases:stampLoadCases(model,model.loadCases)};
       workflowV07=createStoredWorkflowDraft(model,input);
     }
-    return {id,name:item.name,input,...(element!==undefined?{workflowElementType:element as ElementType}:{}),...(workflowV07?{workflowV07}:{}),...(beam?{beam}:{}),...(slab?{slab}:{}),...(wall?{wall}:{}),...(titleBlock?{titleBlock}:{})};
+    return {id,name:item.name,input,...(element!==undefined?{workflowElementType:element as ElementType}:{}),...(workflowV07?{workflowV07}:{}),...(beam?{beam}:{}),...(slab?{slab}:{}),...(wall?{wall}:{}),...(titleBlock?{titleBlock}:{}),...('kitException' in item&&typeof item.kitException==='string'&&item.kitException.trim()?{kitException:item.kitException.slice(0,300)}:{})};
   })};
 }

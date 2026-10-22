@@ -1,6 +1,7 @@
 import React from 'react';
 import type {Check} from '../domain';
 import {SCREEN_LABEL, screenState, type NumberedCheck} from '../domain/reportOutline';
+import {KIT_SHORT} from '../domain/optimize';
 import {CC_VALUES, type PressureMethod} from '../domain/pressure';
 import {GRAIN_LABEL, PLYWOOD_GRADE_LABEL, PLYWOOD_GRADES, PLYWOOD_SPANS, SPAN_LABEL} from '../domain/plywoodGrades';
 import type {MaterialSettings, PlywoodSettings} from '../domain/members';
@@ -52,10 +53,11 @@ export function ChecksTable({checks, items}: {checks?: Check[]; items?: Numbered
   </tbody></table>;
 }
 export interface SpacingAdvice {key: string; label: string; current: number; max: number | null; unchecked: string[]}
-export function AdviceTable<T>({advice, edit, canEdit}: {advice: SpacingAdvice[]; edit: Edit<T>; canEdit: boolean}) {
+/** Spacing advice; with a project kit (`kitStep`) spacings are multiples of the step and a shortfall points to the kit, not to a bigger section. */
+export function AdviceTable<T>({advice, edit, canEdit, kitStep}: {advice: SpacingAdvice[]; edit: Edit<T>; canEdit: boolean; kitStep?: number}) {
   if (!advice.length) return null;
-  return <section className="card"><h3>ระยะสูงสุดที่ไม่เกินเกณฑ์ (คำนวณซ้ำ ไม่เปลี่ยนหน้าตัด)</h3><table><thead><tr><th>รายการ</th><th>ใช้อยู่</th><th>สูงสุด</th><th>หมายเหตุ</th><th/></tr></thead><tbody>
-    {advice.map(a => <tr key={a.key}><td>{a.label}</td><td>{a.current} mm</td><td>{a.max === null ? 'ไม่มีระยะที่ผ่าน' : a.max + ' mm'}</td><td className="muted">{a.max === null ? 'ต้องเปลี่ยนหน้าตัด' : a.unchecked.length ? 'ยังไม่รวม ' + a.unchecked.join(', ') : ''}</td>
+  return <section className="card"><h3>ระยะสูงสุดที่ไม่เกินเกณฑ์ (คำนวณซ้ำ ไม่เปลี่ยนหน้าตัด)</h3>{kitStep && <p className="muted">ชุดมาตรฐานโครงการ: ปรับเฉพาะระยะ เป็นทวีคูณของ {kitStep} mm</p>}<table><thead><tr><th>รายการ</th><th>ใช้อยู่</th><th>สูงสุด</th><th>หมายเหตุ</th><th/></tr></thead><tbody>
+    {advice.map(a => <tr key={a.key}><td>{a.label}</td><td>{a.current} mm</td><td>{a.max === null ? 'ไม่มีระยะที่ผ่าน' : a.max + ' mm'}</td><td className="muted">{a.max === null ? (kitStep ? KIT_SHORT : 'ต้องเปลี่ยนหน้าตัด') : [a.unchecked.length ? 'ยังไม่รวม ' + a.unchecked.join(', ') : '', kitStep && a.current % kitStep ? `ระยะที่ใช้ไม่ใช่ทวีคูณ ${kitStep} mm` : ''].filter(Boolean).join(' · ')}</td>
       <td>{a.max !== null && a.max !== a.current && <button className="btn secondary" disabled={!canEdit} onClick={() => edit({[a.key]: a.max} as Partial<T>)}>ใช้ {a.max}</button>}</td></tr>)}</tbody></table></section>;
 }
 /** Vertical loads (ACI §4.2.1) shared by soffit systems. */

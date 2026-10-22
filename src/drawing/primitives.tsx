@@ -117,7 +117,9 @@ function ElementCell({x, y, w, text}: {x: number; y: number; w: number; text: st
   return <g>{label}{lines.map((l, i) => <Txt key={i} x={x + 1.5} y={y + 7 + i * (s + 1.2)} s={s} b>{l}</Txt>)}</g>;
 }
 export interface TitleInfo {company: string; project: string; code: string; caseName: string; elementLabel: string;
-  designedBy: string; drawnBy: string; checkedBy: string; approvedBy: string; rev: string; date: string}
+  designedBy: string; drawnBy: string; checkedBy: string; approvedBy: string; rev: string; date: string;
+  /** Project kit status line (e.g. 'ชุดมาตรฐาน K1 · ตรงชุด'). */
+  kitNote?: string}
 /** A3 frame with CMG title strip and a permanent preliminary stamp while the engine reports no construction release. */
 export function Sheet({no, total, code, title, info, children, svgRef}: {no: number; total: number; code: string; title: string; info: TitleInfo; children: ReactNode; svgRef?: (el: SVGSVGElement | null) => void}) {
   const S = SHEET, ty = S.titleTop, h = S.bottom - ty;
@@ -153,6 +155,7 @@ export function Sheet({no, total, code, title, info, children, svgRef}: {no: num
     <g><Txt x={xs[2] + 1.5} y={ty + 3} s={1.8} fill="#555">ชื่อแบบ / DRAWING TITLE</Txt>
       <Txt x={xs[2] + 1.5} y={ty + 11} s={3.4} b>{title}</Txt>
       <Txt x={xs[2] + 1.5} y={ty + 16} s={2.1} fill="#333">แบบหล่อคอนกรีต (FORMWORK)</Txt>
+      {info.kitNote && <Txt x={xs[2] + 1.5} y={ty + 21} s={1.8} fill="#173e62">{info.kitNote}</Txt>}
       <Txt x={xs[2] + 1.5} y={ty + 26} s={1.8} fill="#555">สถานะ: DRAFT / NO_GO · ต้องตรวจและอนุมัติโดยวิศวกรผู้มีใบอนุญาต</Txt></g>
     <g>{[['ออกแบบ / DESIGNED', info.designedBy], ['เขียนแบบ / DRAWN', info.drawnBy], ['ตรวจ / CHECKED', info.checkedBy], ['อนุมัติ / APPROVED', info.approvedBy]].map(([l, v], i) =>
       <g key={l}><Txt x={xs[3] + 1.5} y={ty + 5 + i * 7.8} s={1.8} fill="#555">{l}</Txt><Txt x={xs[3] + 28} y={ty + 5 + i * 7.8} s={2.3}>{v || '……………………'}</Txt>

@@ -28,7 +28,7 @@ export function wallNotes(r: WallResult) {
   ];
 }
 
-export function WallDrawingSet({r, project, code, caseName, titleBlock, canEdit, onTitleBlockChange, revisionBinding}: {r: WallResult; project: string; code: string; caseName: string;
+export function WallDrawingSet({r, project, code, caseName, titleBlock, canEdit, onTitleBlockChange, revisionBinding, kitNote}: {kitNote?: string | null; r: WallResult; project: string; code: string; caseName: string;
   titleBlock: TitleBlock; canEdit: boolean; onTitleBlockChange: (tb: TitleBlock) => void; revisionBinding?: DesignRevisionBinding}) {
   const x = r.input;
   const sheets = [
@@ -59,18 +59,18 @@ export function WallDrawingSet({r, project, code, caseName, titleBlock, canEdit,
       <Txt x={23} y={244} s={2} fill="#444">{SCREEN_LEGEND}</Txt>
     </>},
   ];
-  return <A3Set sheets={sheets} project={project} code={code} caseName={caseName} elementLabel="แบบหล่อผนัง" confirmed={x.confirmed} titleBlock={titleBlock} canEdit={canEdit} onTitleBlockChange={onTitleBlockChange} revisionBinding={revisionBinding}/>;
+  return <A3Set sheets={sheets} project={project} code={code} caseName={caseName} elementLabel="แบบหล่อผนัง" confirmed={x.confirmed} titleBlock={titleBlock} canEdit={canEdit} onTitleBlockChange={onTitleBlockChange} revisionBinding={revisionBinding} kitNote={kitNote}/>;
 }
 
 const SECTIONS = REPORT_SECTIONS;
 
-export function WallReport({r, project, code, caseName, caseId, titleBlock: tb, revisionBinding}: {r: WallResult; project: string; code: string; caseName: string; caseId: string; titleBlock: TitleBlock; revisionBinding?: DesignRevisionBinding}) {
+export function WallReport({r, project, code, caseName, caseId, titleBlock: tb, revisionBinding, kitNote}: {kitNote?: string | null; r: WallResult; project: string; code: string; caseName: string; caseId: string; titleBlock: TitleBlock; revisionBinding?: DesignRevisionBinding}) {
   const x = r.input, pm = r.pressureModel, advice = useMemo(() => wallAdvice(x), [x]), fails = r.checks.filter(c => c.status === 'FAIL');
   const docNo = `CAL-${code || 'CMG'}-${caseId.replace(/[^\w]/g, '').slice(0, 6).toUpperCase()}`, st = sp(x.length, r.studs), sw = sp(x.height, r.levels), stt = r.ties.length ? sp(x.length, r.ties) : 0, walerSpan = r.strongback ? sp(x.length, r.braces) : stt;
   const numbered = numberChecks(wallCheckGroups(!!r.strongback), r.checks);
   return <article className="calc-report">
     <ReportCover title="รายการคำนวณออกแบบแบบหล่อผนัง" subtitle="WALL FORMWORK DESIGN CALCULATION" project={project} code={code} element={`${caseName} · แบบหล่อผนัง (${r.strongback ? 'ด้านเดียว' : 'สองด้าน'})`} docNo={docNo}
-      size={`ยาว ${x.length} × หนา ${x.t} × สูงเท ${x.height} mm`} status={r.status} fails={fails.length} sheets="WF-01 ถึง WF-03 (A3)" tb={tb} sections={SECTIONS} revisionBinding={revisionBinding}
+      size={`ยาว ${x.length} × หนา ${x.t} × สูงเท ${x.height} mm`} status={r.status} fails={fails.length} sheets="WF-01 ถึง WF-03 (A3)" tb={tb} sections={SECTIONS} revisionBinding={revisionBinding} kitNote={kitNote}
       figure={<Fig w={190} h={120} caption="รูปตัดแบบหล่อผนัง (อ้างอิงแบบ WF-02)"><WallSectionView r={r} box={{x: 0, y: 0, w: 190, h: 120}} titled={false}/></Fig>}/>
     <section className="rp-sec"><h2>1. {SECTIONS[0]}</h2>
       <p>รายการคำนวณนี้คัดกรองแบบหล่อผนัง{r.strongback ? 'ด้านเดียว (เทชนดิน/ผนังเดิม)' : 'สองด้าน'}ด้วยวิธียืดหยุ่นเบื้องต้น (engine {r.engineVersion}) เส้นทางแรง: แรงดันคอนกรีตสด → ไม้อัด (คานต่อเนื่องตาม APA V345) → คร่าวแนวตั้ง → คานคู่แนวนอน → {r.strongback ? 'strongback แนวตั้ง (ฐานเป็นจุดหมุน รองรับที่ค้ำยัน) → ค้ำยันเอียงและพุกฐาน รวมแรงด้านข้างตาม ACI §4.2.3' : 'Tie ทะลุผนัง และแรงด้านข้างตาม ACI §4.2.3 → ค้ำยันเอียง'} คร่าวและคานคู่เป็นคานช่วงเดี่ยวภายใต้แรงดันสูงสุดคงที่ ผลลัพธ์ใช้คัดกรองเท่านั้น</p>

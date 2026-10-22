@@ -273,11 +273,12 @@ export const BEAM_SPACINGS = [
   {key: 'studSpacing', label: 'ระยะคร่าวแบบข้าง', prefixes: ['side-', 'stud-']},
   {key: 'tieSpacing', label: 'ระยะ Tie ตามยาว', prefixes: ['waler-', 'tie-']},
 ] as const;
-export function beamAdvice(x: BeamInput) {
+/** `step`: spacings are searched (and suggested) in multiples of this value (project kit spacing step). */
+export function beamAdvice(x: BeamInput, step = 25) {
   return BEAM_SPACINGS.filter(s => s.key !== 'tieSpacing' || x.tieRows > 0).map(s => {
     const ok = (v: number) => {try {return !calculateBeam({...x, [s.key]: v}).checks.some(k => s.prefixes.some(p => k.id.startsWith(p)) && k.status === 'FAIL');} catch {return false;}};
     let best: number | null = null;
-    for (let v = Math.min(x.length, 3000); v >= 100; v -= 25) if (ok(v)) {best = v; break;}
+    for (let v = Math.floor(Math.min(x.length, 3000) / step) * step; v >= 100; v -= step) if (ok(v)) {best = v; break;}
     // Checks in this group without a capacity (e.g. shore/tie SWL not entered) did not limit the spacing.
     const unchecked = calculateBeam(x).checks.filter(k => s.prefixes.some(p => k.id.startsWith(p)) && k.limit === null).map(k => k.label);
     return {key: s.key, label: s.label, current: x[s.key], max: best, unchecked};
