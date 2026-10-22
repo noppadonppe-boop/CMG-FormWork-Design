@@ -14,6 +14,16 @@ vi.mock('../src/AppRouter', () => ({AppRouter: ({children}: {children: unknown})
 (globalThis as {IS_REACT_ACT_ENVIRONMENT?: boolean}).IS_REACT_ACT_ENVIRONMENT = true;
 const nav = (text: string) => [...document.querySelectorAll('aside nav button')].find(b => b.textContent?.trim() === text) as HTMLButtonElement;
 
+const ELEMENT_LABEL = {FOOTING: 'ฐานราก', COLUMN: 'เสา', WALL: 'ผนัง', BEAM: 'คาน', SLAB: 'พื้น'} as const;
+/** The Design Case list shows one element type: pick the element in ELEMENT WORKFLOW, then the case. */
+async function openCase(z: {id: string; workflowElementType?: string; input: {kind: string}}) {
+  const label = ELEMENT_LABEL[(z.workflowElementType ?? z.input.kind) as keyof typeof ELEMENT_LABEL];
+  await act(async () => {[...document.querySelectorAll('.element-workflow-nav button')].find(b => b.textContent?.trim().startsWith(label))!.dispatchEvent(new MouseEvent('click', {bubbles: true}));});
+  await act(async () => {await new Promise(r => setTimeout(r, 120));});
+  await act(async () => {const s = document.querySelector('.case-selector select') as HTMLSelectElement; s.value = z.id; s.dispatchEvent(new Event('change', {bubbles: true}));});
+  await act(async () => {await new Promise(r => setTimeout(r, 120));});
+}
+
 it('column: choose external yoke or through ties on the geometry page', async () => {
   vi.stubGlobal('crypto', webcrypto); vi.stubGlobal('TextEncoder', TextEncoder);
   vi.stubEnv('VITE_FIREBASE_ENABLED', 'false'); vi.stubEnv('VITE_WORKFLOW_V07_ENABLED', 'false');
@@ -56,7 +66,7 @@ it('column: choose external yoke or through ties on the geometry page', async ()
   const saved = JSON.parse(localStorage.getItem('cmg-formwork-demo-v1')!)[0].cases.find((c: {name: string}) => c.name.includes(' C01 '));
   expect(saved.input.columnTies).toBe(true);
   // Footings always use ties: no column selector there.
-  await act(async () => {const s = document.querySelector('.case-selector select') as HTMLSelectElement; s.value = project.cases[1].id; s.dispatchEvent(new Event('change', {bubbles: true}));});
+  await openCase(project.cases[1]);
   await act(async () => {nav('รูปทรงและมิติ').click();});
   expect(picker()).toBeNull();
 }, 60000);

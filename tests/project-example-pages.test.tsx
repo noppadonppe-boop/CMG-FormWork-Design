@@ -13,6 +13,16 @@ vi.mock('../src/auth',()=>{
 });
 vi.mock('../src/AppRouter',()=>({AppRouter:({children}:{children:unknown})=>children}));
 const button=(text:string,root:ParentNode=document)=>[...root.querySelectorAll('button')].find(b=>b.textContent?.trim().startsWith(text))!;
+const ELEMENT_LABEL = {FOOTING: 'ฐานราก', COLUMN: 'เสา', WALL: 'ผนัง', BEAM: 'คาน', SLAB: 'พื้น'} as const;
+/** The Design Case list shows one element type: pick the element in ELEMENT WORKFLOW, then the case. */
+async function openCase(z: {id: string; workflowElementType?: string; input: {kind: string}}) {
+  const label = ELEMENT_LABEL[(z.workflowElementType ?? z.input.kind) as keyof typeof ELEMENT_LABEL];
+  await act(async () => {[...document.querySelectorAll('.element-workflow-nav button')].find(b => b.textContent?.trim().startsWith(label))!.dispatchEvent(new MouseEvent('click', {bubbles: true}));});
+  await act(async () => {await new Promise(r => setTimeout(r, 120));});
+  await act(async () => {const s = document.querySelector('.case-selector select') as HTMLSelectElement; s.value = z.id; s.dispatchEvent(new Event('change', {bubbles: true}));});
+  await act(async () => {await new Promise(r => setTimeout(r, 120));});
+}
+
 const settle=()=>act(async()=>{await new Promise(r=>setTimeout(r,150));});
 /** Everything rendered below the case bar (the page body), and its input fields. */
 function page(){
@@ -48,7 +58,7 @@ it('fills the geometry and layout pages of every Project Example case, including
   expect(menu).toEqual(['งานหลัก (ทำตามลำดับ)','ภาพรวม','รับแบบและ AI','รูปทรงและมิติ','Design Criteria','จัดวางเบื้องต้น','รายการคำนวณ','แปลนและรูปตัด','รายงาน PDF','Review & Issue',
     'ข้อมูลประกอบ','ชุดมาตรฐานโครงการ','รายการสั่งของรวม','จุดต่อและค้ำยัน','คลังวัสดุ/วิธีคำนวณ','Design Book','Audit & Settings']);
   for(const c of project.cases){
-    await act(async()=>{const s=select();s.value=c.id;s.dispatchEvent(new Event('change',{bubbles:true}));});await settle();
+    await openCase(c);
     for(const tab of ['รูปทรงและมิติ','จัดวางเบื้องต้น']){
       await act(async()=>{button(tab).click();});await settle();
       const {text,fields}=page(),label=`${c.name} · ${tab}`;
@@ -71,11 +81,11 @@ it('fills the geometry and layout pages of every Project Example case, including
   }
   // Element buttons open a case of that type instead of retyping the open case.
   const beam=project.cases.find(c=>c.name.includes(' B01 '))!,footing=project.cases.find(c=>c.name.includes(' F01 '))!;
-  await act(async()=>{const s=select();s.value=footing.id;s.dispatchEvent(new Event('change',{bubbles:true}));});await settle();
+  await openCase(footing);
   await act(async()=>{button('คาน',document.querySelector('.element-menu')!).click();});await settle();
   expect(select().value).not.toBe(footing.id);
   expect(project.cases.filter(c=>c.workflowElementType==='BEAM').map(c=>c.id)).toContain(select().value);
-  await act(async()=>{const s=select();s.value=footing.id;s.dispatchEvent(new Event('change',{bubbles:true}));});await settle();
+  await openCase(footing);
   await act(async()=>{button('รูปทรงและมิติ').click();});await settle();
   expect(page().text).toContain('มิติภายในคอนกรีต');
   void beam;
@@ -92,7 +102,7 @@ it('shows the main calculation first and the v0.7 snapshot as part 2 on the resu
   const select=()=>document.querySelector('.case-selector select') as HTMLSelectElement;
   for(const code of [' F01 ',' B01 ',' S01 ',' W01 ']){
     const c=project.cases.find(z=>z.name.includes(code))!;
-    await act(async()=>{const s=select();s.value=c.id;s.dispatchEvent(new Event('change',{bubbles:true}));});await settle();
+    await openCase(c);
     for(const [tab,main] of [['รายการคำนวณ','table'],['รายงาน PDF','.calc-report, .report, .short-report']] as const){
       await act(async()=>{button(tab).click();});await settle();
       const part=document.querySelector('.v07-part'),label=`${c.name} · ${tab}`;
@@ -105,7 +115,7 @@ it('shows the main calculation first and the v0.7 snapshot as part 2 on the resu
     }
   }
   const beam=project.cases.find(z=>z.name.includes(' B01 '))!;
-  await act(async()=>{const s=select();s.value=beam.id;s.dispatchEvent(new Event('change',{bubbles:true}));});await settle();
+  await openCase(beam);
   await act(async()=>{button('รายการคำนวณ').click();});await settle();
   expect(page().text).toContain('ที่มาของแรง');
   expect(page().text).toContain('แรงที่จุดยึดบนแบบข้าง');

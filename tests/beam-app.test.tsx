@@ -28,7 +28,9 @@ describe('beam workflow inside the app (offline)', () => {
     await act(async () => {button('คาน', document.querySelector('.element-menu')!).click(); await wait();});
     expect(caseSelect().value).not.toBe(footingId);
     expect(caseSelect().selectedOptions[0].textContent).toMatch(/^B\d+/);
-    expect([...caseSelect().options].find(o => o.value === footingId)?.textContent).toBe(footingName);
+    // The Design Case list shows the selected element only; the footing stays in the project.
+    expect([...caseSelect().options].some(o => o.value === footingId)).toBe(false);
+    expect(JSON.parse(localStorage.getItem('cmg-formwork-demo-v1')!)[0].cases.some((z: {name: string}) => z.name === footingName)).toBe(true);
     await act(async () => {button('รูปทรงและมิติ', document.querySelector('nav')!).click(); await wait();});
     const b = document.querySelector('input[aria-label="ความกว้างคาน b"]') as HTMLInputElement;
     expect(b).toBeTruthy();
