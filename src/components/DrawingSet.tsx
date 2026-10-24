@@ -5,6 +5,7 @@ import {Download, Printer} from 'lucide-react';
 import {usesTies, type Result} from '../domain';
 import {buildFormworkLayout, type FormworkLayout} from '../domain/formworkLayout';
 import {buildScene, type Scene} from '../domain/scene';
+import {svgToDxf} from '../drawing/svgDxf';
 import {DRAW_AREA, LW, Sheet, Table, Txt, type TitleInfo} from '../drawing/primitives';
 import {today, type DesignRevisionBinding, type TitleBlock} from '../domain/titleBlock';
 import {CornerDetail, ElevationView, IsoView, Legend, MemberSections, NoteBlock, PlanView, SectionView, TieDetail} from '../drawing/views';
@@ -109,16 +110,19 @@ export function A3Set({sheets, project, code, caseName, elementLabel, confirmed,
     window.addEventListener('afterprint', done);
     window.print();
   }
-  function saveSvg(i: number) {
+  function save(i: number, ext: 'svg' | 'dxf') {
     const el = svgs.current[i]; if (!el) return;
-    const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(el)], {type: 'image/svg+xml'})), a = document.createElement('a');
-    a.href = url; a.download = `${code || 'CMG'}-${caseName.replace(/[^\w\u0E00-\u0E7F-]+/g, '_')}-${SHEETS[i].code}.svg`; a.click(); URL.revokeObjectURL(url);
+    const blob = ext === 'svg' ? new Blob([new XMLSerializer().serializeToString(el)], {type: 'image/svg+xml'})
+      : new Blob([svgToDxf(el, {title: `${SHEETS[i].code} ${SHEETS[i].title}`})], {type: 'application/dxf'});
+    const url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = `${code || 'CMG'}-${caseName.replace(/[^\w\u0E00-\u0E7F-]+/g, '_')}-${SHEETS[i].code}.${ext}`; a.click(); URL.revokeObjectURL(url);
   }
   const field = (k: 'rev' | 'date' | 'designedBy' | 'drawnBy' | 'checkedBy' | 'approvedBy', label: string) => <label className="field"><span>{label}</span><input value={info[k]} maxLength={40} disabled={!canEdit} onChange={e => onTitleBlockChange({...info, [k]: e.target.value})}/></label>;
   return <div className="a3-print-root" ref={root}>
     <section className="card a3-controls">
       <div className="card-title"><h3>ชุดแบบก่อสร้างแบบหล่อ A3 ({SHEETS.length} แผ่น)</h3>
-        <div className="source-actions"><button className="btn" onClick={print}><Printer size={16}/>พิมพ์ / บันทึก PDF (A3)</button></div></div>
+        <div className="source-actions"><button className="btn secondary" title="ไฟล์ CAD (DXF R12) ขนาดกระดาษ 1:1 หน่วย mm" onClick={() => save(0, 'dxf')}><Download size={16}/>{SHEETS[0]?.code} {SHEETS[0]?.title} (.dxf)</button>
+          <button className="btn" onClick={print}><Printer size={16}/>พิมพ์ / บันทึก PDF (A3)</button></div></div>
       <p className="muted">แบบสร้างจากข้อมูลเดียวกับรายการคำนวณ แก้มิติหรือระยะแล้วแบบจะอัปเดตทันที · ตอนพิมพ์ให้เลือกขนาดกระดาษ A3 แนวนอน และปิดหัว/ท้ายกระดาษของเบราว์เซอร์</p>
       {revisionBinding&&<p className="muted revision-binding">Design Revision: {revisionBinding.designRevision} · Review: {revisionBinding.reviewState} · hash: {revisionBinding.contentHash ? `${revisionBinding.contentHash.slice(0, 16)}…` : 'ยังไม่มี review hash'}</p>}
       <div className="form-grid four">{field('rev', 'แก้ไขครั้งที่ (Rev)')}{field('date', 'วันที่')}{field('designedBy', 'ออกแบบ')}{field('drawnBy', 'เขียนแบบ')}{field('checkedBy', 'ตรวจ')}{field('approvedBy', 'อนุมัติ')}</div>
@@ -129,7 +133,8 @@ export function A3Set({sheets, project, code, caseName, elementLabel, confirmed,
       {!confirmed && <div className="warning">ยังไม่ยืนยันมิติจากแบบต้นฉบับ · แบบชุดนี้เป็นร่างเพื่อตรวจทานเท่านั้น</div>}
     </section>
     {SHEETS.map((s, i) => <div className="a3-page" id={`sheet-${s.code}`} key={s.code}>
-      <div className="a3-toolbar"><b>{s.code} · {s.title}</b><button className="btn secondary" onClick={() => saveSvg(i)}><Download size={14}/>SVG</button></div>
+      <div className="a3-toolbar"><b>{s.code} · {s.title}</b><span className="source-actions"><button className="btn secondary" onClick={() => save(i, 'dxf')}><Download size={14}/>DXF</button>
+        <button className="btn secondary" onClick={() => save(i, 'svg')}><Download size={14}/>SVG</button></span></div>
       <Sheet no={i + 1} total={SHEETS.length} code={s.code} title={s.title} info={title} svgRef={el => {svgs.current[i] = el;}}>{s.body}</Sheet>
     </div>)}
   </div>;

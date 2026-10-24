@@ -41,7 +41,7 @@ it('opens example footing plans through the app and compiles footing plus slab i
   // Printing one set marks only that set; the print CSS hides the other set on the page.
   const printSpy=vi.spyOn(window,'print').mockImplementation(()=>{});
   const fwRoot=document.getElementById('sheet-FW-01')!.closest('.a3-print-root')!;
-  await act(async()=>{(fwRoot.querySelector('.a3-controls button') as HTMLButtonElement).click();});
+  await act(async()=>{[...fwRoot.querySelectorAll<HTMLButtonElement>('.a3-controls button')].find(b=>b.textContent?.includes('พิมพ์'))!.click();});
   expect(printSpy).toHaveBeenCalled();expect(fwRoot.classList.contains('print-target')).toBe(true);
   expect(document.querySelectorAll('.print-target')).toHaveLength(1);
 },40000);

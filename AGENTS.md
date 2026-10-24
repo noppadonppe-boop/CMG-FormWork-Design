@@ -17,6 +17,7 @@
 
 ## A3 drawing set
 - `src/domain/formworkLayout.ts`: legacy `buildFormworkLayout` drives footing/column A3 drawings; `buildWorkflowFormworkLayout` produces v0.7 geometry-only draft quantities for side/soffit/frame layouts. Spans are not cut lengths or procurement quantities; release remains `NO_GO`.
+- DXF export: `src/drawing/svgDxf.ts` (`svgToDxf`) converts a rendered `.a3-sheet` SVG into DXF R12 (paper mm 1:1, Y up, layers by member colour, dash patterns as LTYPEs, Thai as `\U+XXXX`, pattern hatches skipped). `A3Set` has a header button for the first sheet (FW-01 plan) and a DXF button per sheet. Test: `tests/svg-dxf.test.tsx`.
 - `src/drawing/primitives.tsx` (sheet in mm, title block, Dim/ChainDim/Leader/SectionMark/Table), `src/drawing/views.tsx` (plan/section/elevation/details/iso), `src/components/DrawingSet.tsx` (4 sheets, print via `body.print-a3` + `@page a3sheet`).
 - Visual QA without a browser: render `DrawingSet` with `renderToStaticMarkup`, then rasterize the `.a3-sheet` SVGs with `@napi-rs/canvas` after `GlobalFonts.registerFromPath('C:/Windows/Fonts/tahoma.ttf','Tahoma')` (otherwise Thai text is garbled).
 
