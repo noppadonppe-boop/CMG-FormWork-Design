@@ -99,7 +99,7 @@ const layerOf = (h: string) => LAYER_BY_COLOR[h] ?? 'CMG-' + h.slice(1).toUpperC
 export const dxfText = (s: string) => [...s].map(ch => {const c = ch.codePointAt(0)!; return c < 32 ? '' : c > 126 ? '\\U+' + c.toString(16).toUpperCase().padStart(4, '0') : ch;}).join('').replace(/%%/g, '%');
 const f = (v: number) => (Math.abs(v) < 5e-7 ? 0 : Math.round(v * 1000) / 1000).toString();
 
-export function svgToDxf(svg: SVGSVGElement, {title = ''}: {title?: string} = {}): string {
+export function svgToDxf(svg: SVGSVGElement, {title = '', font = 'tahoma.ttf'}: {title?: string; font?: string} = {}): string {
   const vb = nums(svg.getAttribute('viewBox') ?? '0 0 420 297'), H = vb[3] ?? 297, X0 = vb[0] ?? 0, Y0 = vb[1] ?? 0;
   const out: (string | number)[] = [], layers = new Map<string, number>([['CMG-TEXT', 7], ['CMG-HATCH-AREA', 8]]), ltypes = new Map<string, number[]>();
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -209,7 +209,7 @@ export function svgToDxf(svg: SVGSVGElement, {title = ''}: {title?: string} = {}
     0, 'SECTION', 2, 'TABLES',
     0, 'TABLE', 2, 'LTYPE', 70, ltypes.size + 1, 0, 'LTYPE', 2, 'CONTINUOUS', 70, 0, 3, 'Solid line', 72, 65, 73, 0, 40, 0, ...lt, 0, 'ENDTAB',
     0, 'TABLE', 2, 'LAYER', 70, layers.size + 1, 0, 'LAYER', 2, '0', 70, 0, 62, 7, 6, 'CONTINUOUS', ...ly, 0, 'ENDTAB',
-    0, 'TABLE', 2, 'STYLE', 70, 1, 0, 'STYLE', 2, 'CMG', 70, 0, 40, 0, 41, 1, 50, 0, 71, 0, 42, 2.5, 3, 'tahoma.ttf', 4, '', 0, 'ENDTAB',
+    0, 'TABLE', 2, 'STYLE', 70, 1, 0, 'STYLE', 2, 'CMG', 70, 0, 40, 0, 41, 1, 50, 0, 71, 0, 42, 2.5, 3, font, 4, '', 0, 'ENDTAB',
     0, 'ENDSEC', 0, 'SECTION', 2, 'ENTITIES', ...out, 0, 'ENDSEC', 0, 'EOF',
   ].join('\r\n') + '\r\n';
 }

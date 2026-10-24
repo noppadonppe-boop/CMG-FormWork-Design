@@ -35,7 +35,7 @@ export function ProjectExampleDrawingBook({cases,caseId,project,code,canEdit,onT
       <p>ข้อมูลชุดนี้เป็น Mock-up สำหรับฝึกอ่านแบบและจัดเตรียมงาน ช่องตรวจ/อนุมัติยังไม่ลงนาม และข้อมูลที่เปลี่ยนในฟอร์มจะปรากฏเมื่อบันทึกแล้วเปิดแบบใหม่</p>
     </section>
     {ready.map(({case:c,view})=><A3Set key={c.id} sheets={installationSheets(view,sheetPrefix(c))} project={project} code={code}
-      caseName={c.name.replace(/^Project Example · /,'').replace(/ · MOCK-UP$/,'')} elementLabel="รายละเอียดติดตั้งตัวอย่าง"
+      caseName={c.name.replace(/^Project Example · /,'').replace(/ · MOCK-UP$/,'')} elementLabel="รายละเอียดติดตั้งตัวอย่าง" languages={false}
       confirmed={false} titleBlock={cases.find(row=>row.id===c.id)?.titleBlock??defaultTitleBlock()}
       canEdit={canEdit&&c.id===caseId} onTitleBlockChange={onTitleBlockChange}
       revisionBinding={{designRevision:view.report.model.revisionId,contentHash:view.inputHash,reviewState:'MOCK-UP / NO_GO'}}/>)}

@@ -208,7 +208,7 @@ export function WorkflowV07Drawings({view, project, code, caseName, titleBlock, 
       title: `ฐานและพื้นรองรับ ${page + 1}`, body: <SupportSheet view={view} page={page}/>})) : [{
       code: `V7-${String(4 + view.drawing.topology.faces.length).padStart(2, '0')}`, title: 'ฐานและพื้นรองรับ', body: <SupportSheet view={view} page={0}/> }]),
   ];
-  return <A3Set sheets={sheets} project={project} code={code} caseName={caseName} elementLabel={`แบบจัดวางร่าง ${element} v0.7`}
+  return <A3Set sheets={sheets} project={project} code={code} caseName={caseName} elementLabel={`แบบจัดวางร่าง ${element} v0.7`} languages={false}
     confirmed={model.humanInputReviewed} titleBlock={titleBlock} canEdit={canEdit} onTitleBlockChange={onTitleBlockChange}
     revisionBinding={{designRevision: model.revisionId, contentHash: view.inputHash, reviewState}}/>;
 }

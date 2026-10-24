@@ -59,7 +59,7 @@ export function WallDrawingSet({r, project, code, caseName, titleBlock, canEdit,
       <Txt x={23} y={244} s={2} fill="#444">{SCREEN_LEGEND}</Txt>
     </>},
   ];
-  return <A3Set sheets={sheets} project={project} code={code} caseName={caseName} elementLabel="แบบหล่อผนัง" confirmed={x.confirmed} titleBlock={titleBlock} canEdit={canEdit} onTitleBlockChange={onTitleBlockChange} revisionBinding={revisionBinding} kitNote={kitNote}/>;
+  return <A3Set sheets={sheets} project={project} code={code} caseName={caseName} elementLabel="แบบหล่อผนัง" stud="Stud" confirmed={x.confirmed} titleBlock={titleBlock} canEdit={canEdit} onTitleBlockChange={onTitleBlockChange} revisionBinding={revisionBinding} kitNote={kitNote}/>;
 }
 
 const SECTIONS = REPORT_SECTIONS;

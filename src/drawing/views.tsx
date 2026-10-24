@@ -2,7 +2,8 @@ import type {ReactElement} from 'react';
 import type {FormworkLayout, LayoutFace} from '../domain/formworkLayout';
 import type {Scene} from '../domain/scene';
 import {projectSolids} from './iso';
-import {ChainDim, Dim, Leader, Line, LW, SectionMark, Txt, ViewTitle, fitScale, mm, poly, type Box, type V} from './primitives';
+import {ChainDim, Dim, Leader, Line, LW, SectionMark, Txt, ViewTitle, clip, fitScale, mm, poly, type Box, type V} from './primitives';
+import {textWidth, useTr} from '../i18n/reportLang';
 
 const C = {stud: '#1d4e89', waler: '#9b1c1c', tie: '#1e7b34', ply: '#9a6a2c'};
 type Mapper = (x: number, y: number) => V;
@@ -242,18 +243,18 @@ export function IsoView({scene, box, n = 'D', titled = true}: {scene: Scene; box
 export function wrap(text: string, max: number): string[] {
   const out: string[] = []; let line = '';
   for (const word of text.split(' ')) {
-    if ((line + ' ' + word).trim().length > max && line) {out.push(line); line = word;} else line = (line + ' ' + word).trim();
-    while (line.length > max) {out.push(line.slice(0, max)); line = line.slice(max);}
+    if (textWidth((line + ' ' + word).trim()) > max && line) {out.push(line); line = word;} else line = (line + ' ' + word).trim();
+    while (textWidth(line) > max) {const head = clip(line, max) || [...line][0]; out.push(head); line = line.slice(head.length);}
   }
   if (line) out.push(line);
   return out;
 }
 export function NoteBlock({x, y, w, title, items, s = 2.2}: {x: number; y: number; w: number; title: string; items: string[]; s?: number}) {
-  const max = Math.floor(w / (s * 0.52)); let yy = y + 6;
+  const tr = useTr(), max = Math.floor(w / (s * 0.52)); let yy = y + 6;
   return <g>
     <Txt x={x} y={y + 2} s={3} b>{title}</Txt>
     <line x1={x} y1={y + 3.2} x2={x + w} y2={y + 3.2} stroke="#111" strokeWidth={LW.med}/>
-    {items.map((it, i) => wrap(it, max - 4).map((ln, j) => {yy += s * 1.45; return <Txt key={i + ':' + j} x={x + (j ? 4 : 0)} y={yy} s={s}>{j ? ln : `${i + 1}. ${ln}`}</Txt>;}))}
+    {items.map((it, i) => wrap(tr(it), max - 4).map((ln, j) => {yy += s * 1.45; return <Txt key={i + ':' + j} x={x + (j ? 4 : 0)} y={yy} s={s}>{j ? ln : `${i + 1}. ${ln}`}</Txt>;}))}
   </g>;
 }
 export function Legend({x, y}: {x: number; y: number}) {

@@ -1,11 +1,11 @@
 import type {ReactNode} from 'react';
-import {useTrChildren} from '../i18n/reportLang';
+import {textWidth, useTr, useTrChildren} from '../i18n/reportLang';
 
 /** A3 landscape sheet in millimetres. All drawing primitives work in sheet mm. */
 export const SHEET = {w: 420, h: 297, left: 20, top: 10, right: 410, bottom: 287, titleTop: 250};
 export const DRAW_AREA = {x: 23, y: 24, w: 384, h: 222};
 export const LW = {thick: 0.5, med: 0.35, thin: 0.18, hair: 0.1};
-export const FONT = "'Noto Sans Thai','Tahoma','Arial',sans-serif";
+export const FONT = "'Noto Sans Thai','Tahoma','Microsoft YaHei','PingFang SC','Noto Sans SC','Arial',sans-serif";
 export const SCALES = [1, 2, 5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 100, 125, 150, 200, 250, 300, 400, 500];
 export type V = [number, number];
 export type Box = {x: number; y: number; w: number; h: number};
@@ -86,12 +86,20 @@ export function ViewTitle({x, y, n, title, sub, scale}: {x: number; y: number; n
   </g>;
 }
 export type Col = {t: string; w: number; a?: 'start' | 'middle' | 'end'};
+/** Leading part of `s` that fits `max` width units (`textWidth`). */
+export function clip(s: string, max: number) {
+  let out = '', n = 0;
+  for (const ch of s) {const w = textWidth(ch); if (n + w > max) break; out += ch; n += w;}
+  return out;
+}
 export function Table({x, y, cols, rows, rh = 6, s = 2.2, title}: {x: number; y: number; cols: Col[]; rows: string[][]; rh?: number; s?: number; title?: string}) {
   const W = cols.reduce((n, c) => n + c.w, 0), y0 = title ? y + 6 : y, H = (rows.length + 1) * rh;
   let cx = x;
   const xs = cols.map(c => {const v = cx; cx += c.w; return v;});
-  const cell = (c: Col, i: number, txt: string, yy: number, bold = false) => {
-    const max = Math.floor(c.w / (s * 0.5)), t = txt.length > max ? txt.slice(0, max - 1) + '…' : txt;
+  const tr = useTr();
+  const cell = (c: Col, i: number, raw: string, yy: number, bold = false) => {
+    // Translate before clipping so the clipped text is a whole translated phrase.
+    const txt = tr(raw), max = Math.floor(c.w / (s * 0.5)), t = textWidth(txt) > max ? clip(txt, max - 1) + '…' : txt;
     const tx = c.a === 'end' ? xs[i] + c.w - 1.2 : c.a === 'middle' ? xs[i] + c.w / 2 : xs[i] + 1.2;
     return <Txt key={i} x={tx} y={yy + rh / 2 + s * 0.36} s={s} a={c.a ?? 'start'} b={bold}>{t}</Txt>;
   };
@@ -121,14 +129,14 @@ export interface TitleInfo {company: string; project: string; code: string; case
   /** Project kit status line (e.g. 'ชุดมาตรฐาน K1 · ตรงชุด'). */
   kitNote?: string}
 /** A3 frame with CMG title strip and a permanent preliminary stamp while the engine reports no construction release. */
-export function Sheet({no, total, code, title, info, children, svgRef}: {no: number; total: number; code: string; title: string; info: TitleInfo; children: ReactNode; svgRef?: (el: SVGSVGElement | null) => void}) {
+export function Sheet({no, total, code, title, info, children, svgRef, lang = 'th'}: {no: number; total: number; code: string; title: string; info: TitleInfo; children: ReactNode; svgRef?: (el: SVGSVGElement | null) => void; lang?: string}) {
   const S = SHEET, ty = S.titleTop, h = S.bottom - ty;
   const cells = [70, 112, 92, 66, 50];
   let cx = S.left;
   const xs = cells.map(w => {const v = cx; cx += w; return v;});
   const small = (x: number, y: number, label: string, value: string, vs = 2.6) => <g>
     <Txt x={x + 1.5} y={y + 3} s={1.8} fill="#555">{label}</Txt><Txt x={x + 1.5} y={y + 7.2} s={vs} b>{value}</Txt></g>;
-  return <svg ref={svgRef} xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${S.w} ${S.h}`} width="420mm" height="297mm" className="a3-sheet" role="img" aria-label={`แผ่นที่ ${no} ${title}`}>
+  return <svg ref={svgRef} xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${S.w} ${S.h}`} width="420mm" height="297mm" className="a3-sheet" lang={lang} role="img" aria-label={`แผ่นที่ ${no} ${title}`}>
     <Defs/>
     <rect width={S.w} height={S.h} fill="#fff"/>
     <rect x={S.left} y={S.top} width={S.right - S.left} height={S.bottom - S.top} fill="none" stroke="#111" strokeWidth={0.7}/>

@@ -51,7 +51,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 @media(max-width:760px){.element-menu{width:100%;overflow-x:auto;flex-wrap:nowrap}.element-menu-button{white-space:nowrap}.case-bar{flex-direction:column;align-items:stretch}}
 /* A3 construction drawing set */
 .a3-controls .form-grid.four{margin-top:10px}.a3-index{display:flex;gap:14px;flex-wrap:wrap;font-size:12px}.a3-index a{color:var(--accent-text)}
-.a3-page{margin-bottom:26px}.a3-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:12px}.a3-toolbar .btn{padding:6px 10px;font-size:11px}
+.a3-page{margin-bottom:26px}.a3-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:12px}.a3-toolbar .btn{padding:6px 10px;font-size:11px}.a3-toolbar>b{flex:0 1 auto}.a3-toolbar .drawing-lang{margin:0 auto 0 24px}
 .a3-sheet{display:block;width:100%;height:auto;background:#fff;box-shadow:0 6px 28px rgba(0,0,0,.5);border:1px solid var(--border-strong)}.legacy-sketches summary{font-weight:600}
 @page a3sheet{size:A3 landscape;margin:0}
 @media print{body.print-a3 main>*:not(.a3-print-root){display:none!important}body.print-a3 .a3-print-root:not(.print-target):not(:has(.print-target)){display:none!important}body.print-a3 .a3-controls,body.print-a3 .a3-toolbar{display:none!important}body.print-a3 .a3-page{page:a3sheet;break-after:page;margin:0}body.print-a3 .a3-page:last-child{break-after:auto}body.print-a3 .a3-sheet{width:420mm;height:297mm;box-shadow:none;border:0}}

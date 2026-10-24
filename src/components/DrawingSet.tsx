@@ -6,6 +6,7 @@ import {usesTies, type Result} from '../domain';
 import {buildFormworkLayout, type FormworkLayout} from '../domain/formworkLayout';
 import {buildScene, type Scene} from '../domain/scene';
 import {svgToDxf} from '../drawing/svgDxf';
+import {ReportLangContext, translate, type ReportLang, type StudTerm} from '../i18n/reportLang';
 import {DRAW_AREA, LW, Sheet, Table, Txt, type TitleInfo} from '../drawing/primitives';
 import {today, type DesignRevisionBinding, type TitleBlock} from '../domain/titleBlock';
 import {CornerDetail, ElevationView, IsoView, Legend, MemberSections, NoteBlock, PlanView, SectionView, TieDetail} from '../drawing/views';
@@ -84,14 +85,30 @@ export function DrawingSet({result, project, code, caseName, titleBlock: info, c
   if (!base) return <div className="warning">ข้อมูลไม่ครบหรือไม่ถูกต้อง จึงสร้างแบบไม่ได้ · ตรวจมิติและระยะก่อน</div>;
   const ctx: Ctx = {...base, tb: info};
   return <A3Set sheets={SHEETS.map(s => ({code: s.code, title: s.title, body: s.draw(ctx)}))} project={project} code={code} caseName={caseName}
-    elementLabel={ctx.L.kind === 'COLUMN' ? 'แบบหล่อเสา' : 'แบบหล่อฐานราก'} confirmed={ctx.L.confirmed} titleBlock={info} canEdit={canEdit} onTitleBlockChange={onTitleBlockChange} revisionBinding={revisionBinding} kitNote={kitNote}/>;
+    elementLabel={ctx.L.kind === 'COLUMN' ? 'แบบหล่อเสา' : 'แบบหล่อฐานราก'} stud="Stud" confirmed={ctx.L.confirmed} titleBlock={info} canEdit={canEdit} onTitleBlockChange={onTitleBlockChange} revisionBinding={revisionBinding} kitNote={kitNote}/>;
 }
 
-/** A3 sheet set with shared title block, revision log, SVG export and A3 print controls. */
-export function A3Set({sheets, project, code, caseName, elementLabel, confirmed, titleBlock: info, canEdit = true, onTitleBlockChange, revisionBinding, kitNote}: {sheets: {code: string; title: string; body: ReactElement}[]; kitNote?: string | null;
+const LANG_KEY = 'cmg-drawing-lang';
+const DRAWING_LANGS: [ReportLang, string, string][] = [['th', 'ไทย', 'ภาษาไทย'], ['en', 'EN', 'English'], ['zh', '中文', '简体中文']];
+function storedLang(): ReportLang {
+  try {const v = localStorage.getItem(LANG_KEY); return v === 'en' || v === 'zh' ? v : 'th';} catch {return 'th';}
+}
+/** Drawing language for a sheet set (Thai / English / Chinese); the choice is remembered per viewer. */
+export function DrawingLangSwitch({value, onChange}: {value: ReportLang; onChange: (v: ReportLang) => void}) {
+  return <div className="report-variant drawing-lang" role="group" aria-label="ภาษาในแบบ / Drawing language / 图纸语言">
+    {DRAWING_LANGS.map(([k, label, title]) => <button key={k} type="button" title={title} aria-pressed={value === k} onClick={() => onChange(k)}>{label}</button>)}
+  </div>;
+}
+
+/** A3 sheet set with shared title block, revision log, SVG/DXF export, drawing language and A3 print controls.
+ * `stud` names "คร่าว" in English/Chinese (Joist under soffits, Stud on side forms); user data (project, case, signers) stays as entered.
+ * `languages={false}` keeps a set Thai-only (v0.7 books: their wording is not in `DRAWING_PHRASES`). */
+export function A3Set({sheets, project, code, caseName, elementLabel, confirmed, titleBlock: info, canEdit = true, onTitleBlockChange, revisionBinding, kitNote, stud, languages = true}: {sheets: {code: string; title: string; body: ReactElement}[]; kitNote?: string | null; stud?: StudTerm; languages?: boolean;
   project: string; code: string; caseName: string; elementLabel: string; confirmed: boolean; titleBlock: TitleBlock; canEdit?: boolean; onTitleBlockChange: (tb: TitleBlock) => void; revisionBinding?: DesignRevisionBinding}) {
   const SHEETS = sheets;
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState(''), [chosen, setLangState] = useState<ReportLang>(storedLang), lang = languages ? chosen : 'th';
+  const tr = useMemo(() => ({lang, stud, drawing: true}), [lang, stud]);
+  function setLang(v: ReportLang) {setLangState(v); try {localStorage.setItem(LANG_KEY, v);} catch { /* private mode: keep for this view only */ }}
   const svgs = useRef<(SVGSVGElement | null)[]>([]);
   useEffect(() => () => document.body.classList.remove('print-a3'), []);
   const title: TitleInfo = {company: 'CMG ENGINEERING & CONSTRUCTION', project, code, caseName, elementLabel,
@@ -113,9 +130,9 @@ export function A3Set({sheets, project, code, caseName, elementLabel, confirmed,
   function save(i: number, ext: 'svg' | 'dxf') {
     const el = svgs.current[i]; if (!el) return;
     const blob = ext === 'svg' ? new Blob([new XMLSerializer().serializeToString(el)], {type: 'image/svg+xml'})
-      : new Blob([svgToDxf(el, {title: `${SHEETS[i].code} ${SHEETS[i].title}`})], {type: 'application/dxf'});
+      : new Blob([svgToDxf(el, {title: `${SHEETS[i].code} ${translate(tr, SHEETS[i].title)}`, font: lang === 'zh' ? 'msyh.ttc' : 'tahoma.ttf'})], {type: 'application/dxf'});
     const url = URL.createObjectURL(blob), a = document.createElement('a');
-    a.href = url; a.download = `${code || 'CMG'}-${caseName.replace(/[^\w\u0E00-\u0E7F-]+/g, '_')}-${SHEETS[i].code}.${ext}`; a.click(); URL.revokeObjectURL(url);
+    a.href = url; a.download = `${code || 'CMG'}-${caseName.replace(/[^\w\u0E00-\u0E7F-]+/g, '_')}-${SHEETS[i].code}${lang === 'th' ? '' : '-' + lang.toUpperCase()}.${ext}`; a.click(); URL.revokeObjectURL(url);
   }
   const field = (k: 'rev' | 'date' | 'designedBy' | 'drawnBy' | 'checkedBy' | 'approvedBy', label: string) => <label className="field"><span>{label}</span><input value={info[k]} maxLength={40} disabled={!canEdit} onChange={e => onTitleBlockChange({...info, [k]: e.target.value})}/></label>;
   return <div className="a3-print-root" ref={root}>
@@ -133,9 +150,9 @@ export function A3Set({sheets, project, code, caseName, elementLabel, confirmed,
       {!confirmed && <div className="warning">ยังไม่ยืนยันมิติจากแบบต้นฉบับ · แบบชุดนี้เป็นร่างเพื่อตรวจทานเท่านั้น</div>}
     </section>
     {SHEETS.map((s, i) => <div className="a3-page" id={`sheet-${s.code}`} key={s.code}>
-      <div className="a3-toolbar"><b>{s.code} · {s.title}</b><span className="source-actions"><button className="btn secondary" onClick={() => save(i, 'dxf')}><Download size={14}/>DXF</button>
+      <div className="a3-toolbar"><b>{s.code} · {translate(tr, s.title)}</b>{languages && <DrawingLangSwitch value={lang} onChange={setLang}/>}<span className="source-actions"><button className="btn secondary" onClick={() => save(i, 'dxf')}><Download size={14}/>DXF</button>
         <button className="btn secondary" onClick={() => save(i, 'svg')}><Download size={14}/>SVG</button></span></div>
-      <Sheet no={i + 1} total={SHEETS.length} code={s.code} title={s.title} info={title} svgRef={el => {svgs.current[i] = el;}}>{s.body}</Sheet>
+      <ReportLangContext.Provider value={tr}><Sheet no={i + 1} total={SHEETS.length} code={s.code} title={s.title} info={title} lang={lang} svgRef={el => {svgs.current[i] = el;}}>{s.body}</Sheet></ReportLangContext.Provider>
     </div>)}
   </div>;
 }
